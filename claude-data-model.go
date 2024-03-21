@@ -68,3 +68,29 @@ type Source struct {
 	MediaType MediaType `json:"media_type"`
 	Data      string    `json:"data"`
 }
+
+type StreamEventType string
+
+const (
+	ping                StreamEventType = "ping"
+	message_stop        StreamEventType = "message_stop"
+	message_delta       StreamEventType = "message_delta"
+	content_block_delta StreamEventType = "content_block_delta"
+	content_block_stop  StreamEventType = "content_block_stop"
+)
+
+type StreamResponse struct {
+	Event StreamEventType `json:"event"`
+	Data  StreamData      `json:"data"`
+}
+
+type StreamData struct {
+	Type  StreamEventType `json:"type"`
+	Index int             `json:"index"`
+	Delta StreamDelta     `json:"delta"`
+}
+
+type StreamDelta struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
