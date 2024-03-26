@@ -2,141 +2,95 @@ package main
 
 import (
 	"bufio"
+	data "claude/data"
+	server "claude/http"
+	claude "claude/models/vertex-claude"
+	services "claude/services"
+	"flag"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
-	"strconv"
 	"strings"
 )
 
-type Model interface {
-	createRequest(contextId int64, prompt string, streaming bool, history []History) *http.Request
-	handleStreamedLine(line []byte)
-	handleBodyBytes(bytes []byte)
-}
+var (
+	prompt       string
+	context_name string
+	historyCount int
+	serve        bool
+	port         int
+	secure       bool
+	stream       bool
+)
 
-func awaitedQuery(prompt string, model Model) {
-	//TODO: context id
-	req := model.createRequest(0, prompt, false, []History{})
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(fmt.Errorf("failed to execute request: %v", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if err != nil {
-			panic("failed to read response body on non-OK status")
-		}
-		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		// Handle error, maybe return or log
-		fmt.Printf("Error reading response body: %v\n", err)
-	} // Close the response body when done
-	defer resp.Body.Close()
-
-	model.handleBodyBytes(bodyBytes)
-	//TODO: Handle token use
-}
-
-func streamedQuery(prompt string, model Model, historyRepository HistoryRepository, historyCount int, contextId int64) {
-	//TODO: context id
-	history, err := historyRepository.getHistoryByContextId(contextId, historyCount)
-
-	//fmt.Printf("%+v\n", history)
-	if err != nil {
-		panic(fmt.Sprintf("Could not fetch history %s", err))
-	}
-
-	req := model.createRequest(contextId, prompt, true, history)
-
-	// fmt.Printf("%+v\n", req)
-	// panic("Stop for testing")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		panic(fmt.Errorf("Failed to execute request: %v", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if err != nil {
-			panic("Failed to read response body on non-OK status")
-		}
-		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
-	}
-
-	reader := bufio.NewReader(resp.Body)
-	finished := false
-	for !finished {
-		line, err := reader.ReadBytes('\n')
-		if err != nil {
-			// fmt.Println("failed to read bytes from stream response")
-			finished = true
-			continue
-		}
-
-		model.handleStreamedLine(line)
-	}
+func init() {
+	flag.StringVar(
+		&prompt,
+		"prompt",
+		"",
+		"The prompt to use for the conversation",
+	)
+	flag.StringVar(
+		&context_name,
+		"context_name",
+		"misc",
+		"The context to provide for the conversation",
+	)
+	flag.IntVar(
+		&historyCount,
+		"history",
+		0,
+		"The number of previous messages to include in the context",
+	)
+	flag.BoolVar(&serve, "serve", false, "Enable server mode")
+	flag.IntVar(&port, "port", 8080, "Port to listen on")
+	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
+	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 }
 
 func main() {
 
-	user := User{Id: "olof", Name: "olof"}
+	user := data.User{Id: "olof", Name: "olof"}
 
-	prompt := ""
+	flag.Parse()
+
 	var context_id int64 = 0
 	historyCount := 0
 
-	if len(os.Args) > 1 {
-		prompt = os.Args[len(os.Args)-1]
-	} else {
+	if prompt == "" && !serve {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Prompt:")
 		prompt, _ = reader.ReadString('\n')
 		prompt = strings.TrimSpace(prompt)
 	}
 
-	if len(os.Args) > 2 {
-		count, err := strconv.Atoi(os.Args[len(os.Args)-2])
+	fmt.Println("using context_name", context_name)
+	context, _ := user.GetContextByName(context_name)
+
+	if context == nil {
+		new_context := data.Context{Name: context_name}
+		id, err := user.InsertContext(new_context)
 		if err != nil {
-			panic(err)
+			panic(fmt.Sprintf("Could not create a new context with name %s, %s", context_name, err))
 		}
-		historyCount = count
-	}
-
-	if len(os.Args) > 3 {
-		context_name := os.Args[len(os.Args)-3]
-		context, _ := user.getContextByName(context_name)
-
-		if context == nil {
-			new_context := Context{Name: context_name}
-			id, err := user.insertContext(new_context)
-			if err != nil {
-				panic(fmt.Sprintf("Could not create a new context with name %s, %s", context_name, err))
-			}
-			context_id = id
-		} else {
-			context_id = context.Id
-		}
-		fmt.Printf("found a context_id: %d for context %v", context_id, context)
-	}
-
-	stream := true
-
-	//TODO Model selector
-	cliResponseHandler := CliResponseHandler{Repository: user}
-	var claudeModel Model = &ClaudeModel{responseHandler: cliResponseHandler}
-
-	if stream {
-		streamedQuery(prompt, claudeModel, user, historyCount, context_id)
+		context_id = id
 	} else {
-		awaitedQuery(prompt, claudeModel)
+		context_id = context.Id
 	}
+
+	if serve {
+		httpResponseHandler := &server.HttpResponseHandler{}
+		model := claude.ClaudeModel{ResponseHandler: httpResponseHandler}
+		server.Run(secure, port, httpResponseHandler, &model, stream)
+	} else {
+		cliResponseHandler := CliResponseHandler{Repository: user}
+		claudeModel := claude.ClaudeModel{ResponseHandler: cliResponseHandler}
+
+		if stream {
+			fmt.Println("stream")
+			services.StreamedQuery(prompt, &claudeModel, user, historyCount, context_id)
+		} else {
+			services.AwaitedQuery(prompt, &claudeModel, user, historyCount, context_id)
+		}
+	}
+
 }

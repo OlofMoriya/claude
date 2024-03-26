@@ -1,4 +1,4 @@
-package main
+package data
 
 import (
 	"database/sql"
@@ -8,13 +8,13 @@ import (
 )
 
 type HistoryRepository interface {
-	getContextById(contextId int64) (Context, error)
-	insertHistory(history History) (int64, error)
-	getHistoryByContextId(contextId int64, maxCount int) ([]History, error)
-	getContextByName(name string) (*Context, error)
-	getAllContexts() ([]Context, error)
-	deleteContext(contextId int64) (int64, error)
-	deleteHistory(historyId int64) (int64, error)
+	GetContextById(contextId int64) (Context, error)
+	InsertHistory(history History) (int64, error)
+	GetHistoryByContextId(contextId int64, maxCount int) ([]History, error)
+	GetContextByName(name string) (*Context, error)
+	GetAllContexts() ([]Context, error)
+	DeleteContext(contextId int64) (int64, error)
+	DeleteHistory(historyId int64) (int64, error)
 }
 
 func getHomeDir() (string, error) {
@@ -95,7 +95,7 @@ func createHistoryTables(db *sql.DB) {
 	}
 }
 
-func (user User) insertContext(context Context) (int64, error) {
+func (user User) InsertContext(context Context) (int64, error) {
 	db := user.getUserDb()
 
 	insertQuery := "INSERT INTO context (name) VALUES (?)"
@@ -114,7 +114,7 @@ func (user User) insertContext(context Context) (int64, error) {
 	return contextId, nil
 }
 
-func (user User) getContextById(contextId int64) (Context, error) {
+func (user User) GetContextById(contextId int64) (Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
@@ -125,7 +125,7 @@ func (user User) getContextById(contextId int64) (Context, error) {
 	err := row.Scan(&context.Id, &context.Name)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return context, fmt.Errorf("context with ID %d not found", contextId)
+			// return context, fmt.Errorf("context with ID %d not found", contextId)
 		}
 		return context, err
 	}
@@ -133,7 +133,7 @@ func (user User) getContextById(contextId int64) (Context, error) {
 	return context, nil
 }
 
-func (user User) insertHistory(history History) (int64, error) {
+func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
 	// fmt.Printf("saving %s, %s", history.Prompt, history.Response)
@@ -157,7 +157,7 @@ func (user User) insertHistory(history History) (int64, error) {
 	return historyId, nil
 }
 
-func (user User) getHistoryByContextId(contextId int64, maxCount int) ([]History, error) {
+func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
@@ -189,7 +189,7 @@ func (user User) getHistoryByContextId(contextId int64, maxCount int) ([]History
 	return histories, nil
 }
 
-func (user User) getContextByName(name string) (*Context, error) {
+func (user User) GetContextByName(name string) (*Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
@@ -205,7 +205,7 @@ func (user User) getContextByName(name string) (*Context, error) {
 	return &context, err
 }
 
-func (user User) getAllContexts() ([]Context, error) {
+func (user User) GetAllContexts() ([]Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
@@ -233,7 +233,7 @@ func (user User) getAllContexts() ([]Context, error) {
 	return contexts, nil
 }
 
-func (user User) deleteContext(contextId int64) (int64, error) {
+func (user User) DeleteContext(contextId int64) (int64, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
@@ -246,7 +246,7 @@ func (user User) deleteContext(contextId int64) (int64, error) {
 	return res.RowsAffected()
 }
 
-func (user User) deleteHistory(historyId int64) (int64, error) {
+func (user User) DeleteHistory(historyId int64) (int64, error) {
 	db := user.getUserDb()
 	defer db.Close()
 

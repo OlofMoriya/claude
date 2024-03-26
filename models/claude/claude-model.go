@@ -1,7 +1,9 @@
-package main
+package claude_model
 
 import (
 	"bytes"
+	data "claude/data"
+	models "claude/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,21 +12,21 @@ import (
 )
 
 type ClaudeModel struct {
-	responseHandler   ResponseHandler
-	prompt            string
-	accumulatedAnswer string
-	contextId         int64
+	ResponseHandler   models.ResponseHandler
+	Prompt            string
+	AccumulatedAnswer string
+	ContextId         int64
 }
 
-func (model *ClaudeModel) createRequest(contextId int64, prompt string, streaming bool, history []History) *http.Request {
-	payload := createCaludePayload(prompt, true, history)
-	model.prompt = prompt
-	model.accumulatedAnswer = ""
-	model.contextId = contextId
+func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request {
+	payload := createCaludePayload(prompt, streaming, history)
+	model.Prompt = prompt
+	model.AccumulatedAnswer = ""
+	model.ContextId = contextId
 	return createClaudeRequest(payload, history)
 }
 
-func (model *ClaudeModel) handleStreamedLine(line []byte) {
+func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 	responseLine := string(line)
 
 	if strings.HasPrefix(responseLine, "data: ") {
@@ -35,26 +37,26 @@ func (model *ClaudeModel) handleStreamedLine(line []byte) {
 		}
 
 		if apiResponse.Type == content_block_delta {
-			model.accumulatedAnswer = model.accumulatedAnswer + apiResponse.Delta.Text
-			model.responseHandler.recievedText(apiResponse.Delta.Text)
+			model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Text
+			model.ResponseHandler.RecievedText(apiResponse.Delta.Text)
 		} else if apiResponse.Type == message_stop {
-			model.responseHandler.finalText(model.contextId, model.prompt, model.accumulatedAnswer)
+			model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer)
 		}
 		//TODO: catch the token count response
 	}
 }
 
-func (model *ClaudeModel) handleBodyBytes(bytes []byte) {
+func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	var apiResponse MessageResponse
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		// Handle error, maybe return or log
 		fmt.Printf("Error unmarshalling response body: %v\n", err)
 	}
 
-	model.responseHandler.finalText(model.contextId, model.prompt, apiResponse.Content[0].Text)
+	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []History) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -71,7 +73,7 @@ func createCaludePayload(prompt string, streamed bool, history []History) Messag
 	return payload
 }
 
-func createClaudeRequest(payload MessageBody, history []History) *http.Request {
+func createClaudeRequest(payload MessageBody, history []data.History) *http.Request {
 	apiKey, ok := os.LookupEnv("CLAUDE_API_KEY")
 	if !ok {
 		panic(fmt.Errorf("Could not fetch api key"))
@@ -83,6 +85,7 @@ func createClaudeRequest(payload MessageBody, history []History) *http.Request {
 	}
 
 	url := "https://api.anthropic.com/v1/messages"
+
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonpayload))
 	if err != nil {
 		panic("failed to create request")
@@ -91,11 +94,6 @@ func createClaudeRequest(payload MessageBody, history []History) *http.Request {
 	req.Header.Set("x-api-key", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
-	return req
-}
 
-type ResponseHandler interface {
-	recievedText(text string)
-	finalText(contextId int64, prompt string, response string)
-	// func recievedImage(encoded string)
+	return req
 }

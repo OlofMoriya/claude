@@ -1,4 +1,4 @@
-package main
+package data
 
 type Context struct {
 	Id      int64     `json:"id"`

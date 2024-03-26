@@ -1,13 +1,4 @@
-package main
-
-type MessageBody struct {
-	Model     string  `json:"model"`
-	Messages  Message `json:"messages"`
-	MaxTokens int     `json:"max_tokens"`
-	System    string  `json:"system"`
-	Stream    bool    `json:"stream"`
-	Temp      float32 `json:"temperature"`
-}
+package vertex_claude_model
 
 type Message interface {
 }
@@ -93,4 +84,12 @@ type StreamData struct {
 type StreamDelta struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
+}
+type VertexMessageBody struct {
+	AnthropicVersion string  `json:"anthropic_version"`
+	Messages         Message `json:"messages"`
+	MaxTokens        int     `json:"max_tokens"`
+	System           string  `json:"system"`
+	Stream           bool    `json:"stream"`
+	Temp             float32 `json:"temperature"`
 }
