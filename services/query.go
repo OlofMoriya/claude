@@ -26,6 +26,8 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 		if err != nil {
 			panic("failed to read response body on non-OK status")
 		}
+		fmt.Printf("\nresp: %v", resp)
+		fmt.Printf("\nerr: %v", err)
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
 

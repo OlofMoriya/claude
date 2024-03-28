@@ -4,7 +4,7 @@ import (
 	"bufio"
 	data "claude/data"
 	server "claude/http"
-	claude "claude/models/vertex-claude"
+	model "claude/models/open-ai"
 	services "claude/services"
 	"flag"
 	"fmt"
@@ -79,11 +79,11 @@ func main() {
 
 	if serve {
 		httpResponseHandler := &server.HttpResponseHandler{}
-		model := claude.ClaudeModel{ResponseHandler: httpResponseHandler}
+		model := model.OpenAiModel{ResponseHandler: httpResponseHandler}
 		server.Run(secure, port, httpResponseHandler, &model, stream)
 	} else {
 		cliResponseHandler := CliResponseHandler{Repository: user}
-		claudeModel := claude.ClaudeModel{ResponseHandler: cliResponseHandler}
+		claudeModel := model.OpenAiModel{ResponseHandler: cliResponseHandler}
 
 		if stream {
 			fmt.Println("stream")

@@ -76,7 +76,6 @@ func createClaudePayload(prompt string, streamed bool, history []data.History) V
 }
 
 func createClaudeRequest(payload VertexMessageBody, history []data.History) *http.Request {
-
 	//use gcloud to fetch the token
 	cmd := exec.Command("gcloud", "auth", "print-access-token")
 	apiKeyBytes, err := cmd.CombinedOutput()
