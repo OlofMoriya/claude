@@ -4,7 +4,11 @@ import (
 	"bufio"
 	data "claude/data"
 	server "claude/http"
-	model "claude/models/open-ai"
+	"claude/models"
+	claude_model "claude/models/claude"
+	openai_4o_model "claude/models/open-ai-4o"
+	embeddings_model "claude/models/open-ai-embedings"
+	// openai_vision_model "claude/models/open-ai-vision"
 	services "claude/services"
 	"flag"
 	"fmt"
@@ -13,13 +17,15 @@ import (
 )
 
 var (
-	prompt       string
-	context_name string
-	historyCount int
-	serve        bool
-	port         int
-	secure       bool
-	stream       bool
+	prompt        string
+	context_name  string
+	history_count int
+	serve         bool
+	port          int
+	secure        bool
+	stream        bool
+	embeddings    bool
+	llm_model     string
 )
 
 func init() {
@@ -36,7 +42,7 @@ func init() {
 		"The context to provide for the conversation",
 	)
 	flag.IntVar(
-		&historyCount,
+		&history_count,
 		"history",
 		0,
 		"The number of previous messages to include in the context",
@@ -45,16 +51,13 @@ func init() {
 	flag.IntVar(&port, "port", 8080, "Port to listen on")
 	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
+	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
+	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
 }
 
 func main() {
 
-	user := data.User{Id: "olof", Name: "olof"}
-
 	flag.Parse()
-
-	var context_id int64 = 0
-	historyCount := 0
 
 	if prompt == "" && !serve {
 		reader := bufio.NewReader(os.Stdin)
@@ -63,9 +66,45 @@ func main() {
 		prompt = strings.TrimSpace(prompt)
 	}
 
-	fmt.Println("using context_name", context_name)
+	if serve {
+		httpResponseHandler := &server.HttpResponseHandler{}
+		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler}
+		server.Run(secure, port, httpResponseHandler, &model, stream)
+	} else if embeddings {
+		user := data.User{Id: "olof", Name: "olof"}
+		embeddingsResponseHandler := EmbeddingsResponseHandler{}
+		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
+		services.AwaitedQuery(prompt, &model, user, 0, 0)
+	} else {
+		user := data.User{Id: "olof", Name: "olof"}
+
+		var model models.Model
+		cliResponseHandler := CliResponseHandler{Repository: user}
+
+		switch llm_model {
+		case "4o":
+			println("using 4o")
+			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
+		case "claude":
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+		default:
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+		}
+		//TODO: Select database
+		context_id := getContextId(user)
+
+		if stream {
+			services.StreamedQuery(prompt, model, user, history_count, context_id)
+		} else {
+			services.AwaitedQuery(prompt, model, user, history_count, context_id)
+		}
+	}
+}
+
+func getContextId(user data.HistoryRepository) int64 {
 	context, _ := user.GetContextByName(context_name)
 
+	var context_id int64
 	if context == nil {
 		new_context := data.Context{Name: context_name}
 		id, err := user.InsertContext(new_context)
@@ -77,20 +116,5 @@ func main() {
 		context_id = context.Id
 	}
 
-	if serve {
-		httpResponseHandler := &server.HttpResponseHandler{}
-		model := model.OpenAiModel{ResponseHandler: httpResponseHandler}
-		server.Run(secure, port, httpResponseHandler, &model, stream)
-	} else {
-		cliResponseHandler := CliResponseHandler{Repository: user}
-		claudeModel := model.OpenAiModel{ResponseHandler: cliResponseHandler}
-
-		if stream {
-			fmt.Println("stream")
-			services.StreamedQuery(prompt, &claudeModel, user, historyCount, context_id)
-		} else {
-			services.AwaitedQuery(prompt, &claudeModel, user, historyCount, context_id)
-		}
-	}
-
+	return context_id
 }

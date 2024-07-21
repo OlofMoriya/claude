@@ -1,4 +1,4 @@
-package openai_model
+package openai_vision_model
 
 type Payload struct {
 	Model     string    `json:"model"`

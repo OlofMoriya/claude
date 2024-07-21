@@ -1,4 +1,4 @@
-package openai_model
+package openai_vision_model
 
 import (
 	"bytes"
@@ -48,12 +48,6 @@ func (model *OpenAiModel) HandleStreamedLine(line []byte) {
 				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
 			}
 		}
-		//       else if apiResponse.Type == message_stop {
-		// 	model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
-		// }
-		//TODO: catch the token count response
-	} else {
-		// fmt.Printf("%v", responseLine)
 	}
 }
 
@@ -61,7 +55,7 @@ func (model *OpenAiModel) HandleBodyBytes(bytes []byte) {
 	var apiResponse ApiResponse
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		// Handle error, maybe return or log
-		fmt.Printf("Error unmarshalling response body: %v\n", err)
+		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
 
 	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content)
