@@ -33,7 +33,7 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 	}
 
 	if err != nil {
-		fmt.Printf("\nerr: %v", err)
+		println(fmt.Sprintf("\nerr: %v", err))
 	}
 }
 
@@ -95,7 +95,6 @@ func (httpResponseHandler *HttpResponseHandler) SetResponseWriter(writer http.Re
 }
 
 func (httpResponseHandler *HttpResponseHandler) RecievedText(text string) {
-	// fmt.Println(text)
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }

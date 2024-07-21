@@ -26,16 +26,18 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 		if err != nil {
 			panic("failed to read response body on non-OK status")
 		}
-		fmt.Printf("\nresp: %v", resp)
-		fmt.Printf("\nerr: %v", err)
+
+		println(fmt.Sprintf("\nresp: %v", resp))
+		println(fmt.Sprintf("\n\body: %v\n\n", resp.Body))
+		println(fmt.Sprintf("\nerr: %v", err))
+
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
-	fmt.Println(string(bodyBytes))
 	if err != nil {
 		// Handle error, maybe return or log
-		fmt.Printf("Error reading response body: %v\n", err)
+		println(fmt.Sprintf("Error reading response body: %v\n", err))
 	} // Close the response body when done
 	defer resp.Body.Close()
 
@@ -46,15 +48,14 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {
 	history, err := historyRepository.GetHistoryByContextId(contextId, historyCount)
 
-	//fmt.Printf("%+v\n", history)
+	print(history)
+
 	if err != nil {
 		panic(fmt.Sprintf("Could not fetch history %s", err))
 	}
 
 	req := model.CreateRequest(contextId, prompt, true, history)
 
-	// fmt.Printf("%+v\n", req)
-	// panic("Stop for testing")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -66,8 +67,9 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 		if err != nil {
 			panic("Failed to read response body on non-OK status")
 		}
-		fmt.Printf("resp:%v", resp)
-		fmt.Printf("body:%v", resp.Body)
+
+		println(fmt.Sprintf("resp:%v", resp))
+		println(fmt.Sprintf("body:%v", resp.Body))
 
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}

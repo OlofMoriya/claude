@@ -33,7 +33,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 		var apiResponse StreamData
 		data, _ := strings.CutPrefix(responseLine, "data: ")
 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
-			fmt.Printf("Error unmarshalling response: %v\n %s", err, line)
+			println(fmt.Sprintf("Error unmarshalling response: %v\n %s", err, line))
 		}
 
 		if apiResponse.Type == content_block_delta {
@@ -44,7 +44,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 		}
 		//TODO: catch the token count response
 	} else {
-		fmt.Printf("%v", responseLine)
+		println(fmt.Sprintf("%v", responseLine))
 	}
 }
 
@@ -84,7 +84,6 @@ func createClaudeRequest(payload VertexMessageBody, history []data.History) *htt
 	if err != nil {
 		panic(fmt.Errorf("Could not fetch api key %v", err))
 	}
-	fmt.Println(apiKey)
 
 	jsonpayload, err := json.Marshal(payload)
 	if err != nil {
@@ -103,7 +102,6 @@ func createClaudeRequest(payload VertexMessageBody, history []data.History) *htt
 	}
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
-	fmt.Println(req.Header["Authorization"])
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "vertex-2023-10-16")
 

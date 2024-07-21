@@ -31,12 +31,13 @@ func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response
 
 	_, err := cli.Repository.InsertHistory(history)
 	if err != nil {
-		fmt.Printf("Error while trying to save history: %s", err)
+		println(fmt.Sprintf("Error while trying to save history: %s", err))
 	}
 
 	out, err := glamour.Render(response, "dark")
 	if err != nil {
-		fmt.Printf("%v", err)
+		println(fmt.Sprintf("%v", err))
 	}
+
 	fmt.Println(out)
 }

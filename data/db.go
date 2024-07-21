@@ -10,6 +10,7 @@ import (
 type HistoryRepository interface {
 	GetContextById(contextId int64) (Context, error)
 	InsertHistory(history History) (int64, error)
+	InsertContext(context Context) (int64, error)
 	GetHistoryByContextId(contextId int64, maxCount int) ([]History, error)
 	GetContextByName(name string) (*Context, error)
 	GetAllContexts() ([]Context, error)
@@ -136,19 +137,17 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
-	// fmt.Printf("saving %s, %s", history.Prompt, history.Response)
-
 	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count) VALUES (?, ?, ?, ?, ?)"
 	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abreviation, history.TokenCount)
 	if err != nil {
-		fmt.Println(err)
+		println(err)
 		defer db.Close()
 		return 0, err
 	}
 
 	historyId, err := result.LastInsertId()
 	if err != nil {
-		fmt.Println(err)
+		println(err)
 		defer db.Close()
 		return 0, err
 	}
@@ -166,7 +165,6 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var histories []History
 	for rows.Next() {
@@ -181,6 +179,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	for i, j := 0, len(histories)-1; i < j; i, j = i+1, j-1 {
 		histories[i], histories[j] = histories[j], histories[i]
 	}
+	defer rows.Close()
 
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -198,6 +197,7 @@ func (user User) GetContextByName(name string) (*Context, error) {
 
 	var context Context
 	err := row.Scan(&context.Id, &context.Name)
+
 	if err != nil {
 		return nil, err
 	}

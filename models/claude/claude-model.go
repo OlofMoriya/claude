@@ -33,7 +33,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 		var apiResponse StreamData
 		data, _ := strings.CutPrefix(responseLine, "data: ")
 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
-			fmt.Printf("Error unmarshalling response: %v\n %s", err, line)
+			println(fmt.Sprintf("Error unmarshalling response: %v\n %s", err, line))
 		}
 
 		if apiResponse.Type == content_block_delta {
@@ -50,7 +50,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	var apiResponse MessageResponse
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		// Handle error, maybe return or log
-		fmt.Printf("Error unmarshalling response body: %v\n", err)
+		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
 
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
