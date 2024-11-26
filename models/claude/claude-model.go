@@ -16,10 +16,20 @@ type ClaudeModel struct {
 	Prompt            string
 	AccumulatedAnswer string
 	ContextId         int64
+	ModelVersion      string
 }
 
 func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request {
-	payload := createCaludePayload(prompt, streaming, history)
+	var model_version string
+	switch model.ModelVersion {
+	case "3":
+		model_version = "claude-3-opus-20240229"
+	case "3.5-sonnet":
+		model_version = "claude-3-5-sonnet-20240620"
+	default:
+		model_version = "claude-3-5-sonnet-20240620"
+	}
+	payload := createCaludePayload(prompt, streaming, history, model_version)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = contextId
@@ -56,7 +66,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History, model string) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -64,7 +74,7 @@ func createCaludePayload(prompt string, streamed bool, history []data.History) M
 	}
 	messages = append(messages, TextMessage{Role: "user", Content: prompt})
 	payload := MessageBody{
-		Model:     "claude-3-opus-20240229",
+		Model:     model,
 		Messages:  messages,
 		MaxTokens: 2000,
 		Stream:    streamed,
