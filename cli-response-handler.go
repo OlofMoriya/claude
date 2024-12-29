@@ -20,11 +20,11 @@ func (cli CliResponseHandler) RecievedText(text string) {
 // All models should call this regardless of if they stream or not.
 func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string) {
 	history := data.History{
-		ContextId:   contextId,
-		Prompt:      prompt,
-		Response:    response,
-		Abreviation: "",
-		TokenCount:  0,
+		ContextId:    contextId,
+		Prompt:       prompt,
+		Response:     response,
+		Abbreviation: "",
+		TokenCount:   0,
 		//TODO abreviation
 		//TODO tokencount
 	}

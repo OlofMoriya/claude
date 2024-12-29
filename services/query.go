@@ -6,12 +6,18 @@ import (
 	"claude/models"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 )
 
 func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {
 
 	history, err := historyRepository.GetHistoryByContextId(contextId, historyCount)
+	if err != nil {
+		log.Println("error while fetching history for context", err)
+	}
+
+	log.Println("history", history, "for context_id", contextId)
 
 	req := model.CreateRequest(contextId, prompt, false, history)
 
@@ -48,7 +54,7 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {
 	history, err := historyRepository.GetHistoryByContextId(contextId, historyCount)
 
-	print(history)
+	log.Println("history", history, "for context_id", contextId)
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not fetch history %s", err))

@@ -8,12 +8,16 @@ import (
 	claude_model "claude/models/claude"
 	openai_4o_model "claude/models/open-ai-4o"
 	embeddings_model "claude/models/open-ai-embedings"
+	"log"
+
 	// openai_vision_model "claude/models/open-ai-vision"
 	services "claude/services"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -57,7 +61,14 @@ func init() {
 
 func main() {
 
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	flag.Parse()
+
+	//read local sqlite db name from
 
 	if prompt == "" && !serve {
 		reader := bufio.NewReader(os.Stdin)
@@ -67,23 +78,39 @@ func main() {
 	}
 
 	if serve {
+		connectionString := os.Getenv("DB_CONNECTION_STRING")
+
+		repository := data.PostgresHistoryRepository{}
+		err := repository.Init(connectionString)
+		if err != nil {
+			log.Println("Error initializing db", err)
+		}
+
 		httpResponseHandler := &server.HttpResponseHandler{}
+		httpResponseHandler.Repository = &repository
+
+		log.Println("main repo", httpResponseHandler.Repository)
+		log.Println("main repo local", repository)
+
 		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler}
-		server.Run(secure, port, httpResponseHandler, &model, stream)
+		server.Run(secure, port, httpResponseHandler, &model, stream, connectionString)
 	} else if embeddings {
-		user := data.User{Id: "olof", Name: "olof"}
+		// Get values from environment variables
+		db := os.Getenv("CLAUDE_LOCAL_DATABASE")
+
+		user := data.User{Name: &db}
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 		services.AwaitedQuery(prompt, &model, user, 0, 0)
 	} else {
-		user := data.User{Id: "olof", Name: "olof"}
+		db := os.Getenv("DATABASE")
+		user := data.User{Name: &db}
 
 		var model models.Model
 		cliResponseHandler := CliResponseHandler{Repository: user}
 
 		switch llm_model {
 		case "4o":
-			println("using 4o")
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
 			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
@@ -99,22 +126,4 @@ func main() {
 			services.AwaitedQuery(prompt, model, user, history_count, context_id)
 		}
 	}
-}
-
-func getContextId(user data.HistoryRepository) int64 {
-	context, _ := user.GetContextByName(context_name)
-
-	var context_id int64
-	if context == nil {
-		new_context := data.Context{Name: context_name}
-		id, err := user.InsertContext(new_context)
-		if err != nil {
-			panic(fmt.Sprintf("Could not create a new context with name %s, %s", context_name, err))
-		}
-		context_id = id
-	} else {
-		context_id = context.Id
-	}
-
-	return context_id
 }

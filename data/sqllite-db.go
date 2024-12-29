@@ -3,36 +3,13 @@ package data
 import (
 	"database/sql"
 	"fmt"
+	"log"
+
 	_ "github.com/mattn/go-sqlite3"
-	"os/user"
 )
 
-type HistoryRepository interface {
-	GetContextById(contextId int64) (Context, error)
-	InsertHistory(history History) (int64, error)
-	InsertContext(context Context) (int64, error)
-	GetHistoryByContextId(contextId int64, maxCount int) ([]History, error)
-	GetContextByName(name string) (*Context, error)
-	GetAllContexts() ([]Context, error)
-	DeleteContext(contextId int64) (int64, error)
-	DeleteHistory(historyId int64) (int64, error)
-}
-
-func getHomeDir() (string, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return "", err
-	}
-	homeDir := usr.HomeDir
-	return homeDir, nil
-}
-
-type User struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
-
 func (user User) getUserDb() *sql.DB {
+
 	homeDir, err := getHomeDir()
 	if err != nil {
 		panic(fmt.Sprintf("did not find home dir for db creation. %s", err))
@@ -99,16 +76,21 @@ func createHistoryTables(db *sql.DB) {
 func (user User) InsertContext(context Context) (int64, error) {
 	db := user.getUserDb()
 
+	log.Println("inserting context", context.Name, user.Name, user.Id)
+
 	insertQuery := "INSERT INTO context (name) VALUES (?)"
 	result, err := db.Exec(insertQuery, context.Name)
+	log.Println("result of context insert", result)
 
 	defer db.Close()
 	if err != nil {
+		log.Println("insert of context failed", err)
 		return 0, err
 	}
 
 	contextId, err := result.LastInsertId()
 	if err != nil {
+		log.Println("insert of context failed", err)
 		return 0, err
 	}
 
@@ -138,7 +120,7 @@ func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
 	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count) VALUES (?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abreviation, history.TokenCount)
+	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount)
 	if err != nil {
 		println(err)
 		defer db.Close()
@@ -169,7 +151,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	var histories []History
 	for rows.Next() {
 		var history History
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.Abreviation, &history.TokenCount)
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.Abbreviation, &history.TokenCount)
 		if err != nil {
 			return nil, err
 		}
