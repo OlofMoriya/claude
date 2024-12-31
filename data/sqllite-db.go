@@ -15,7 +15,7 @@ func (user User) getUserDb() *sql.DB {
 		panic(fmt.Sprintf("did not find home dir for db creation. %s", err))
 	}
 
-	path := fmt.Sprintf("%s/.claude/%s.db", homeDir, user.Name)
+	path := fmt.Sprintf("%s/.owl/%s.db", homeDir, *user.Name)
 
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {

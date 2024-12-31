@@ -2,12 +2,12 @@ package open_ai_embedings
 
 import (
 	"bytes"
-	"claude/data"
-	models "claude/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"owl/data"
+	models "owl/models"
 )
 
 type OpenAiEmbeddingsModel struct {

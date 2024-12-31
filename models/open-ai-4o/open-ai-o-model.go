@@ -2,12 +2,12 @@ package openai_4o_model
 
 import (
 	"bytes"
-	"claude/data"
-	"claude/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"owl/data"
+	"owl/models"
 	"strings"
 )
 

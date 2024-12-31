@@ -2,12 +2,12 @@ package vertex_claude_model
 
 import (
 	"bytes"
-	data "claude/data"
-	models "claude/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os/exec"
+	data "owl/data"
+	models "owl/models"
 	"strings"
 )
 

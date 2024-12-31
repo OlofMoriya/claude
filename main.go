@@ -2,19 +2,19 @@ package main
 
 import (
 	"bufio"
-	data "claude/data"
-	server "claude/http"
-	"claude/models"
-	claude_model "claude/models/claude"
-	openai_4o_model "claude/models/open-ai-4o"
-	embeddings_model "claude/models/open-ai-embedings"
 	"log"
+	data "owl/data"
+	server "owl/http"
+	"owl/models"
+	claude_model "owl/models/claude"
+	openai_4o_model "owl/models/open-ai-4o"
+	embeddings_model "owl/models/open-ai-embedings"
 
 	// openai_vision_model "claude/models/open-ai-vision"
-	services "claude/services"
 	"flag"
 	"fmt"
 	"os"
+	services "owl/services"
 	"strings"
 
 	"github.com/joho/godotenv"
@@ -89,21 +89,25 @@ func main() {
 		httpResponseHandler := &server.HttpResponseHandler{}
 		httpResponseHandler.Repository = &repository
 
-		log.Println("main repo", httpResponseHandler.Repository)
-		log.Println("main repo local", repository)
-
 		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler}
 		server.Run(secure, port, httpResponseHandler, &model, stream, connectionString)
 	} else if embeddings {
 		// Get values from environment variables
-		db := os.Getenv("CLAUDE_LOCAL_DATABASE")
+		db := os.Getenv("OWL_LOCAL_DATABASE")
+		if db == "" {
+			db = "owl"
+		}
 
 		user := data.User{Name: &db}
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 		services.AwaitedQuery(prompt, &model, user, 0, 0)
 	} else {
-		db := os.Getenv("DATABASE")
+		db := os.Getenv("OWL_LOCAL_DATABASE")
+		if db == "" {
+			db = "owl"
+		}
+
 		user := data.User{Name: &db}
 
 		var model models.Model

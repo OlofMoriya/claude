@@ -2,12 +2,12 @@ package claude_model
 
 import (
 	"bytes"
-	data "claude/data"
-	models "claude/models"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	data "owl/data"
+	models "owl/models"
 	"strings"
 )
 

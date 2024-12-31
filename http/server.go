@@ -1,14 +1,14 @@
 package server
 
 import (
-	data "claude/data"
-	models "claude/models"
-	"claude/services"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	data "owl/data"
+	models "owl/models"
+	"owl/services"
 )
 
 type server_data struct {

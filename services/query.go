@@ -2,12 +2,12 @@ package services
 
 import (
 	"bufio"
-	"claude/data"
-	"claude/models"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
+	"owl/data"
+	"owl/models"
 )
 
 func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {

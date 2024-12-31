@@ -1,4 +1,4 @@
-module claude
+module owl
 
 go 1.21.5
 

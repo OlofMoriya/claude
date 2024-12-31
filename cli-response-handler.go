@@ -1,8 +1,8 @@
 package main
 
 import (
-	data "claude/data"
 	"fmt"
+	data "owl/data"
 
 	"github.com/charmbracelet/glamour"
 )

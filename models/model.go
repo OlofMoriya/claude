@@ -1,8 +1,8 @@
 package models
 
 import (
-	"claude/data"
 	"net/http"
+	"owl/data"
 )
 
 type Model interface {
