@@ -21,9 +21,9 @@ Api keys are supplied from environment for the different llm services.
 - [x] Store history by context
 - [x] Generate embeddings for string
 
-- [] Supply system prompt for a context
-- [] Implement ollama as a model
+- [ ] Supply system prompt for a context
+- [ ] Implement ollama as a model
 
-- [] Store texts with embeddings for RAG
-- [] Implement vector search with vertex ai
-- [] Prompt with embeddings search string
+- [ ] Store texts with embeddings for RAG
+- [ ] Implement vector search with vertex ai
+- [ ] Prompt with embeddings search string

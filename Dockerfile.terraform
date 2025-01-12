@@ -1,0 +1,10 @@
+FROM europe-docker.pkg.dev/dooris-infra/terraform/terraform-base:39f1198
+ARG APP_NAME
+ENV APP_NAME=${APP_NAME}
+
+COPY /terraform .
+
+ENV BACKEND_BUCKET=""
+ENV BACKEND_PREFIX=""
+ENV TF_VAR_PROJECT_ID=""
+
