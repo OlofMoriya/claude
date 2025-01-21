@@ -63,12 +63,10 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Print("Error loading .env file")
 	}
 
 	flag.Parse()
-
-	//read local sqlite db name from
 
 	if prompt == "" && !serve {
 		reader := bufio.NewReader(os.Stdin)
