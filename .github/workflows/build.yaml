@@ -1,0 +1,212 @@
+name: "Build, test and deploy Golang API & release to k8s"
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
+env:
+  APP_NAME: owlllm
+
+jobs:
+  build:
+    env:
+      ENV: ${{ github.event.inputs.environment || 'dev' }}
+    name: "Build and deploy - ${{ github.event.inputs.environment || 'dev' }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      checks: write
+      packages: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: "Authenticate to Google Cloud"
+        id: "auth"
+        uses: "google-github-actions/auth@v2"
+        with:
+          workload_identity_provider: "projects/603881415803/locations/global/workloadIdentityPools/external-tools-pool/providers/github-provider"
+          service_account: "github-actions@dooris-infra.iam.gserviceaccount.com"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authorize europe-north1-docker
+        run: gcloud auth configure-docker europe-north1-docker.pkg.dev
+
+      - name: Docker App meta
+        id: app_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-north1-docker.pkg.dev/dooris-infra/services/${{ env.APP_NAME }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=
+
+      - name: Test and Build Golang API image
+        id: app_build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile
+          build-args: |
+            APP_NAME=${{ env.APP_NAME }}
+            GITHUB_ACTOR=${{ github.actor }}
+          cache-from: type=gha,scope=app-${{ env.APP_NAME }}
+          cache-to: type=gha,mode=max,scope=app-${{ env.APP_NAME }}
+          tags: ${{ steps.app_meta.outputs.tags }}
+ 
+      - name: Docker db migrate meta
+        id: dbmigrate_meta
+        uses: docker/metadata-action@v4
+        with:
+          images: europe-north1-docker.pkg.dev/dooris-infra/services/${{ env.APP_NAME }}-migrations
+          flavor: |
+            latest=auto
+            prefix=
+            suffix=
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=
+
+      - name: Build db migrate image
+        id: dbmigrate_build
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile.migrations
+          build-args: APP_NAME=${{env.APP_NAME}}-migrations
+          cache-from: type=gha,scope=app-${{env.APP_NAME}}-migrations
+          cache-to: type=gha,mode=max,scope=app-${{env.APP_NAME}}-migrations
+          tags: ${{ steps.dbmigrate_meta.outputs.tags }}
+
+      - name: Authorize europe-docker
+        run: gcloud auth configure-docker europe-docker.pkg.dev
+
+      - name: Docker Terraform meta
+        id: terraform_meta
+        uses: docker/metadata-action@v5
+        with:
+          images: europe-docker.pkg.dev/dooris-infra/terraform/${{ env.APP_NAME }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=
+            
+      - name: Build terraform image
+        id: terraform_build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile.terraform
+          build-args: APP_NAME=$ ${{env.APP_NAME}}
+          cache-from: type=gha,scope=app-tf-$ ${{env.APP_NAME}}
+          cache-to: type=gha,mode=max,scope=app-tf-$ ${{env.APP_NAME}}
+          tags: ${{ steps.terraform_meta.outputs.tags }}
+
+      - name: Create artifact with terraform
+        run: |
+          mkdir temp
+          printf '{"${{env.APP_NAME}}": [ { "imageId": "europe-north1-docker.pkg.dev/dooris-infra/services/${{ env.APP_NAME }}", "digest": "${{ steps.app_build.outputs.digest }}" }, { "imageId": "europe-docker.pkg.dev/dooris-infra/terraform/${{ env.APP_NAME }}" ,"digest": "${{ steps.terraform_build.outputs.digest }}" }, { "imageId": "europe-north1-docker.pkg.dev/dooris-infra/services/${{ env.APP_NAME }}-migrations", "digest": "${{ steps.dbmigrate_build.outputs.digest }}" }, { "imageId": "europe-north1-docker.pkg.dev/dooris-infra/services/${{ env.APP_NAME }}-jobs", "digest": "${{ steps.jobs_build.outputs.digest }}" } ] }' | jq . > ./temp/${{ env.APP_NAME }}.json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: images
+          path: ./temp/${{ env.APP_NAME }}.json
+
+  infra:
+    needs: [build]
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.ref_name }}
+      DEPLOY_ENV: ${{ github.event.inputs.environment || 'dev' }}
+
+    steps:
+      - name: Set up yq
+        uses: frenck/action-setup-yq@v1
+
+      - name: Checkout Kubernetes repo
+        uses: actions/checkout@v4
+        with:
+          repository: dooris-dev/k8s-apps  
+          ssh-key: ${{ secrets.K8S_APPS_DEPLOY_KEY }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./tmp/artifacts
+
+      - name: Merge update image files
+        run: jq -s "`x=-1; n=$(ls ./tmp/artifacts/images/*.json  | wc -l); while [ $((x++)) -lt $(($n-2)) ]; do printf ".[$x] * " ; done; printf ".[$(($n-1))]";`" ./tmp/artifacts/images/*.json > ./tmp/update-image.json
+
+      - name: Update k8s files
+        id: update-k8s-files
+        run: |
+          APPS_LIST=()
+          for row in $(jq '. | keys[]' tmp/update-image.json); do
+            APP=$(echo $row | tr -d '"')
+            KEY=$row jq --arg key "$APP" '.[$key] | map({name: .imageId, digest: .digest}) | {"images": . }'  ./tmp/update-image.json |  yq -P > ./tmp/tmp-$APP-images.yaml
+            if [ -f "./apps/$APP/${{env.DEPLOY_ENV}}/kustomization.yaml" ]; then
+              echo $APP
+              IMAGE_FILE=./tmp/tmp-$APP-images.yaml yq -i '. *= load(env(IMAGE_FILE))' ./apps/$APP/${{env.DEPLOY_ENV}}/kustomization.yaml
+              APPS_LIST+=($APP)
+            fi
+          done
+          echo "apps=$(printf "%s," "${APPS_LIST[@]}" | sed 's/,$//')" >> $GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-images
+          path: ./tmp/update-image.json
+
+      - name: Remove tmp
+        run: rm -r ./tmp
+
+      - name: Push to git
+        run: |
+          git config --global user.email "github-actions@dooris.dev"
+          git config --global user.name "github-actions"
+          git config --global credential.helper cache
+          if [[ `git status --porcelain --untracked-files=no` ]]; then
+            git add ./**/kustomization.yaml
+            git commit -m"${{steps.update-k8s-files.outputs.apps}}: update images"
+            git pull --rebase
+            git push
+          else
+            echo "Nothing to commit"
+          fi
+
+  result:
+    needs: [build, infra]
+    runs-on: ubuntu-latest
+
+    steps:
+      # if a previous step failed, set a variable to use as the deployment status
+      - name: set deployment status
+        id: deploy-status
+        if: ${{ needs.build.result == 'failure' || needs.infra.result == 'failure' }}
+        run: |
+          echo "DEPLOY_STATUS=failure" >> $GITHUB_OUTPUT

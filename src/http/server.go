@@ -28,6 +28,7 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 
 	http.HandleFunc("/", server_data.handleRoot)
 	http.HandleFunc("/prompt", server_data.handlePrompt)
+	http.HandleFunc("/status", server_data.handleStatus)
 
 	var err error
 	if secure {
@@ -195,6 +196,10 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 		println(fmt.Sprintf("Error while trying to save history: %s", err))
 	}
 	fmt.Fprintf(httpResponseHandler.responseWriter, response)
+}
+
+func (server_data *server_data) handleStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 func (server_data *server_data) handleRoot(w http.ResponseWriter, r *http.Request) {
