@@ -76,7 +76,13 @@ func main() {
 	}
 
 	if serve {
-		connectionString := os.Getenv("DB_CONNECTION_STRING")
+		projectID := os.Getenv("GCP_PROJECT_ID")
+
+		connectionString := os.Getenv("DB_CONNECTIONSTRING")
+		if connectionString == "" {
+			secretName := fmt.Sprintf("projects/%s/secrets/owlllm-db-go-cn/versions/latest", projectID)
+			connectionString = GetSecretFromGCP(secretName)
+		}
 
 		repository := data.PostgresHistoryRepository{}
 		err := repository.Init(connectionString)
