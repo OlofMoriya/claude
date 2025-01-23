@@ -52,7 +52,7 @@ func init() {
 		"The number of previous messages to include in the context",
 	)
 	flag.BoolVar(&serve, "serve", false, "Enable server mode")
-	flag.IntVar(&port, "port", 8080, "Port to listen on")
+	flag.IntVar(&port, "port", 3000, "Port to listen on")
 	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")

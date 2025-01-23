@@ -26,6 +26,8 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 		streaming:       streaming,
 	}
 
+	log.Println("server running on port", port)
+
 	http.HandleFunc("/", server_data.handleRoot)
 	http.HandleFunc("/prompt", server_data.handlePrompt)
 	http.HandleFunc("/status", server_data.handleStatus)
@@ -200,6 +202,7 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 
 func (server_data *server_data) handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "OK")
 }
 
 func (server_data *server_data) handleRoot(w http.ResponseWriter, r *http.Request) {
