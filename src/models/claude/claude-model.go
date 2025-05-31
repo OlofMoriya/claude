@@ -26,8 +26,14 @@ func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streamin
 		model_version = "claude-3-opus-20240229"
 	case "3.5-sonnet":
 		model_version = "claude-3-5-sonnet-20240620"
+	case "3.7-sonnet":
+		model_version = "claude-3-7-sonnet-20250219 "
+	case "4-sonnet":
+		model_version = "claude-sonnet-4-20250514"
+	case "4-opus":
+		model_version = "claude-opus-4-20250514"
 	default:
-		model_version = "claude-3-5-sonnet-20240620"
+		model_version = "claude-sonnet-4-20250514"
 	}
 	payload := createCaludePayload(prompt, streaming, history, model_version)
 	model.Prompt = prompt
