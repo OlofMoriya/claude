@@ -17,13 +17,14 @@ type ClaudeModel struct {
 	AccumulatedAnswer string
 	ContextId         int64
 	ModelVersion      string
+	OutputThought     bool
+	StreamThought     bool
+	UseThinking       bool
 }
 
 func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request {
 	var model_version string
 	switch model.ModelVersion {
-	case "3":
-		model_version = "claude-3-opus-20240229"
 	case "3.5-sonnet":
 		model_version = "claude-3-5-sonnet-20240620"
 	case "3.7-sonnet":
@@ -35,7 +36,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	default:
 		model_version = "claude-sonnet-4-20250514"
 	}
-	payload := createCaludePayload(prompt, streaming, history, model_version, context)
+	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = context.Id
@@ -56,9 +57,20 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 			println(fmt.Sprintf("Error unmarshalling response: %v\n %s", err, line))
 		}
 
+		// println(data)
+
 		if apiResponse.Type == content_block_delta {
 			model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Text
-			model.ResponseHandler.RecievedText(apiResponse.Delta.Text)
+			if model.OutputThought {
+				model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Thinking
+			}
+			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
+			if model.StreamThought {
+				color := "grey"
+				model.ResponseHandler.RecievedText(apiResponse.Delta.Thinking, &color)
+			}
+		} else if apiResponse.Type == content_block_stop {
+			model.ResponseHandler.RecievedText("\n", nil)
 		} else if apiResponse.Type == message_stop {
 			model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer)
 		}
@@ -76,7 +88,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History, model string, context *data.Context) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -86,11 +98,19 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 	payload := MessageBody{
 		Model:     model,
 		Messages:  messages,
-		MaxTokens: 2000,
+		MaxTokens: 10000,
 		Stream:    streamed,
 	}
 	if context != nil && context.SystemPrompt != "" {
 		payload.System = context.SystemPrompt
+	}
+
+	if useThinking {
+		payload.Thinking = &ThinkingBlock{
+			Type:         "enabled",
+			BudgetTokens: 2000,
+		}
+		payload.Temp = 1
 	}
 
 	return payload

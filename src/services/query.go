@@ -33,6 +33,12 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 
 		println(fmt.Sprintf("\nresp: %v", resp))
 		println(fmt.Sprintf("\n\body: %v\n\n", resp.Body))
+		bytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println(string(bytes))
 		println(fmt.Sprintf("\nerr: %v", err))
 
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
@@ -72,8 +78,8 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 			panic("Failed to read response body on non-OK status")
 		}
 
-		println(fmt.Sprintf("resp:%v", resp))
-		println(fmt.Sprintf("body:%v", resp.Body))
+		bytes, err := io.ReadAll(resp.Body)
+		println("bytes", string(bytes), err)
 
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
@@ -83,7 +89,7 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 	for !finished {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
-			// fmt.Println("failed to read bytes from stream response")
+			fmt.Println("failed to read bytes from stream response")
 			finished = true
 			continue
 		}

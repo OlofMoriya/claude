@@ -164,7 +164,7 @@ func (httpResponseHandler *HttpResponseHandler) SetResponseWriter(writer http.Re
 	httpResponseHandler.responseWriter = writer
 }
 
-func (httpResponseHandler *HttpResponseHandler) RecievedText(text string) {
+func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useColor *string) {
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }

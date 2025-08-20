@@ -21,16 +21,19 @@ import (
 )
 
 var (
-	prompt        string
-	context_name  string
-	history_count int
-	serve         bool
-	port          int
-	secure        bool
-	stream        bool
-	embeddings    bool
-	llm_model     string
-	system_prompt string
+	prompt           string
+	context_name     string
+	history_count    int
+	serve            bool
+	port             int
+	secure           bool
+	stream           bool
+	embeddings       bool
+	llm_model        string
+	thinking         bool
+	stream_thinkning bool
+	output_thinkning bool
+	system_prompt    string
 )
 
 func init() {
@@ -58,6 +61,10 @@ func init() {
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
+
+	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
+	flag.BoolVar(&stream_thinkning, "stream thinking", true, "stream thinking")
+	flag.BoolVar(&output_thinkning, "output thinking", false, "output thinking")
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 }
 
@@ -139,11 +146,11 @@ func main() {
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		case "opus":
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, ModelVersion: "4-opus"}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "4-opus"}
 		default:
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		}
 		//TODO: Select database
 		context := getContext(user, &system_prompt)

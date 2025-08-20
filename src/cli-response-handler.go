@@ -5,14 +5,19 @@ import (
 	data "owl/data"
 
 	"github.com/charmbracelet/glamour"
+	color "github.com/fatih/color"
 )
 
 type CliResponseHandler struct {
 	Repository data.HistoryRepository
 }
 
-func (cli CliResponseHandler) RecievedText(text string) {
-	print(text)
+func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
+	if useColor != nil {
+		color.RGB(150, 150, 150).Print(text)
+	} else {
+		print(text)
+	}
 }
 
 // All models should call this regardless of if they stream or not.

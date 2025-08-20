@@ -41,7 +41,7 @@ func (model *OpenAiModel) HandleStreamedLine(line []byte) {
 			choice := apiResponse.Choices[0]
 
 			model.accumulatedAnswer = model.accumulatedAnswer + choice.Delta.Content
-			model.ResponseHandler.RecievedText(choice.Delta.Content)
+			model.ResponseHandler.RecievedText(choice.Delta.Content, nil)
 
 			if choice.FinishReason != nil {
 				fmt.Println(*choice.FinishReason)

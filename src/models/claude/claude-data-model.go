@@ -1,12 +1,18 @@
 package claude_model
 
 type MessageBody struct {
-	Model     string  `json:"model"`
-	Messages  Message `json:"messages"`
-	MaxTokens int     `json:"max_tokens"`
-	System    string  `json:"system"`
-	Stream    bool    `json:"stream"`
-	Temp      float32 `json:"temperature"`
+	Model     string         `json:"model"`
+	Messages  Message        `json:"messages"`
+	MaxTokens int            `json:"max_tokens"`
+	System    string         `json:"system"`
+	Stream    bool           `json:"stream"`
+	Thinking  *ThinkingBlock `json:"thinking,omitempty"`
+	Temp      float32        `json:"temperature"`
+}
+
+type ThinkingBlock struct {
+	Type         string `json:"type"`
+	BudgetTokens int    `json:"budget_tokens"`
 }
 
 type Message interface {
@@ -91,6 +97,7 @@ type StreamData struct {
 }
 
 type StreamDelta struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text"`
+	Thinking string `json:"thinking"`
 }

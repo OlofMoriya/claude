@@ -38,7 +38,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 		if apiResponse.Type == content_block_delta {
 			model.accumulatedAnswer = model.accumulatedAnswer + apiResponse.Delta.Text
-			model.ResponseHandler.RecievedText(apiResponse.Delta.Text)
+			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
 		} else if apiResponse.Type == message_stop {
 			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
 		}

@@ -5,7 +5,7 @@ import "fmt"
 type EmbeddingsResponseHandler struct {
 }
 
-func (rh *EmbeddingsResponseHandler) RecievedText(text string) {
+func (rh *EmbeddingsResponseHandler) RecievedText(text string, useColor *string) {
 }
 
 func (rh *EmbeddingsResponseHandler) FinalText(contextId int64, prompt string, response string) {
