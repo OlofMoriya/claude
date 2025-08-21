@@ -135,46 +135,7 @@ func main() {
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 		services.AwaitedQuery(prompt, &model, user, 0, nil)
 	} else if view {
-		if context_name == "" {
-			panic("No context name to output")
-		}
-
-		db := os.Getenv("OWL_LOCAL_DATABASE")
-		if db == "" {
-			db = "owl"
-		}
-
-		user := data.User{Name: &db}
-
-		context, err := user.GetContextByName(context_name)
-		if err != nil {
-			panic(err)
-		}
-
-		count := 100
-		if history_count > 0 {
-			count = history_count
-		}
-
-		history, err := user.GetHistoryByContextId(context.Id, count)
-		if err != nil {
-			panic(err)
-		}
-
-		out, err := glamour.Render(fmt.Sprintf("# %s\n%s", context_name, context.Created), "dark")
-		if err != nil {
-			println(fmt.Sprintf("%v", err))
-		}
-		fmt.Println(out)
-
-		for _, h := range history {
-
-			out, err := glamour.Render(fmt.Sprintf("--- \n## Q\n\n %s \n\n## A\n\n %s", h.Prompt, h.Response), "dark")
-			if err != nil {
-				println(fmt.Sprintf("%v", err))
-			}
-			fmt.Println(out)
-		}
+		view_history()
 	} else {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
@@ -204,5 +165,48 @@ func main() {
 		} else {
 			services.AwaitedQuery(prompt, model, user, history_count, context)
 		}
+	}
+
+}
+func view_history() {
+	if context_name == "" {
+		panic("No context name to output")
+	}
+
+	db := os.Getenv("OWL_LOCAL_DATABASE")
+	if db == "" {
+		db = "owl"
+	}
+
+	user := data.User{Name: &db}
+
+	context, err := user.GetContextByName(context_name)
+	if err != nil {
+		panic(err)
+	}
+
+	count := 100
+	if history_count > 0 {
+		count = history_count
+	}
+
+	history, err := user.GetHistoryByContextId(context.Id, count)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := glamour.Render(fmt.Sprintf("# %s\n%s", context_name, context.Created), "dark")
+	if err != nil {
+		println(fmt.Sprintf("%v", err))
+	}
+	fmt.Println(out)
+
+	for _, h := range history {
+
+		out, err := glamour.Render(fmt.Sprintf("--- \n## Q\n\n %s \n\n## A\n\n %s", h.Prompt, h.Response), "dark")
+		if err != nil {
+			println(fmt.Sprintf("%v", err))
+		}
+		fmt.Println(out)
 	}
 }
