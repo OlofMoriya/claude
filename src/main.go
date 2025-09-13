@@ -7,6 +7,7 @@ import (
 	server "owl/http"
 	"owl/models"
 	claude_model "owl/models/claude"
+	grok_model "owl/models/grok"
 	openai_4o_model "owl/models/open-ai-4o"
 	embeddings_model "owl/models/open-ai-embedings"
 
@@ -148,6 +149,8 @@ func main() {
 		cliResponseHandler := CliResponseHandler{Repository: user}
 
 		switch llm_model {
+		case "grok":
+			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
