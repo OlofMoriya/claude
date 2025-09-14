@@ -8,6 +8,7 @@ import (
 	"os"
 	"owl/data"
 	"owl/models"
+	"owl/services"
 	"strings"
 )
 
@@ -19,7 +20,7 @@ type GrokModel struct {
 }
 
 func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
-	payload := createGrokPayload(prompt, streaming, history)
+	payload := createGrokPayload(prompt, streaming, history, image)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
@@ -61,7 +62,7 @@ func (model *GrokModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content)
 }
 
-func createGrokPayload(prompt string, streamed bool, history []data.History) ChatCompletionRequest {
+func createGrokPayload(prompt string, streamed bool, history []data.History, image bool) ChatCompletionRequest {
 	messages := []RequestMessage{}
 	for _, h := range history {
 		questionContent := RequestContent{Type: "text", Text: h.Prompt}
@@ -70,7 +71,28 @@ func createGrokPayload(prompt string, streamed bool, history []data.History) Cha
 		messages = append(messages, RequestMessage{Role: "assistant", Content: []RequestContent{answerContent}})
 	}
 
-	messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{{Type: "text", Text: prompt}}})
+	// messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{{Type: "text", Text: prompt}}})
+
+	if image {
+
+		image, err := services.GetImageFromClipboard()
+		if err != nil {
+			panic(fmt.Sprintf("could not get image from clipboard, %s", err))
+		}
+		base64, err := services.ImageToBase64(image)
+		if err != nil {
+			panic(fmt.Sprintf("could not get base64 from image, %s", err))
+		}
+
+		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{
+			{Type: "text", Text: prompt},
+			{Type: "image_url", ImageURL: Image{
+				URL: fmt.Sprintf("data:image/png;base64,%s", base64),
+			}},
+		}})
+	} else {
+		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{{Type: "text", Text: prompt}}})
+	}
 	payload := ChatCompletionRequest{
 		Model:     "grok-4",
 		Stream:    streamed,
