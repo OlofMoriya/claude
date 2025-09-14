@@ -18,12 +18,12 @@ type GrokModel struct {
 	contextId         int64
 }
 
-func (model *GrokModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
 	payload := createGrokPayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
-	model.contextId = contextId
-	return createRequest(payload, history)
+	model.contextId = context.Id
+	return createRequest(payload, history, image)
 }
 
 func (model *GrokModel) HandleStreamedLine(line []byte) {
@@ -75,13 +75,13 @@ func createGrokPayload(prompt string, streamed bool, history []data.History) Cha
 		Model:     "grok-4",
 		Stream:    streamed,
 		Messages:  messages,
-		MaxTokens: 1000,
+		MaxTokens: 2000,
 	}
 
 	return payload
 }
 
-func createRequest(payload ChatCompletionRequest, history []data.History) *http.Request {
+func createRequest(payload ChatCompletionRequest, history []data.History, image bool) *http.Request {
 	//use gcloud to fetch the token
 	apiKey, ok := os.LookupEnv("XAI_API_KEY")
 	if !ok {

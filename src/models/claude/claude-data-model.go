@@ -45,6 +45,29 @@ const (
 	Banana Role = "assistant"
 )
 
+type RequestMessage struct {
+	Role    string    `json:"role"`
+	Content []Content `json:"content"`
+}
+
+type Content interface {
+}
+
+type ImageContent struct {
+	Type   string      `json:"type"`
+	Source ImageSource `json:"source"`
+}
+type ImageSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
+type TextContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 type TextMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -55,10 +78,10 @@ type ImageMessage struct {
 	Content ImageContent `json:"content"`
 }
 
-type ImageContent struct {
-	Type   string `json:"type"`
-	Source Source `json:"source"`
-}
+// type ImageContent struct {
+// 	Type   string `json:"type"`
+// 	Source Source `json:"source"`
+// }
 
 type MediaType string
 

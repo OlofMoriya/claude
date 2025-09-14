@@ -15,10 +15,10 @@ type OpenAiEmbeddingsModel struct {
 	prompt          string
 }
 
-func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
 	payload := createPayload(prompt, streaming, history)
 	model.prompt = prompt
-	return createRequest(payload, history)
+	return createRequest(payload, history, image)
 }
 
 func createPayload(prompt string, streamed bool, history []data.History) Payload {
@@ -32,7 +32,7 @@ func createPayload(prompt string, streamed bool, history []data.History) Payload
 	return payload
 }
 
-func createRequest(payload Payload, history []data.History) *http.Request {
+func createRequest(payload Payload, history []data.History, image bool) *http.Request {
 	//use gcloud to fetch the token
 	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
 	if !ok {

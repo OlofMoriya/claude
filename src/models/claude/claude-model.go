@@ -8,6 +8,7 @@ import (
 	"os"
 	data "owl/data"
 	models "owl/models"
+	"owl/services"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ type ClaudeModel struct {
 	UseThinking       bool
 }
 
-func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
 	var model_version string
 	switch model.ModelVersion {
 	case "3.5-sonnet":
@@ -36,7 +37,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	default:
 		model_version = "claude-sonnet-4-20250514"
 	}
-	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context)
+	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context, image)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = context.Id
@@ -88,13 +89,57 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, image bool) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
+		// RequestMessage{
+		// 	Role: "user",
+		// 	Content: []Content{
+		// 		TextContent{Type: "text", Text: h.Prompt},
+		// 	},
+		// })
+
 		messages = append(messages, TextMessage{Role: "assistant", Content: h.Response})
+		// RequestMessage{
+		// 	Role: "user",
+		// 	Content: []Content{
+		// 		TextContent{Type: "text", Text: h.Response},
+		// 	},
+		// })
+
 	}
-	messages = append(messages, TextMessage{Role: "user", Content: prompt})
+
+	if image {
+
+		image, err := services.GetImageFromClipboard()
+		if err != nil {
+			panic(fmt.Sprintf("could not get image from clipboard, %s", err))
+		}
+		base64, err := services.ImageToBase64(image)
+		if err != nil {
+			panic(fmt.Sprintf("could not get base64 from image, %s", err))
+		}
+
+		// RequestMessage{
+		// 	Role: "user",
+		// 	Content: []Content{
+		// 		TextContent{Type: "text", Text: h.Response},
+		// 	},
+		// })
+
+		messages = append(messages, RequestMessage{Role: "user", Content: []Content{
+			TextContent{Type: "text", Text: prompt},
+			ImageContent{Type: "image", Source: ImageSource{
+				Type:      "base64",
+				MediaType: "image/png",
+				Data:      base64,
+			}},
+		}})
+	} else {
+		messages = append(messages, RequestMessage{Role: "user", Content: []Content{TextContent{Type: "text", Text: prompt}}})
+	}
+	// messages = append(messages, TextMessage{Role: "user", Content: prompt})
 	payload := MessageBody{
 		Model:     model,
 		Messages:  messages,

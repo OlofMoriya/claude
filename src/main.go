@@ -37,6 +37,7 @@ var (
 	stream_thinkning bool
 	output_thinkning bool
 	system_prompt    string
+	image            bool
 )
 
 func init() {
@@ -70,6 +71,7 @@ func init() {
 	flag.BoolVar(&output_thinkning, "output thinking", false, "output thinking")
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 	flag.BoolVar(&view, "view", false, "view")
+	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
 }
 
 func main() {
@@ -134,7 +136,9 @@ func main() {
 		user := data.User{Name: &db}
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
-		services.AwaitedQuery(prompt, &model, user, 0, nil)
+
+		services.AwaitedQuery(prompt, &model, user, 0, nil, false)
+
 	} else if view {
 		view_history()
 	} else {
@@ -164,9 +168,9 @@ func main() {
 		context := getContext(user, &system_prompt)
 
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context)
+			services.StreamedQuery(prompt, model, user, history_count, context, image)
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context)
+			services.AwaitedQuery(prompt, model, user, history_count, context, image)
 		}
 	}
 

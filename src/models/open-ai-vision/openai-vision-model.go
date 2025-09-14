@@ -18,7 +18,7 @@ type OpenAiModel struct {
 	contextId         int64
 }
 
-func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
