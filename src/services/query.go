@@ -10,13 +10,13 @@ import (
 	"owl/models"
 )
 
-func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, image bool) {
+func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, image bool, pdf string) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 	if err != nil {
 		log.Println("error while fetching history for context", err)
 	}
 
-	req := model.CreateRequest(context, prompt, false, history, image)
+	req := model.CreateRequest(context, prompt, false, history, image, pdf)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -26,10 +26,6 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		if err != nil {
-			panic("failed to read response body on non-OK status")
-		}
-
 		println(fmt.Sprintf("\nresp: %v", resp))
 		println(fmt.Sprintf("\n\body: %v\n\n", resp.Body))
 		bytes, err := io.ReadAll(resp.Body)
@@ -54,14 +50,14 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	//TODO: Handle token use
 }
 
-func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, image bool) {
+func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, image bool, pdf string) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not fetch history %s", err))
 	}
 
-	req := model.CreateRequest(context, prompt, true, history, image)
+	req := model.CreateRequest(context, prompt, true, history, image, pdf)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

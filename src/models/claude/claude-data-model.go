@@ -53,14 +53,9 @@ type RequestMessage struct {
 type Content interface {
 }
 
-type ImageContent struct {
-	Type   string      `json:"type"`
-	Source ImageSource `json:"source"`
-}
-type ImageSource struct {
-	Type      string `json:"type"`
-	MediaType string `json:"media_type"`
-	Data      string `json:"data"`
+type SourceContent struct {
+	Type   string `json:"type"`
+	Source Source `json:"source"`
 }
 
 type TextContent struct {
@@ -73,9 +68,9 @@ type TextMessage struct {
 	Content string `json:"content"`
 }
 
-type ImageMessage struct {
-	Role    string       `json:"role"`
-	Content ImageContent `json:"content"`
+type SourceMessage struct {
+	Role    string        `json:"role"`
+	Content SourceContent `json:"content"`
 }
 
 // type ImageContent struct {
@@ -84,6 +79,12 @@ type ImageMessage struct {
 // }
 
 type MediaType string
+type SourceType string
+
+const (
+	Image    MediaType  = "image"
+	Document SourceType = "document"
+)
 
 const (
 	Jpeg   MediaType = "image/jpeg"

@@ -19,7 +19,7 @@ type OpenAi4oModel struct {
 	contextId         int64
 }
 
-func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
+func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history, image)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
@@ -95,7 +95,7 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History, i
 		Model:     "gpt-4o",
 		Stream:    streamed,
 		Messages:  messages,
-		MaxTokens: 2000,
+		MaxTokens: 20000,
 	}
 
 	return payload

@@ -15,7 +15,7 @@ type OpenAiEmbeddingsModel struct {
 	prompt          string
 }
 
-func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
+func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createPayload(prompt, streaming, history)
 	model.prompt = prompt
 	return createRequest(payload, history, image)

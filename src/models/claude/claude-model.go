@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	data "owl/data"
@@ -23,7 +24,7 @@ type ClaudeModel struct {
 	UseThinking       bool
 }
 
-func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	var model_version string
 	switch model.ModelVersion {
 	case "3.5-sonnet":
@@ -37,7 +38,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	default:
 		model_version = "claude-sonnet-4-20250514"
 	}
-	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context, image)
+	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context, image, pdf)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = context.Id
@@ -85,11 +86,12 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
+	log.Fatalf("full resposne: %v", apiResponse)
 
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, image bool) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, image bool, pdf string) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -114,11 +116,11 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 
 		image, err := services.GetImageFromClipboard()
 		if err != nil {
-			panic(fmt.Sprintf("could not get image from clipboard, %s", err))
+			panic(fmt.Sprintf("could not get image from clipboard, %v", err))
 		}
 		base64, err := services.ImageToBase64(image)
 		if err != nil {
-			panic(fmt.Sprintf("could not get base64 from image, %s", err))
+			panic(fmt.Sprintf("could not get base64 from image, %v", err))
 		}
 
 		// RequestMessage{
@@ -130,9 +132,23 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 
 		messages = append(messages, RequestMessage{Role: "user", Content: []Content{
 			TextContent{Type: "text", Text: prompt},
-			ImageContent{Type: "image", Source: ImageSource{
-				Type:      "base64",
+			SourceContent{Type: "image", Source: Source{
+				Type:      string(Base64),
 				MediaType: "image/png",
+				Data:      base64,
+			}},
+		}})
+	} else if pdf != "" {
+		base64, err := services.ReadPDFAsBase64(pdf)
+		if err != nil {
+			panic(fmt.Sprintf("could not get base64 from pdf, %v", err))
+		}
+
+		messages = append(messages, RequestMessage{Role: "user", Content: []Content{
+			TextContent{Type: "text", Text: prompt},
+			SourceContent{Type: "document", Source: Source{
+				Type:      string(Base64),
+				MediaType: "application/pdf",
 				Data:      base64,
 			}},
 		}})
@@ -143,12 +159,14 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 	payload := MessageBody{
 		Model:     model,
 		Messages:  messages,
-		MaxTokens: 10000,
+		MaxTokens: 20000,
 		Stream:    streamed,
 	}
 	if context != nil && context.SystemPrompt != "" {
 		payload.System = context.SystemPrompt
 	}
+
+	// log.Fatal(fmt.Sprintf("payload %v", payload))
 
 	if useThinking {
 		payload.Thinking = &ThinkingBlock{

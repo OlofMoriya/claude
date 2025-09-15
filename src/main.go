@@ -38,6 +38,7 @@ var (
 	output_thinkning bool
 	system_prompt    string
 	image            bool
+	pdf              string
 )
 
 func init() {
@@ -72,6 +73,7 @@ func init() {
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 	flag.BoolVar(&view, "view", false, "view")
 	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
+	flag.StringVar(&pdf, "pdf", "", "path to pdf")
 }
 
 func main() {
@@ -160,7 +162,9 @@ func main() {
 		case "claude":
 			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		case "opus":
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "4-opus"}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
+		case "sonnet":
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
 		default:
 			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		}
@@ -168,9 +172,9 @@ func main() {
 		context := getContext(user, &system_prompt)
 
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context, image)
+			services.StreamedQuery(prompt, model, user, history_count, context, image, pdf)
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context, image)
+			services.AwaitedQuery(prompt, model, user, history_count, context, image, pdf)
 		}
 	}
 
