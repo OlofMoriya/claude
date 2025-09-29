@@ -46,7 +46,8 @@ func createContextTable(db *sql.DB) {
 	createTableQuery := `
          CREATE TABLE IF NOT EXISTS context (
              id INTEGER PRIMARY KEY AUTOINCREMENT,
-             name TEXT
+             name TEXT,
+			 system_prompt TEXT
          )
      `
 
@@ -78,8 +79,8 @@ func (user User) InsertContext(context Context) (int64, error) {
 
 	log.Println("inserting context", context.Name, user.Name, user.Id)
 
-	insertQuery := "INSERT INTO context (name) VALUES (?)"
-	result, err := db.Exec(insertQuery, context.Name)
+	insertQuery := "INSERT INTO context (name, system_prompt) VALUES (?, ?)"
+	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt)
 	log.Println("result of context insert", result)
 
 	defer db.Close()
@@ -101,11 +102,11 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name FROM context WHERE id = ?"
+	selectQuery := "SELECT id, name, system_pronmpt FROM context WHERE id = ?"
 	row := db.QueryRow(selectQuery, contextId)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// return context, fmt.Errorf("context with ID %d not found", contextId)
@@ -174,11 +175,11 @@ func (user User) GetContextByName(name string) (*Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name FROM context WHERE name = ?"
+	selectQuery := "SELECT id, name, system_prompt FROM context WHERE name = ?"
 	row := db.QueryRow(selectQuery, name)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt)
 
 	if err != nil {
 		return nil, err
@@ -200,7 +201,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	var contexts []Context
 	for rows.Next() {
 		var context Context
-		err := rows.Scan(&context.Id, &context.Name)
+		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt)
 		if err != nil {
 			return nil, err
 		}
@@ -237,4 +238,15 @@ func (user User) DeleteHistory(historyId int64) (int64, error) {
 		return 0, err
 	}
 	return res.RowsAffected()
+}
+
+func (user User) UpdateSystemPrompt(contextId int64, systemPrompt string) error {
+	db := user.getUserDb()
+	defer db.Close()
+
+	fmt.Printf("setting system %s %d :::", systemPrompt, contextId)
+
+	_, err := db.Exec("UPDATE context SET system_prompt = $1 WHERE id = $2",
+		systemPrompt, contextId)
+	return err
 }
