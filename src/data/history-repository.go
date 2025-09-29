@@ -9,4 +9,5 @@ type HistoryRepository interface {
 	GetAllContexts() ([]Context, error)
 	DeleteContext(contextId int64) (int64, error)
 	DeleteHistory(historyId int64) (int64, error)
+	UpdateSystemPrompt(contextId int64, systemPrompt string) error
 }

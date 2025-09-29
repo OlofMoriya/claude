@@ -10,16 +10,14 @@ import (
 	"owl/models"
 )
 
-func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {
+func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context) {
 
-	history, err := historyRepository.GetHistoryByContextId(contextId, historyCount)
+	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 	if err != nil {
 		log.Println("error while fetching history for context", err)
 	}
 
-	log.Println("history", history, "for context_id", contextId)
-
-	req := model.CreateRequest(contextId, prompt, false, history)
+	req := model.CreateRequest(context, prompt, false, history)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -51,16 +49,16 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	//TODO: Handle token use
 }
 
-func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, contextId int64) {
-	history, err := historyRepository.GetHistoryByContextId(contextId, historyCount)
+func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context) {
+	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 
-	log.Println("history", history, "for context_id", contextId)
+	// log.Println("history", history, "for context_id", contextId)
 
 	if err != nil {
 		panic(fmt.Sprintf("Could not fetch history %s", err))
 	}
 
-	req := model.CreateRequest(contextId, prompt, true, history)
+	req := model.CreateRequest(context, prompt, true, history)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -3,11 +3,12 @@ package data
 import "time"
 
 type Context struct {
-	Id      int64     `json:"id"`
-	Name    string    `json:"name"`
-	History []History `json:"history"`
-	UserId  int64     `json:"userId"`
-	Created time.Time `json:"created"`
+	Id           int64     `json:"id"`
+	Name         string    `json:"name"`
+	History      []History `json:"history"`
+	UserId       int64     `json:"userId"`
+	Created      time.Time `json:"created"`
+	SystemPrompt string    `json:"systemPrompt"`
 }
 
 type History struct {

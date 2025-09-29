@@ -19,7 +19,7 @@ type ClaudeModel struct {
 	ModelVersion      string
 }
 
-func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request {
 	var model_version string
 	switch model.ModelVersion {
 	case "3":
@@ -35,11 +35,15 @@ func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streamin
 	default:
 		model_version = "claude-sonnet-4-20250514"
 	}
-	payload := createCaludePayload(prompt, streaming, history, model_version)
+	payload := createCaludePayload(prompt, streaming, history, model_version, context)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
-	model.ContextId = contextId
-	return createClaudeRequest(payload, history)
+	model.ContextId = context.Id
+
+	request := createClaudeRequest(payload, history)
+	// fmt.Printf("\nmodel: \n %v", request)
+
+	return request
 }
 
 func (model *ClaudeModel) HandleStreamedLine(line []byte) {
@@ -72,7 +76,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History, model string) MessageBody {
+func createCaludePayload(prompt string, streamed bool, history []data.History, model string, context *data.Context) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -84,6 +88,9 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 		Messages:  messages,
 		MaxTokens: 2000,
 		Stream:    streamed,
+	}
+	if context != nil && context.SystemPrompt != "" {
+		payload.System = context.SystemPrompt
 	}
 
 	return payload

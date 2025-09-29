@@ -6,7 +6,7 @@ import (
 )
 
 type Model interface {
-	CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request
+	CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request
 	HandleStreamedLine(line []byte)
 	HandleBodyBytes(bytes []byte)
 }

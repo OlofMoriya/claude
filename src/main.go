@@ -30,6 +30,7 @@ var (
 	stream        bool
 	embeddings    bool
 	llm_model     string
+	system_prompt string
 )
 
 func init() {
@@ -57,6 +58,7 @@ func init() {
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
+	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 }
 
 func main() {
@@ -67,6 +69,22 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if system_prompt != "" && context_name != "" {
+		db := os.Getenv("OWL_LOCAL_DATABASE")
+		if db == "" {
+			db = "owl"
+		}
+
+		user := data.User{Name: &db}
+		context := getContext(user, &system_prompt)
+
+		err := user.UpdateSystemPrompt(context.Id, system_prompt)
+		if err != nil {
+			println(err)
+		}
+		return
+	}
 
 	if prompt == "" && !serve {
 		reader := bufio.NewReader(os.Stdin)
@@ -105,7 +123,7 @@ func main() {
 		user := data.User{Name: &db}
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
-		services.AwaitedQuery(prompt, &model, user, 0, 0)
+		services.AwaitedQuery(prompt, &model, user, 0, nil)
 	} else {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
@@ -122,16 +140,18 @@ func main() {
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
 			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+		case "opus":
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, ModelVersion: "4-opus"}
 		default:
 			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
 		}
 		//TODO: Select database
-		context_id := getContextId(user)
+		context := getContext(user, &system_prompt)
 
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context_id)
+			services.StreamedQuery(prompt, model, user, history_count, context)
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context_id)
+			services.AwaitedQuery(prompt, model, user, history_count, context)
 		}
 	}
 }

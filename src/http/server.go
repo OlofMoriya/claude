@@ -128,17 +128,13 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 		repository.User = user
 
 		context, _ := repository.GetContextByName(req.ContextName)
-		var context_id int64
 		if context == nil {
 			new_context := data.Context{Name: req.ContextName, UserId: int64(user.Id)}
-			id, err := repository.InsertContext(new_context)
+			_, err := repository.InsertContext(new_context)
 
 			if err != nil {
 				log.Println(fmt.Sprintf("Could not create a new context with name %s, %s", req.ContextName, err))
 			}
-			context_id = id
-		} else {
-			context_id = context.Id
 		}
 
 		w.Header().Set("Connection", "Keep-Alive")
@@ -148,13 +144,11 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 		//trigger awaited query
 		server_data.responseHandler.SetResponseWriter(w)
 		if server_data.streaming {
-			services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context_id)
+			services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context)
 		} else {
-			services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context_id)
+			services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context)
 		}
 
-		// Send a response
-		// fmt.Fprintf(w, "POST request processed successfully")
 	} else {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
