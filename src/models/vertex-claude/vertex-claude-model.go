@@ -18,7 +18,7 @@ type ClaudeModel struct {
 	contextId         int64
 }
 
-func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createClaudePayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
@@ -38,7 +38,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 		if apiResponse.Type == content_block_delta {
 			model.accumulatedAnswer = model.accumulatedAnswer + apiResponse.Delta.Text
-			model.ResponseHandler.RecievedText(apiResponse.Delta.Text)
+			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
 		} else if apiResponse.Type == message_stop {
 			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
 		}

@@ -7,6 +7,7 @@ import (
 	server "owl/http"
 	"owl/models"
 	claude_model "owl/models/claude"
+	grok_model "owl/models/grok"
 	openai_4o_model "owl/models/open-ai-4o"
 	embeddings_model "owl/models/open-ai-embedings"
 
@@ -17,20 +18,27 @@ import (
 	services "owl/services"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/joho/godotenv"
 )
 
 var (
-	prompt        string
-	context_name  string
-	history_count int
-	serve         bool
-	port          int
-	secure        bool
-	stream        bool
-	embeddings    bool
-	llm_model     string
-	system_prompt string
+	prompt           string
+	context_name     string
+	history_count    int
+	serve            bool
+	port             int
+	secure           bool
+	stream           bool
+	embeddings       bool
+	view             bool
+	llm_model        string
+	thinking         bool
+	stream_thinkning bool
+	output_thinkning bool
+	system_prompt    string
+	image            bool
+	pdf              string
 )
 
 func init() {
@@ -58,7 +66,14 @@ func init() {
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
+
+	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
+	flag.BoolVar(&stream_thinkning, "stream thinking", true, "stream thinking")
+	flag.BoolVar(&output_thinkning, "output thinking", false, "output thinking")
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
+	flag.BoolVar(&view, "view", false, "view")
+	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
+	flag.StringVar(&pdf, "pdf", "", "path to pdf")
 }
 
 func main() {
@@ -86,7 +101,7 @@ func main() {
 		return
 	}
 
-	if prompt == "" && !serve {
+	if prompt == "" && !serve && !view {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Prompt:")
 		prompt, _ = reader.ReadString('\n')
@@ -123,7 +138,11 @@ func main() {
 		user := data.User{Name: &db}
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
-		services.AwaitedQuery(prompt, &model, user, 0, nil)
+
+		services.AwaitedQuery(prompt, &model, user, 0, nil, false, "")
+
+	} else if view {
+		view_history()
 	} else {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
@@ -136,22 +155,69 @@ func main() {
 		cliResponseHandler := CliResponseHandler{Repository: user}
 
 		switch llm_model {
+		case "grok":
+			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		case "opus":
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, ModelVersion: "4-opus"}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
+		case "sonnet":
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
 		default:
-			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler}
+			model = &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		}
 		//TODO: Select database
 		context := getContext(user, &system_prompt)
 
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context)
+			services.StreamedQuery(prompt, model, user, history_count, context, image, pdf)
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context)
+			services.AwaitedQuery(prompt, model, user, history_count, context, image, pdf)
 		}
+	}
+
+}
+func view_history() {
+	if context_name == "" {
+		panic("No context name to output")
+	}
+
+	db := os.Getenv("OWL_LOCAL_DATABASE")
+	if db == "" {
+		db = "owl"
+	}
+
+	user := data.User{Name: &db}
+
+	context, err := user.GetContextByName(context_name)
+	if err != nil {
+		panic(err)
+	}
+
+	count := 100
+	if history_count > 0 {
+		count = history_count
+	}
+
+	history, err := user.GetHistoryByContextId(context.Id, count)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := glamour.Render(fmt.Sprintf("# %s\n%s", context_name, context.Created), "dark")
+	if err != nil {
+		println(fmt.Sprintf("%v", err))
+	}
+	fmt.Println(out)
+
+	for _, h := range history {
+
+		out, err := glamour.Render(fmt.Sprintf("--- \n## Q\n\n %s \n\n## A\n\n %s", h.Prompt, h.Response), "dark")
+		if err != nil {
+			println(fmt.Sprintf("%v", err))
+		}
+		fmt.Println(out)
 	}
 }

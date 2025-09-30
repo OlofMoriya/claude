@@ -18,7 +18,7 @@ type OpenAiModel struct {
 	contextId         int64
 }
 
-func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History) *http.Request {
+func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
@@ -41,7 +41,7 @@ func (model *OpenAiModel) HandleStreamedLine(line []byte) {
 			choice := apiResponse.Choices[0]
 
 			model.accumulatedAnswer = model.accumulatedAnswer + choice.Delta.Content
-			model.ResponseHandler.RecievedText(choice.Delta.Content)
+			model.ResponseHandler.RecievedText(choice.Delta.Content, nil)
 
 			if choice.FinishReason != nil {
 				fmt.Println(*choice.FinishReason)

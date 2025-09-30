@@ -1,12 +1,18 @@
 package claude_model
 
 type MessageBody struct {
-	Model     string  `json:"model"`
-	Messages  Message `json:"messages"`
-	MaxTokens int     `json:"max_tokens"`
-	System    string  `json:"system"`
-	Stream    bool    `json:"stream"`
-	Temp      float32 `json:"temperature"`
+	Model     string         `json:"model"`
+	Messages  Message        `json:"messages"`
+	MaxTokens int            `json:"max_tokens"`
+	System    string         `json:"system"`
+	Stream    bool           `json:"stream"`
+	Thinking  *ThinkingBlock `json:"thinking,omitempty"`
+	Temp      float32        `json:"temperature"`
+}
+
+type ThinkingBlock struct {
+	Type         string `json:"type"`
+	BudgetTokens int    `json:"budget_tokens"`
 }
 
 type Message interface {
@@ -39,22 +45,46 @@ const (
 	Banana Role = "assistant"
 )
 
+type RequestMessage struct {
+	Role    string    `json:"role"`
+	Content []Content `json:"content"`
+}
+
+type Content interface {
+}
+
+type SourceContent struct {
+	Type   string `json:"type"`
+	Source Source `json:"source"`
+}
+
+type TextContent struct {
+	Type string `json:"type"`
+	Text string `json:"text"`
+}
+
 type TextMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
 
-type ImageMessage struct {
-	Role    string       `json:"role"`
-	Content ImageContent `json:"content"`
+type SourceMessage struct {
+	Role    string        `json:"role"`
+	Content SourceContent `json:"content"`
 }
 
-type ImageContent struct {
-	Type   string `json:"type"`
-	Source Source `json:"source"`
-}
+// type ImageContent struct {
+// 	Type   string `json:"type"`
+// 	Source Source `json:"source"`
+// }
 
 type MediaType string
+type SourceType string
+
+const (
+	Image    MediaType  = "image"
+	Document SourceType = "document"
+)
 
 const (
 	Jpeg   MediaType = "image/jpeg"
@@ -91,6 +121,7 @@ type StreamData struct {
 }
 
 type StreamDelta struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type     string `json:"type"`
+	Text     string `json:"text"`
+	Thinking string `json:"thinking"`
 }

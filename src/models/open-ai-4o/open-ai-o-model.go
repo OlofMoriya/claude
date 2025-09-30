@@ -8,6 +8,7 @@ import (
 	"os"
 	"owl/data"
 	"owl/models"
+	services "owl/services"
 	"strings"
 )
 
@@ -18,8 +19,8 @@ type OpenAi4oModel struct {
 	contextId         int64
 }
 
-func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History) *http.Request {
-	payload := createOpenaiPayload(prompt, streaming, history)
+func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
+	payload := createOpenaiPayload(prompt, streaming, history, image)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
@@ -41,7 +42,7 @@ func (model *OpenAi4oModel) HandleStreamedLine(line []byte) {
 			choice := apiResponse.Choices[0]
 
 			model.accumulatedAnswer = model.accumulatedAnswer + choice.Delta.Content
-			model.ResponseHandler.RecievedText(choice.Delta.Content)
+			model.ResponseHandler.RecievedText(choice.Delta.Content, nil)
 
 			if choice.FinishReason != nil {
 				fmt.Println(*&choice.FinishReason)
@@ -61,7 +62,7 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content)
 }
 
-func createOpenaiPayload(prompt string, streamed bool, history []data.History) ChatCompletionRequest {
+func createOpenaiPayload(prompt string, streamed bool, history []data.History, image bool) ChatCompletionRequest {
 	messages := []RequestMessage{}
 	for _, h := range history {
 		questionContent := RequestContent{Type: "text", Text: h.Prompt}
@@ -70,12 +71,31 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History) C
 		messages = append(messages, RequestMessage{Role: "assistant", Content: []RequestContent{answerContent}})
 	}
 
-	messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{{Type: "text", Text: prompt}}})
+	if image {
+
+		image, err := services.GetImageFromClipboard()
+		if err != nil {
+			panic(fmt.Sprintf("could not get image from clipboard, %s", err))
+		}
+		base64, err := services.ImageToBase64(image)
+		if err != nil {
+			panic(fmt.Sprintf("could not get base64 from image, %s", err))
+		}
+
+		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{
+			{Type: "text", Text: prompt},
+			{Type: "image_url", ImageURL: Image{
+				URL: fmt.Sprintf("data:image/png;base64,%s", base64),
+			}},
+		}})
+	} else {
+		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{{Type: "text", Text: prompt}}})
+	}
 	payload := ChatCompletionRequest{
 		Model:     "gpt-4o",
 		Stream:    streamed,
 		Messages:  messages,
-		MaxTokens: 2000,
+		MaxTokens: 15000,
 	}
 
 	return payload

@@ -3,16 +3,23 @@ package main
 import (
 	"fmt"
 	data "owl/data"
+	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/glamour"
+	color "github.com/fatih/color"
 )
 
 type CliResponseHandler struct {
 	Repository data.HistoryRepository
 }
 
-func (cli CliResponseHandler) RecievedText(text string) {
-	print(text)
+func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
+	if useColor != nil {
+		color.RGB(150, 150, 150).Print(text)
+	} else {
+		print(text)
+	}
 }
 
 // All models should call this regardless of if they stream or not.
@@ -30,6 +37,15 @@ func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response
 	_, err := cli.Repository.InsertHistory(history)
 	if err != nil {
 		println(fmt.Sprintf("Error while trying to save history: %s", err))
+	}
+
+	code := extractCodeBlocks(response)
+	allCode := strings.Join(code, "\n\n")
+
+	// Copy to clipboard
+	err = clipboard.WriteAll(allCode)
+	if err != nil {
+		fmt.Printf("Error copying to clipboard: %v\n", err)
 	}
 
 	out, err := glamour.Render(response, "dark")

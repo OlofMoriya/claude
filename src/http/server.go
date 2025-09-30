@@ -144,9 +144,9 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 		//trigger awaited query
 		server_data.responseHandler.SetResponseWriter(w)
 		if server_data.streaming {
-			services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context)
+			services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, false, "")
 		} else {
-			services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context)
+			services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, false, "")
 		}
 
 	} else {
@@ -164,7 +164,7 @@ func (httpResponseHandler *HttpResponseHandler) SetResponseWriter(writer http.Re
 	httpResponseHandler.responseWriter = writer
 }
 
-func (httpResponseHandler *HttpResponseHandler) RecievedText(text string) {
+func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useColor *string) {
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
