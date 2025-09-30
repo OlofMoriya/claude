@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	data "owl/data"
@@ -33,10 +32,12 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 		model_version = "claude-3-7-sonnet-20250219 "
 	case "4-sonnet":
 		model_version = "claude-sonnet-4-20250514"
-	case "4-opus":
+	case "opus":
 		model_version = "claude-opus-4-20250514"
+	case "sonnet":
+		model_version = "claude-sonnet-4-5-20250929"
 	default:
-		model_version = "claude-sonnet-4-20250514"
+		model_version = "claude-sonnet-4-5-20250929"
 	}
 	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context, image, pdf)
 	model.Prompt = prompt
@@ -86,7 +87,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
-	log.Fatalf("full resposne: %v", apiResponse)
+	// log.Fatalf("full resposne: %v", apiResponse)
 
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }

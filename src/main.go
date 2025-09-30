@@ -139,7 +139,7 @@ func main() {
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 
-		services.AwaitedQuery(prompt, &model, user, 0, nil, false)
+		services.AwaitedQuery(prompt, &model, user, 0, nil, false, "")
 
 	} else if view {
 		view_history()

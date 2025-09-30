@@ -95,7 +95,7 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History, i
 		Model:     "gpt-4o",
 		Stream:    streamed,
 		Messages:  messages,
-		MaxTokens: 20000,
+		MaxTokens: 15000,
 	}
 
 	return payload
