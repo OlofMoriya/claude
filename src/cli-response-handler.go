@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	data "owl/data"
+	"owl/services"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -39,7 +40,7 @@ func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response
 		println(fmt.Sprintf("Error while trying to save history: %s", err))
 	}
 
-	code := extractCodeBlocks(response)
+	code := services.ExtractCodeBlocks(response)
 	allCode := strings.Join(code, "\n\n")
 
 	// Copy to clipboard

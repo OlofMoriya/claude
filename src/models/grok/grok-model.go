@@ -19,6 +19,10 @@ type GrokModel struct {
 	contextId         int64
 }
 
+func (model *GrokModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+}
+
 func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createGrokPayload(prompt, streaming, history, modifiers.Image)
 	model.prompt = prompt

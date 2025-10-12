@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	data "owl/data"
+	"owl/logger"
 	models "owl/models"
 	"owl/services"
 	"strings"
@@ -21,6 +22,11 @@ type ClaudeModel struct {
 	OutputThought     bool
 	StreamThought     bool
 	UseThinking       bool
+}
+
+func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+
 }
 
 func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
@@ -52,6 +58,8 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 
 func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 	responseLine := string(line)
+
+	logger.Debug.Println(responseLine)
 
 	if strings.HasPrefix(responseLine, "data: ") {
 		var apiResponse StreamData
@@ -86,31 +94,27 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
+		logger.Debug.Println(err)
 	}
 	// log.Fatalf("full resposne: %v", apiResponse)
 
-	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
+	logger.Debug.Println("response")
+	textIndex := 0
+	for i, content := range apiResponse.Content {
+		if content.Type == "text" {
+			textIndex = i
+		}
+		logger.Debug.Printf("i: %i, content: %s", i, content)
+	}
+
+	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[textIndex].Text)
 }
 
 func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
-		// RequestMessage{
-		// 	Role: "user",
-		// 	Content: []Content{
-		// 		TextContent{Type: "text", Text: h.Prompt},
-		// 	},
-		// })
-
 		messages = append(messages, TextMessage{Role: "assistant", Content: h.Response})
-		// RequestMessage{
-		// 	Role: "user",
-		// 	Content: []Content{
-		// 		TextContent{Type: "text", Text: h.Response},
-		// 	},
-		// })
-
 	}
 
 	if modifiers.Image {
@@ -123,13 +127,6 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		if err != nil {
 			panic(fmt.Sprintf("could not get base64 from image, %v", err))
 		}
-
-		// RequestMessage{
-		// 	Role: "user",
-		// 	Content: []Content{
-		// 		TextContent{Type: "text", Text: h.Response},
-		// 	},
-		// })
 
 		messages = append(messages, RequestMessage{Role: "user", Content: []Content{
 			TextContent{Type: "text", Text: prompt},
@@ -174,8 +171,6 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		payload.System = context.SystemPrompt
 	}
 
-	// log.Fatal(fmt.Sprintf("payload %v", payload))
-
 	if useThinking {
 		payload.Thinking = &ThinkingBlock{
 			Type:         "enabled",
@@ -184,6 +179,8 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		payload.Temp = 1
 	}
 
+	logger.Debug.Println("FULL PAYLOAD:")
+	logger.Debug.Printf("\n%s", payload)
 	return payload
 }
 
@@ -205,6 +202,8 @@ func createClaudeRequest(payload MessageBody, history []data.History) *http.Requ
 	if err != nil {
 		panic("failed to marshal payload")
 	}
+	logger.Debug.Println("FULL JSON PAYLOAD:")
+	logger.Debug.Printf("\n%s", jsonpayload)
 
 	url := "https://api.anthropic.com/v1/messages"
 

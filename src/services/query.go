@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"owl/data"
+	"owl/logger"
 	"owl/models"
 )
 
@@ -39,13 +40,17 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
 
+	logger.Debug.Printf("statusCode: %s", resp.StatusCode)
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
+		logger.Debug.Println(err)
 		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error reading response body: %v\n", err))
 	} // Close the response body when done
 	defer resp.Body.Close()
 
+	logger.Debug.Println("Received a response without streaming")
+	logger.Debug.Printf("bodyBytes %s", string(bodyBytes))
 	model.HandleBodyBytes(bodyBytes)
 	//TODO: Handle token use
 }

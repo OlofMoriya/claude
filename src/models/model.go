@@ -15,4 +15,5 @@ type Model interface {
 	CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *PayloadModifiers) *http.Request
 	HandleStreamedLine(line []byte)
 	HandleBodyBytes(bytes []byte)
+	SetResponseHandler(responseHandler ResponseHandler)
 }
