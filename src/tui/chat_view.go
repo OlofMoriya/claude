@@ -112,6 +112,7 @@ func (m *chatViewModel) loadHistory() tea.Cmd {
 		if err != nil {
 			return errorMsg{err}
 		}
+		logger.Debug.Println("returning historyLoadedMsg")
 		return historyLoadedMsg(history)
 	}
 }
@@ -245,6 +246,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		m.loading = false
 		m.sending = false
+		return m, nil
 
 	case tea.KeyMsg:
 		if m.sending {
@@ -689,4 +691,10 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	if err != nil {
 		fmt.Printf("Error copying to clipboard: %v\n", err)
 	}
+
+	// Signal done BEFORE closing responseChan
+	logger.Debug.Println("Final text in tui response channel")
+	logger.Debug.Println("closing doneChan and responseChan")
+	close(h.doneChan)
+	close(h.responseChan)
 }
