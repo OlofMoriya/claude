@@ -50,7 +50,7 @@ var (
 )
 
 func init() {
-	if err := logger.Init("debug.log"); err != nil {
+	if err := logger.Init("~/.owl/debug.log"); err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 
