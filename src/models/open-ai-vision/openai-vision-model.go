@@ -18,6 +18,11 @@ type OpenAiModel struct {
 	contextId         int64
 }
 
+func (model *OpenAiModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+
+}
+
 func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt

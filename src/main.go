@@ -5,6 +5,7 @@ import (
 	"log"
 	data "owl/data"
 	server "owl/http"
+	"owl/logger"
 	"owl/models"
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
@@ -16,10 +17,15 @@ import (
 	"fmt"
 	"os"
 	services "owl/services"
+	"owl/tui"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/joho/godotenv"
+)
+
+var (
+	DebugLog *log.Logger
 )
 
 var (
@@ -39,9 +45,14 @@ var (
 	system_prompt    string
 	image            bool
 	pdf              string
+	tui_mode         bool
 )
 
 func init() {
+	if err := logger.Init("debug.log"); err != nil {
+		log.Fatal("Failed to initialize logger:", err)
+	}
+
 	flag.StringVar(
 		&prompt,
 		"prompt",
@@ -74,6 +85,7 @@ func init() {
 	flag.BoolVar(&view, "view", false, "view")
 	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
 	flag.StringVar(&pdf, "pdf", "", "path to pdf")
+	flag.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
 }
 
 func main() {
@@ -84,6 +96,11 @@ func main() {
 	}
 
 	flag.Parse()
+
+	if tui_mode {
+		launchTUI()
+		return
+	}
 
 	if system_prompt != "" && context_name != "" {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
@@ -179,6 +196,7 @@ func main() {
 	}
 
 }
+
 func view_history() {
 	if context_name == "" {
 		panic("No context name to output")
@@ -219,5 +237,33 @@ func view_history() {
 			println(fmt.Sprintf("%v", err))
 		}
 		fmt.Println(out)
+	}
+}
+
+func launchTUI() {
+	db := os.Getenv("OWL_LOCAL_DATABASE")
+	if db == "" {
+		db = "owl"
+	}
+
+	user := data.User{Name: &db}
+
+	// Setup default model (you can make this configurable)
+	cliResponseHandler := CliResponseHandler{Repository: user}
+	model := &claude_model.ClaudeModel{
+		ResponseHandler: cliResponseHandler,
+		UseThinking:     true,
+		StreamThought:   false,
+		OutputThought:   false,
+	}
+
+	config := tui.TUIConfig{
+		Repository:   user,
+		Model:        model,
+		HistoryCount: 10,
+	}
+
+	if err := tui.Run(config); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -1,11 +1,11 @@
-package main
+package services
 
 import (
 	"regexp"
 	"strings"
 )
 
-func extractCodeBlocks(markdown string) []string {
+func ExtractCodeBlocks(markdown string) []string {
 	// Regex to match code blocks (```...```)
 	// This handles both with and without language specifiers
 	re := regexp.MustCompile("(?s)```(?:\\w*\\n|\\n)(.*?)```")

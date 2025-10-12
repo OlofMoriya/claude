@@ -18,6 +18,11 @@ type ClaudeModel struct {
 	contextId         int64
 }
 
+func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+
+}
+
 func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
 	payload := createClaudePayload(prompt, streaming, history)
 	model.prompt = prompt
