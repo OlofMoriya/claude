@@ -192,7 +192,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, name FROM context")
+	rows, err := db.Query("SELECT id, name, system_prompt FROM context")
 	if err != nil {
 		return nil, err
 	}
