@@ -269,15 +269,29 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.selectedModelIdx = m.modelCursor
 				m.mode = chatNormalMode
-				// TODO: Actually switch the model in the config
-				// You'll need to update m.shared.config.Model based on the selected model name
 				return m, nil
+
 			}
 			return m, nil
 		}
 
 		// Normal mode key handling
 		switch msg.String() {
+
+		case "ctrl+a":
+			// Open history detail view
+			logger.Debug.Println("tried to launch history view")
+			historyView := newChatHistoryViewModel(m.shared)
+			return historyView, tea.Sequence(
+				historyView.Init(),
+				func() tea.Msg {
+					return tea.WindowSizeMsg{
+						Width:  m.shared.width,
+						Height: m.shared.height,
+					}
+				},
+			)
+
 		case "ctrl+c":
 			return m, tea.Quit
 
@@ -445,7 +459,7 @@ func (m *chatViewModel) View() string {
 		modelInfo,
 		m.viewport.View(),
 		m.textarea.View(),
-		helpStyle.Render("ctrl+w send • ctrl+m model • ctrl+s copy cmd • esc back • ctrl+c quit"),
+		helpStyle.Render("ctrl+w send • ctrl+m model • ctrl+h history • ctrl+s copy cmd • esc back • ctrl+c quit"),
 		status,
 	)
 }
