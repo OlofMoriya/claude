@@ -23,7 +23,7 @@ func (model *OpenAiModel) SetResponseHandler(responseHandler models.ResponseHand
 
 }
 
-func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
+func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""

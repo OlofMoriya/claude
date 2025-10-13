@@ -20,10 +20,10 @@ func (model *OpenAiEmbeddingsModel) SetResponseHandler(responseHandler models.Re
 
 }
 
-func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
+func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createPayload(prompt, streaming, history)
 	model.prompt = prompt
-	return createRequest(payload, history, image)
+	return createRequest(payload, history, modifiers.Image)
 }
 
 func createPayload(prompt string, streamed bool, history []data.History) Payload {

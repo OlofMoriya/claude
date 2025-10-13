@@ -23,7 +23,7 @@ func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHand
 
 }
 
-func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
+func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createClaudePayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
