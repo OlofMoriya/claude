@@ -39,6 +39,7 @@ var (
 	system_prompt    string
 	image            bool
 	pdf              string
+	web              bool
 )
 
 func init() {
@@ -73,6 +74,7 @@ func init() {
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 	flag.BoolVar(&view, "view", false, "view")
 	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
+	flag.BoolVar(&web, "web", false, "web search enabled")
 	flag.StringVar(&pdf, "pdf", "", "path to pdf")
 }
 
@@ -139,7 +141,7 @@ func main() {
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 
-		services.AwaitedQuery(prompt, &model, user, 0, nil, false, "")
+		services.AwaitedQuery(prompt, &model, user, 0, nil, nil)
 
 	} else if view {
 		view_history()
@@ -172,9 +174,9 @@ func main() {
 		context := getContext(user, &system_prompt)
 
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context, image, pdf)
+			services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web})
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context, image, pdf)
+			services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web})
 		}
 	}
 

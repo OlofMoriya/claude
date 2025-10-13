@@ -8,6 +8,13 @@ type MessageBody struct {
 	Stream    bool           `json:"stream"`
 	Thinking  *ThinkingBlock `json:"thinking,omitempty"`
 	Temp      float32        `json:"temperature"`
+	Tools     []Tool         `json:"tools"`
+}
+
+type Tool struct {
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	MaxUses int    `json:"max_uses"`
 }
 
 type ThinkingBlock struct {

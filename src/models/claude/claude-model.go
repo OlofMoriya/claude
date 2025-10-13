@@ -23,7 +23,7 @@ type ClaudeModel struct {
 	UseThinking       bool
 }
 
-func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, image bool, pdf string) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	var model_version string
 	switch model.ModelVersion {
 	case "3.5-sonnet":
@@ -39,7 +39,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	default:
 		model_version = "claude-sonnet-4-5-20250929"
 	}
-	payload := createCaludePayload(prompt, streaming, history, model_version, model.UseThinking, context, image, pdf)
+	payload := createClaudePayload(prompt, streaming, history, model_version, model.UseThinking, context, modifiers)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = context.Id
@@ -92,7 +92,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.ContextId, model.Prompt, apiResponse.Content[0].Text)
 }
 
-func createCaludePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, image bool, pdf string) MessageBody {
+func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
 	messages := []Message{}
 	for _, h := range history {
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
@@ -113,7 +113,7 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 
 	}
 
-	if image {
+	if modifiers.Image {
 
 		image, err := services.GetImageFromClipboard()
 		if err != nil {
@@ -139,8 +139,8 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 				Data:      base64,
 			}},
 		}})
-	} else if pdf != "" {
-		base64, err := services.ReadPDFAsBase64(pdf)
+	} else if modifiers.Pdf != "" {
+		base64, err := services.ReadPDFAsBase64(modifiers.Pdf)
 		if err != nil {
 			panic(fmt.Sprintf("could not get base64 from pdf, %v", err))
 		}
@@ -163,6 +163,13 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 		MaxTokens: 20000,
 		Stream:    streamed,
 	}
+
+	if modifiers.Web {
+		payload.Tools = []Tool{getWebSearchTool()}
+	} else {
+		payload.Tools = []Tool{}
+	}
+
 	if context != nil && context.SystemPrompt != "" {
 		payload.System = context.SystemPrompt
 	}
@@ -178,6 +185,14 @@ func createCaludePayload(prompt string, streamed bool, history []data.History, m
 	}
 
 	return payload
+}
+
+func getWebSearchTool() Tool {
+	return Tool{
+		Type:    "web_search_20250305",
+		Name:    "web_search",
+		MaxUses: 2,
+	}
 }
 
 func createClaudeRequest(payload MessageBody, history []data.History) *http.Request {
