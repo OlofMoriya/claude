@@ -4,17 +4,19 @@ import (
 	"fmt"
 	"owl/data"
 	"owl/logger"
+	"owl/models"
 	"owl/services"
 	"strings"
+
+	claude_model "owl/models/claude"
+	grok_model "owl/models/grok"
+	openai_4o_model "owl/models/open-ai-4o"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
-	claude_model "owl/models/claude"
-	grok_model "owl/models/grok"
-	openai_4o_model "owl/models/open-ai-4o"
 )
 
 type chatMode int
@@ -179,8 +181,11 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 				m.shared.config.Repository,
 				m.historyCount,
 				m.shared.selectedCtx,
-				false,
-				"",
+				&models.PayloadModifiers{
+					Pdf:   "",
+					Web:   false,
+					Image: false,
+				},
 			)
 		}()
 
