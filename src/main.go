@@ -11,6 +11,7 @@ import (
 	grok_model "owl/models/grok"
 	openai_4o_model "owl/models/open-ai-4o"
 	embeddings_model "owl/models/open-ai-embedings"
+	open_ai_responses "owl/models/open-ai-responses"
 
 	// openai_vision_model "claude/models/open-ai-vision"
 	"flag"
@@ -174,6 +175,8 @@ func main() {
 		cliResponseHandler := CliResponseHandler{Repository: user}
 
 		switch llm_model {
+		case "tools":
+			model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: cliResponseHandler}
 		case "grok":
 			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
 		case "4o":
