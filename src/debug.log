@@ -1,0 +1,2035 @@
+2025/10/12 22:15:14 logger.go:18: Logger initialized
+2025/10/12 22:15:20 chat_view.go:66: init
+2025/10/12 22:15:20 chat_view.go:75: loadHistory
+2025/10/12 22:15:20 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:15:20 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:15:20 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:15:20 chat_view.go:282: passed guard
+2025/10/12 22:15:20 chat_view.go:286: history count %!i(int=4)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:15:20 chat_view.go:255: windowSizeMsg
+2025/10/12 22:15:20 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:15:20 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:15:20 chat_view.go:282: passed guard
+2025/10/12 22:15:20 chat_view.go:286: history count %!i(int=4)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:15:20 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:15:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:35 chat_view.go:147: inside the fuction
+2025/10/12 22:15:35 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:35 claude-model.go:175: FULL PAYLOAD:
+2025/10/12 22:15:35 claude-model.go:176: 
+{claude-sonnet-4-5-20250929 [{user what is 6 times six?} {assistant 6 times 6 equals 36.} {user How about if we add fifty5 to that and then take the square root of 5 times the previous sum?} {assistant Let me work through this step by step:
+
+1. We had: 6 × 6 = 36
+2. Add 55 (interpreting "fifty5" as 55): 36 + 55 = 91
+3. Multiply that sum by 5: 91 × 5 = 455
+4. Take the square root: √455 ≈ 21.33
+
+So the answer is approximately **21.33** (or exactly √455).} {user subtract 20 carrots} {assistant 21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)
+
+So you'd have approximately **1.33 carrots** left! 🥕} {user multiply by apple and half a banana} {assistant I can't multiply by "apple" and "half a banana" unless we assign them numerical values! 
+
+If you'd like, we could:
+- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)
+- Assign them specific numbers (like apple = 1, banana = 2)
+
+What values would you like to use for the apple and banana? 🍎🍌} {user [{text what is a good fruit to multiply with?}]}] %!s(int=20000)  %!s(bool=true) %!s(*claude_model.ThinkingBlock=&{enabled 2000}) %!s(float32=1)}
+2025/10/12 22:15:35 claude-model.go:190: FULL JSON PAYLOAD:
+2025/10/12 22:15:35 claude-model.go:191: 
+{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"what is 6 times six?"},{"role":"assistant","content":"6 times 6 equals 36."},{"role":"user","content":"How about if we add fifty5 to that and then take the square root of 5 times the previous sum?"},{"role":"assistant","content":"Let me work through this step by step:\n\n1. We had: 6 × 6 = 36\n2. Add 55 (interpreting \"fifty5\" as 55): 36 + 55 = 91\n3. Multiply that sum by 5: 91 × 5 = 455\n4. Take the square root: √455 ≈ 21.33\n\nSo the answer is approximately **21.33** (or exactly √455)."},{"role":"user","content":"subtract 20 carrots"},{"role":"assistant","content":"21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)\n\nSo you'd have approximately **1.33 carrots** left! 🥕"},{"role":"user","content":"multiply by apple and half a banana"},{"role":"assistant","content":"I can't multiply by \"apple\" and \"half a banana\" unless we assign them numerical values! \n\nIf you'd like, we could:\n- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)\n- Assign them specific numbers (like apple = 1, banana = 2)\n\nWhat values would you like to use for the apple and banana? 🍎🍌"},{"role":"user","content":[{"type":"text","text":"what is a good fruit to multiply with?"}]}],"max_tokens":20000,"system":"","stream":true,"thinking":{"type":"enabled","budget_tokens":2000},"temperature":1}
+2025/10/12 22:15:40 claude-model.go:62: event: message_start
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"message_start","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01AqCUzA2tcvK7izdKKnHbcG","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":388,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":2,"service_tier":"standard"}}            }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}      }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"This"}        }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:40 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:40 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:40 chat_view.go:147: inside the fuction
+2025/10/12 22:15:40 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:40 claude-model.go:62: event: ping
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type": "ping"}
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is a fun, creative question! The user is asking what"}  }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:40 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:40 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:40 chat_view.go:147: inside the fuction
+2025/10/12 22:15:40 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" fruit would be good to multiply with. They"}        }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:40 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:40 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:40 chat_view.go:147: inside the fuction
+2025/10/12 22:15:40 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"'re playing with the idea of assigning numerical"}           }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:40 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:40 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:40 chat_view.go:147: inside the fuction
+2025/10/12 22:15:40 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:40 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:40 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" values to fruits. Let me think about what"} }
+
+2025/10/12 22:15:40 claude-model.go:62: 
+
+2025/10/12 22:15:40 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:40 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:40 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:40 chat_view.go:147: inside the fuction
+2025/10/12 22:15:40 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:41 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:41 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" makes a fruit \"good\" for multiplication:\n\n1."}        }
+
+2025/10/12 22:15:41 claude-model.go:62: 
+
+2025/10/12 22:15:41 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:41 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:41 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:41 chat_view.go:147: inside the fuction
+2025/10/12 22:15:41 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:41 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:41 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Mathematically speaking, multipl"}  }
+
+2025/10/12 22:15:41 claude-model.go:62: 
+
+2025/10/12 22:15:41 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:41 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:41 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:41 chat_view.go:147: inside the fuction
+2025/10/12 22:15:41 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:41 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:41 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ying by 1 keeps"}             }
+
+2025/10/12 22:15:41 claude-model.go:62: 
+
+2025/10/12 22:15:41 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:41 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:41 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:41 chat_view.go:147: inside the fuction
+2025/10/12 22:15:41 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:41 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:41 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" the number the same (identity"}}
+
+2025/10/12 22:15:41 claude-model.go:62: 
+
+2025/10/12 22:15:41 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:41 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:41 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:41 chat_view.go:147: inside the fuction
+2025/10/12 22:15:41 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:41 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:41 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"), multiplying by 2 is"}      }
+
+2025/10/12 22:15:41 claude-model.go:62: 
+
+2025/10/12 22:15:41 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:41 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:41 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:41 chat_view.go:147: inside the fuction
+2025/10/12 22:15:41 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" simple doubling, etc"}        }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":".\n2. I"}             }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" could make puns or"}     }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" wordplay with fruit names\n3. I"}         }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" could suggest fruits based on their properties"}            }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"\n\nSome fun options:\n- Pineapple -"}}
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:42 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:42 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" because it has \"pine\" an"}    }
+
+2025/10/12 22:15:42 claude-model.go:62: 
+
+2025/10/12 22:15:42 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:42 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:42 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:42 chat_view.go:147: inside the fuction
+2025/10/12 22:15:42 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:43 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:43 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"d could be worth π (pi ≈ 3.14159"}               }
+
+2025/10/12 22:15:43 claude-model.go:62: 
+
+2025/10/12 22:15:43 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:43 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:43 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:43 chat_view.go:147: inside the fuction
+2025/10/12 22:15:43 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:43 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:43 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"...)\n- A \"square\" root veget"}    }
+
+2025/10/12 22:15:43 claude-model.go:62: 
+
+2025/10/12 22:15:43 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:43 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:43 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:43 chat_view.go:147: inside the fuction
+2025/10/12 22:15:43 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:44 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:44 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"able (though that's not a fruit)\n- Cherry"}         }
+
+2025/10/12 22:15:44 claude-model.go:62: 
+
+2025/10/12 22:15:44 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:44 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:44 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:44 chat_view.go:147: inside the fuction
+2025/10/12 22:15:44 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:44 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:44 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" or berries (pair/pair-y or berry/"}}
+
+2025/10/12 22:15:44 claude-model.go:62: 
+
+2025/10/12 22:15:44 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:44 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:44 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:44 chat_view.go:147: inside the fuction
+2025/10/12 22:15:44 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:44 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:44 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"very)\n- Date (because"}           }
+
+2025/10/12 22:15:44 claude-model.go:62: 
+
+2025/10/12 22:15:44 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:44 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:44 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:44 chat_view.go:147: inside the fuction
+2025/10/12 22:15:44 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:44 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:44 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" dates are numbers too)\n- Fig (sounds"}        }
+
+2025/10/12 22:15:44 claude-model.go:62: 
+
+2025/10/12 22:15:44 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:44 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:44 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:44 chat_view.go:147: inside the fuction
+2025/10/12 22:15:44 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:45 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:45 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" like \"fig-ure\")\n\nI think the"}        }
+
+2025/10/12 22:15:45 claude-model.go:62: 
+
+2025/10/12 22:15:45 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:45 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:45 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:45 chat_view.go:147: inside the fuction
+2025/10/12 22:15:45 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:45 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:45 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" most mathematically fun answer would be **"}        }
+
+2025/10/12 22:15:45 claude-model.go:62: 
+
+2025/10/12 22:15:45 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:45 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:45 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:45 chat_view.go:147: inside the fuction
+2025/10/12 22:15:45 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:45 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:45 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"pineapple = π"}  }
+
+2025/10/12 22:15:45 claude-model.go:62: 
+
+2025/10/12 22:15:45 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:45 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:45 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:45 chat_view.go:147: inside the fuction
+2025/10/12 22:15:45 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:45 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:45 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" (pi)** since it's a play"}         }
+
+2025/10/12 22:15:45 claude-model.go:62: 
+
+2025/10/12 22:15:45 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:45 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:45 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:45 chat_view.go:147: inside the fuction
+2025/10/12 22:15:45 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:45 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:45 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"ful pun and pi is a famous"}     }
+
+2025/10/12 22:15:45 claude-model.go:62: 
+
+2025/10/12 22:15:45 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:45 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:45 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:45 chat_view.go:147: inside the fuction
+2025/10/12 22:15:45 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" mathematical constant. This would be both wh"}              }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"imsical and practical for"}               }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" multiplication!"}          }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EtIICkYICBgCKkDhaL9DD4WbdANnE4jSDxeQY9RKx8c9m+1cuR4E123R7S2vzkN94qXqaiy+Ctf5JAH8IOGTnuVrzNS9ySpKFTJPEgw3H6LHWtqwY/ZA/7gaDMc+q/aelU30FSRUgiIwHk6W6u8Puv5g9hoH301NuiiGYFFBt4HnpCy5SYe7uYlA8bomXA1waGTdqsyj63qvKrkHXVeWtOVCXSc/Xv49fOOTYMK1OtbTpMV/CJ4NUuzsRcj8zeig+ZFVUczVnK0DltBGygD/3B4MH4FlzQxueXViD2tVWiNoicA6pfPIy+DIXzogOzAALMGPtp9B908YxgizXzyKt1mGUwIQaqYE1x+Zd4JRuZVU7/mxFL/ydVgjvRIOq7+kFmcUOIeYPfPdnPBgvFT4VwSS7I/a8AUfsMP2TiMgt7sqjx4haiuX1452AAKYf7hVp4zOs2erKfZhYctHLNb6wUfHb/1a+FuI4VRYwK3dyYxC5HWGpJlM7AuHNWFs+Zd9q+9Mk6coz/Vypur5xrUkinBXg8iGLUjPaONYFNuvxEHGmT4kdGoqzf5uoMrharfAMFhWqrsNiIRbl4erYhbErkGMV3M4Mn7hngfqVr0biPo+NWBVojbG0t9rVSfYZFh4+xgkxUhjwHxgZV1J7btdbuG543FGUYpAicAiKQQ1mcTJWVUeNS28588XTm4SypEwIK9GPDZ2Vq1vq8zyYkxTGl2UF8bZjaimQ8O764hc1HUt4Jb7ngBYBCgZ4pVohRbLVFIRu8Srokowf7WOW9mqPaXNcb12uqAyzJCFhBAkyy8dwt5LDKz+z718iYp57LrpT/WNoI2GD3+Xsza2BK0CWe8vjqSQFGUQtbNXhPe97yaZdXOwvGrL2GnkgoPEuQYCatmuXESqudS7omFtqy76qrpVInVaeAO3jXDTnO8eQloCiaa36rLnS4GlwXEVNYOv/BJ1wd35dbqPKgZd/fWBUz2n3j1V2xZpwWFzdivt78Hjp+lNveq21fCxQfIcS2vi9bmpB02W3OwjThSMF3eUV7T5KQMbhDCWO8zOx3kvaEJKOOxpjFXH4kWbi3oHLSAV4xJN7UAjHYwHlLPovBRIY8aHeHZsb8pOAqeCPU2j2yD6w5Mx9OdfJpEL1wIl8b7O2bTfcAv8uMkhYUKS4BPlKNGzr3Qy3EPk3zp92SblyS6yzsou9ahbd0mntQUtnIqq9hPad7RPt06Mi1MoCgh4uZxUpMc4/TxNA64WBHoQQxHg9TvKsc79LlAV3ZCLDmUrLVMmR2RSa7NbPFD8Vv14NWsUgR30FgROkWLnrrm3xN/YXCyi6Egmx51dywWLAt32bJenvowUhm/uyInZkBTtbTgoefmUZ+1apg1+wHtI2JJcyeQ4lkJFKVjrhTbwICufgwrHYKhscDDKSgZCcCjNQxav6nfQxLIlWSkGOzQsxVNwThvTRqJHI5gIPvB5xrAjSjGX3XwYAQ=="}          }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_stop","index":0               }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}             }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Great question! I'd suggest a **pineapple** "}        }
+
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: Great question! I'd suggest a **pineapple** 
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"🍍 - because"}        }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: 🍍 - because
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" it sounds like \"pine-"}}
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true:  it sounds like "pine-
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:46 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:46 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"apple\" and we could assign it the value of"}              }
+
+2025/10/12 22:15:46 claude-model.go:62: 
+
+2025/10/12 22:15:46 chat_view.go:151: responseChan: true: apple" and we could assign it the value of
+2025/10/12 22:15:46 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:46 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:46 chat_view.go:147: inside the fuction
+2025/10/12 22:15:46 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" **π (pi)**,"}     }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true:  **π (pi)**,
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" which is approximately **"}}
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true:  which is approximately **
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"3.14159...**\n\nThat"}         }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true: 3.14159...**
+
+That
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" way:\n- 1."}   }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true:  way:
+- 1.
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"33 × π"}    }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true: 33 × π
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" ≈ 1.33 "}      }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true:  ≈ 1.33 
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"× 3.14159 "}           }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true: × 3.14159 
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"≈ **"}              }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true: ≈ **
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:47 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:47 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"4.18**"} }
+
+2025/10/12 22:15:47 claude-model.go:62: 
+
+2025/10/12 22:15:47 chat_view.go:151: responseChan: true: 4.18**
+2025/10/12 22:15:47 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:47 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:47 chat_view.go:147: inside the fuction
+2025/10/12 22:15:47 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:48 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:48 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"\n\nPlus, multiplying by pi"}         }
+
+2025/10/12 22:15:48 claude-model.go:62: 
+
+2025/10/12 22:15:48 chat_view.go:151: responseChan: true: 
+
+Plus, multiplying by pi
+2025/10/12 22:15:48 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:48 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:48 chat_view.go:147: inside the fuction
+2025/10/12 22:15:48 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:48 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:48 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" makes things nicely mathematical an"}           }
+
+2025/10/12 22:15:48 claude-model.go:62: 
+
+2025/10/12 22:15:48 chat_view.go:151: responseChan: true:  makes things nicely mathematical an
+2025/10/12 22:15:48 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:48 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:48 chat_view.go:147: inside the fuction
+2025/10/12 22:15:48 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:48 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:48 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"d a bit transcendental! "}           }
+
+2025/10/12 22:15:48 claude-model.go:62: 
+
+2025/10/12 22:15:48 chat_view.go:151: responseChan: true: d a bit transcendental! 
+2025/10/12 22:15:48 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:48 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:48 chat_view.go:147: inside the fuction
+2025/10/12 22:15:48 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:49 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:49 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"\n\nOther fun options:\n- **"}      }
+
+2025/10/12 22:15:49 claude-model.go:62: 
+
+2025/10/12 22:15:49 chat_view.go:151: responseChan: true: 
+
+Other fun options:
+- **
+2025/10/12 22:15:49 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:49 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:49 chat_view.go:147: inside the fuction
+2025/10/12 22:15:49 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:49 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:49 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Pairs** (pears 🍐)"} }
+
+2025/10/12 22:15:49 claude-model.go:62: 
+
+2025/10/12 22:15:49 chat_view.go:151: responseChan: true: Pairs** (pears 🍐)
+2025/10/12 22:15:49 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:49 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:49 chat_view.go:147: inside the fuction
+2025/10/12 22:15:49 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:49 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:49 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" = 2\n- **Dates** "}          }
+
+2025/10/12 22:15:49 claude-model.go:62: 
+
+2025/10/12 22:15:49 chat_view.go:151: responseChan: true:  = 2
+- **Dates** 
+2025/10/12 22:15:49 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:49 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:49 chat_view.go:147: inside the fuction
+2025/10/12 22:15:49 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:49 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:49 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"📅 = whatever today"}               }
+
+2025/10/12 22:15:49 claude-model.go:62: 
+
+2025/10/12 22:15:49 chat_view.go:151: responseChan: true: 📅 = whatever today
+2025/10/12 22:15:49 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:49 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:49 chat_view.go:147: inside the fuction
+2025/10/12 22:15:49 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:49 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:49 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"'s date number is\n- **Figs**"}  }
+
+2025/10/12 22:15:49 claude-model.go:62: 
+
+2025/10/12 22:15:49 chat_view.go:151: responseChan: true: 's date number is
+- **Figs**
+2025/10/12 22:15:49 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:49 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:49 chat_view.go:147: inside the fuction
+2025/10/12 22:15:49 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:50 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" = figures/numbers in general\n\nWhat "}  }
+
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:15:50 chat_view.go:151: responseChan: true:  = figures/numbers in general
+
+What 
+2025/10/12 22:15:50 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:50 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:50 chat_view.go:147: inside the fuction
+2025/10/12 22:15:50 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:50 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"do you think - should we go with p"}            }
+
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:15:50 chat_view.go:151: responseChan: true: do you think - should we go with p
+2025/10/12 22:15:50 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:50 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:50 chat_view.go:147: inside the fuction
+2025/10/12 22:15:50 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:50 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"ineapple-pi?"}      }
+
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:15:50 chat_view.go:151: responseChan: true: ineapple-pi?
+2025/10/12 22:15:50 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:50 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"content_block_stop","index":1    }
+
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:15:50 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:50 chat_view.go:147: inside the fuction
+2025/10/12 22:15:50 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:50 chat_view.go:151: responseChan: true: 
+2025/10/12 22:15:50 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:15:50 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:15:50 chat_view.go:147: inside the fuction
+2025/10/12 22:15:50 chat_view.go:148: responseChan %!s(chan string=0x140004aa150)
+2025/10/12 22:15:50 claude-model.go:62: event: message_delta
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":388,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":443}         }
+
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:15:50 claude-model.go:62: event: message_stop
+
+2025/10/12 22:15:50 claude-model.go:62: data: {"type":"message_stop"     }
+
+2025/10/12 22:15:50 chat_view.go:353: Final text in tui response channel
+2025/10/12 22:15:50 chat_view.go:354: closing doneChan and responseChan
+2025/10/12 22:15:50 chat_view.go:163: doneChan from waitForChatActivity
+2025/10/12 22:15:50 chat_view.go:185: got chatCompleteMsg
+2025/10/12 22:15:50 claude-model.go:62: 
+
+2025/10/12 22:19:41 logger.go:18: Logger initialized
+2025/10/12 22:19:43 chat_view.go:66: init
+2025/10/12 22:19:43 chat_view.go:75: loadHistory
+2025/10/12 22:19:43 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:19:43 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:19:43 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:19:43 chat_view.go:282: passed guard
+2025/10/12 22:19:43 chat_view.go:286: history count %!i(int=5)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:19:43 chat_view.go:255: windowSizeMsg
+2025/10/12 22:19:43 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:19:43 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:19:43 chat_view.go:282: passed guard
+2025/10/12 22:19:43 chat_view.go:286: history count %!i(int=5)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:19:43 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:19:56 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:56 chat_view.go:147: inside the fuction
+2025/10/12 22:19:56 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:56 claude-model.go:175: FULL PAYLOAD:
+2025/10/12 22:19:56 claude-model.go:176: 
+{claude-sonnet-4-5-20250929 [{user what is 6 times six?} {assistant 6 times 6 equals 36.} {user How about if we add fifty5 to that and then take the square root of 5 times the previous sum?} {assistant Let me work through this step by step:
+
+1. We had: 6 × 6 = 36
+2. Add 55 (interpreting "fifty5" as 55): 36 + 55 = 91
+3. Multiply that sum by 5: 91 × 5 = 455
+4. Take the square root: √455 ≈ 21.33
+
+So the answer is approximately **21.33** (or exactly √455).} {user subtract 20 carrots} {assistant 21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)
+
+So you'd have approximately **1.33 carrots** left! 🥕} {user multiply by apple and half a banana} {assistant I can't multiply by "apple" and "half a banana" unless we assign them numerical values! 
+
+If you'd like, we could:
+- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)
+- Assign them specific numbers (like apple = 1, banana = 2)
+
+What values would you like to use for the apple and banana? 🍎🍌} {user what is a good fruit to multiply with?} {assistant Great question! I'd suggest a **pineapple** 🍍 - because it sounds like "pine-apple" and we could assign it the value of **π (pi)**, which is approximately **3.14159...**
+
+That way:
+- 1.33 × π ≈ 1.33 × 3.14159 ≈ **4.18**
+
+Plus, multiplying by pi makes things nicely mathematical and a bit transcendental! 
+
+Other fun options:
+- **Pairs** (pears 🍐) = 2
+- **Dates** 📅 = whatever today's date number is
+- **Figs** = figures/numbers in general
+
+What do you think - should we go with pineapple-pi?} {user [{text ok multiply by two dates}]}] %!s(int=20000)  %!s(bool=true) %!s(*claude_model.ThinkingBlock=&{enabled 2000}) %!s(float32=1)}
+2025/10/12 22:19:56 claude-model.go:190: FULL JSON PAYLOAD:
+2025/10/12 22:19:56 claude-model.go:191: 
+{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"what is 6 times six?"},{"role":"assistant","content":"6 times 6 equals 36."},{"role":"user","content":"How about if we add fifty5 to that and then take the square root of 5 times the previous sum?"},{"role":"assistant","content":"Let me work through this step by step:\n\n1. We had: 6 × 6 = 36\n2. Add 55 (interpreting \"fifty5\" as 55): 36 + 55 = 91\n3. Multiply that sum by 5: 91 × 5 = 455\n4. Take the square root: √455 ≈ 21.33\n\nSo the answer is approximately **21.33** (or exactly √455)."},{"role":"user","content":"subtract 20 carrots"},{"role":"assistant","content":"21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)\n\nSo you'd have approximately **1.33 carrots** left! 🥕"},{"role":"user","content":"multiply by apple and half a banana"},{"role":"assistant","content":"I can't multiply by \"apple\" and \"half a banana\" unless we assign them numerical values! \n\nIf you'd like, we could:\n- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)\n- Assign them specific numbers (like apple = 1, banana = 2)\n\nWhat values would you like to use for the apple and banana? 🍎🍌"},{"role":"user","content":"what is a good fruit to multiply with?"},{"role":"assistant","content":"Great question! I'd suggest a **pineapple** 🍍 - because it sounds like \"pine-apple\" and we could assign it the value of **π (pi)**, which is approximately **3.14159...**\n\nThat way:\n- 1.33 × π ≈ 1.33 × 3.14159 ≈ **4.18**\n\nPlus, multiplying by pi makes things nicely mathematical and a bit transcendental! \n\nOther fun options:\n- **Pairs** (pears 🍐) = 2\n- **Dates** 📅 = whatever today's date number is\n- **Figs** = figures/numbers in general\n\nWhat do you think - should we go with pineapple-pi?"},{"role":"user","content":[{"type":"text","text":"ok multiply by two dates"}]}],"max_tokens":20000,"system":"","stream":true,"thinking":{"type":"enabled","budget_tokens":2000},"temperature":1}
+2025/10/12 22:19:57 claude-model.go:62: event: message_start
+
+2025/10/12 22:19:57 claude-model.go:62: data: {"type":"message_start","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01QMjEehmFzTqhtrin82RRsM","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":578,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":5,"service_tier":"standard"}}       }
+
+2025/10/12 22:19:57 claude-model.go:62: 
+
+2025/10/12 22:19:57 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:19:57 claude-model.go:62: data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}  }
+
+2025/10/12 22:19:57 claude-model.go:62: 
+
+2025/10/12 22:19:57 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:57 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"The user wants to"}    }
+
+2025/10/12 22:19:57 claude-model.go:62: 
+
+2025/10/12 22:19:57 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:57 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:57 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:57 chat_view.go:147: inside the fuction
+2025/10/12 22:19:58 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:58 claude-model.go:62: event: ping
+
+2025/10/12 22:19:58 claude-model.go:62: data: {"type": "ping"}
+
+2025/10/12 22:19:58 claude-model.go:62: 
+
+2025/10/12 22:19:58 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:58 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" multiply by \"two dates.\" Since I suggested dates coul"}        }
+
+2025/10/12 22:19:58 claude-model.go:62: 
+
+2025/10/12 22:19:58 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:58 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:58 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:58 chat_view.go:147: inside the fuction
+2025/10/12 22:19:58 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:58 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:58 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"d equal today's date number, I should clarify what they want"}  }
+
+2025/10/12 22:19:58 claude-model.go:62: 
+
+2025/10/12 22:19:58 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:58 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:58 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:58 chat_view.go:147: inside the fuction
+2025/10/12 22:19:58 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:58 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:58 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":". However, they said \"two dates\" so"}           }
+
+2025/10/12 22:19:58 claude-model.go:62: 
+
+2025/10/12 22:19:58 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:58 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:58 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:58 chat_view.go:147: inside the fuction
+2025/10/12 22:19:58 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:59 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:59 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" that could mean 2 × (date value).\n\nBut"}    }
+
+2025/10/12 22:19:59 claude-model.go:62: 
+
+2025/10/12 22:19:59 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:59 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:59 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:59 chat_view.go:147: inside the fuction
+2025/10/12 22:19:59 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:59 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:59 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" actually, I think the simplest interpretation is that \""}       }
+
+2025/10/12 22:19:59 claude-model.go:62: 
+
+2025/10/12 22:19:59 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:59 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:59 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:59 chat_view.go:147: inside the fuction
+2025/10/12 22:19:59 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:19:59 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:19:59 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"two dates\" = 2 (as"}           }
+
+2025/10/12 22:19:59 claude-model.go:62: 
+
+2025/10/12 22:19:59 chat_view.go:151: responseChan: true: 
+2025/10/12 22:19:59 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:19:59 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:19:59 chat_view.go:147: inside the fuction
+2025/10/12 22:19:59 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:00 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:00 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" in the number two). Like \"a pair\" or just"}     }
+
+2025/10/12 22:20:00 claude-model.go:62: 
+
+2025/10/12 22:20:00 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:00 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:00 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:00 chat_view.go:147: inside the fuction
+2025/10/12 22:20:00 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:00 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:00 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" the quantity two.\n\nLet me calculate:"}           }
+
+2025/10/12 22:20:00 claude-model.go:62: 
+
+2025/10/12 22:20:00 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:00 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:00 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:00 chat_view.go:147: inside the fuction
+2025/10/12 22:20:00 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:00 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:00 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" 1.33 × 2 = 2.66"}   }
+
+2025/10/12 22:20:00 claude-model.go:62: 
+
+2025/10/12 22:20:00 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:00 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:00 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:00 chat_view.go:147: inside the fuction
+2025/10/12 22:20:00 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"\n\nI'll go with this interpretation but keep"}           }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" it light and fun."}       }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Et8ECkYICBgCKkBc3SRfSaJm6BslWE0T06+02DfskVxh3htgNwoOid3tW5y15BtDT897KNm85njfO0CSa36xaWijSlJaRriCp/qyEgy78TCgqFHxGZcD8OsaDNI87QeFt+XHivXnTiIwgldE4HyQexh2mBB96fN0BYyEI03EtBaI14LL+C+5SIKoZBrqnxhp4GGfBm2dMHcwKsYDhBeMD/5EDdlQekYVin3nR4tHeCOBcir3h2pbITKxSmV0J78yJ8ueBNP0LPEcuRN8wYhHvC0JDqwieGW3eIzzM4+weifLrrfhf22YE4ll5lYuYki1aHwpOkSjfqKzx1dcEwCoPuX44sf3aMs4uCg2D1QOI6uHFlpzFPAKYBgaswsw8hHh7X9b/PbjyZ8zeF2Z7797LhVqpiu5UHnginOefaEAH/cun69RlJbj4FBNxJmNGucjO/QuuTWQX/Em5WfAI54OsWVr6ln+zDip42COfw7rYwCUa5rQrBS6iVSpj7wKlYNOTXkDweVUNgzzGIKV+iCPalXFDa4S33syfHmUHgKlDUNL2D9UeIShazHC948lPJvFg6oJlhR/b+jouIg7wikCcjqy8O4S8z0XVpV1Esc223JLqMCiHDN6XgTPAFs35V/rzH4J+AJRT1pivt1zwnfnfNHjlCidwg0p4S5HyP92pSeaIfV+UJ3GFQvG7Ugv0c70yQWaf/hjG/A6/s3ZppzE+PXIE0YdE+XzpjELzIz0tVTlJT8Owqfnot9eZFxts3rke6I1r30v6y42mgxeDds3LbKA+bV9ZRDnEHOnrMRRZMWloRgB"}}
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_stop","index":0   }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}  }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Perfect! Let's multiply by two"}             }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: Perfect! Let's multiply by two
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" dates 📅📅\n\n1.33 × 2 "}   }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true:  dates 📅📅
+
+1.33 × 2 
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:01 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:01 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"= **2.66**\n\nSo our"} }
+
+2025/10/12 22:20:01 claude-model.go:62: 
+
+2025/10/12 22:20:01 chat_view.go:151: responseChan: true: = **2.66**
+
+So our
+2025/10/12 22:20:01 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:01 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:01 chat_view.go:147: inside the fuction
+2025/10/12 22:20:01 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" final answer is approximately **2.66**"}           }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true:  final answer is approximately **2.66**
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"!\n\nTo recap the whole journey"}  }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true: !
+
+To recap the whole journey
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":":\n- 6 × 6 = 36"}  }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true: :
+- 6 × 6 = 36
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"\n- \\+ 55 = 91\n-"}             }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true: 
+- \+ 55 = 91
+-
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" × 5 = 455\n-"}     }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true:  × 5 = 455
+-
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:02 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:02 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" √455 ≈ "}        }
+
+2025/10/12 22:20:02 claude-model.go:62: 
+
+2025/10/12 22:20:02 chat_view.go:151: responseChan: true:  √455 ≈ 
+2025/10/12 22:20:02 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:02 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:02 chat_view.go:147: inside the fuction
+2025/10/12 22:20:02 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"21.33\n- \\- 20 carr"}               }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true: 21.33
+- \- 20 carr
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"ots = 1.33\n- × 2 dates = **"}       }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true: ots = 1.33
+- × 2 dates = **
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"2.66**\n\nThat's quite the"}          }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true: 2.66**
+
+That's quite the
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" fruit salad calculation! 🥕"}        }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true:  fruit salad calculation! 🥕
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"📅"}               }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true: 📅
+2025/10/12 22:20:03 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"content_block_stop","index":1          }
+
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:03 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:03 chat_view.go:147: inside the fuction
+2025/10/12 22:20:03 chat_view.go:148: responseChan %!s(chan string=0x140002c41c0)
+2025/10/12 22:20:03 claude-model.go:62: event: message_delta
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":578,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":267}       }
+
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:03 claude-model.go:62: event: message_stop
+
+2025/10/12 22:20:03 claude-model.go:62: data: {"type":"message_stop" }
+
+2025/10/12 22:20:03 chat_view.go:353: Final text in tui response channel
+2025/10/12 22:20:03 chat_view.go:354: closing doneChan and responseChan
+2025/10/12 22:20:03 chat_view.go:163: doneChan from waitForChatActivity
+2025/10/12 22:20:03 chat_view.go:186: got chatCompleteMsg
+2025/10/12 22:20:03 chat_view.go:75: loadHistory
+2025/10/12 22:20:03 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:20:03 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:20:03 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:03 chat_view.go:282: passed guard
+2025/10/12 22:20:03 chat_view.go:286: history count %!i(int=5)
+2025/10/12 22:20:03 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:03 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:03 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:03 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:03 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:03 claude-model.go:62: 
+
+2025/10/12 22:20:13 chat_view.go:66: init
+2025/10/12 22:20:13 chat_view.go:75: loadHistory
+2025/10/12 22:20:13 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:20:13 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:20:13 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:13 chat_view.go:282: passed guard
+2025/10/12 22:20:13 chat_view.go:286: history count %!i(int=6)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:20:13 chat_view.go:255: windowSizeMsg
+2025/10/12 22:20:13 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:20:13 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:13 chat_view.go:282: passed guard
+2025/10/12 22:20:13 chat_view.go:286: history count %!i(int=6)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:13 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:20:19 chat_view.go:66: init
+2025/10/12 22:20:19 chat_view.go:75: loadHistory
+2025/10/12 22:20:19 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:20:19 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:20:19 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:19 chat_view.go:282: passed guard
+2025/10/12 22:20:19 chat_view.go:286: history count %!i(int=6)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:20:19 chat_view.go:255: windowSizeMsg
+2025/10/12 22:20:19 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:20:19 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:19 chat_view.go:282: passed guard
+2025/10/12 22:20:19 chat_view.go:286: history count %!i(int=6)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:19 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:20:31 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:31 chat_view.go:147: inside the fuction
+2025/10/12 22:20:31 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:31 claude-model.go:175: FULL PAYLOAD:
+2025/10/12 22:20:31 claude-model.go:176: 
+{claude-sonnet-4-5-20250929 [{user what is 6 times six?} {assistant 6 times 6 equals 36.} {user How about if we add fifty5 to that and then take the square root of 5 times the previous sum?} {assistant Let me work through this step by step:
+
+1. We had: 6 × 6 = 36
+2. Add 55 (interpreting "fifty5" as 55): 36 + 55 = 91
+3. Multiply that sum by 5: 91 × 5 = 455
+4. Take the square root: √455 ≈ 21.33
+
+So the answer is approximately **21.33** (or exactly √455).} {user subtract 20 carrots} {assistant 21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)
+
+So you'd have approximately **1.33 carrots** left! 🥕} {user multiply by apple and half a banana} {assistant I can't multiply by "apple" and "half a banana" unless we assign them numerical values! 
+
+If you'd like, we could:
+- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)
+- Assign them specific numbers (like apple = 1, banana = 2)
+
+What values would you like to use for the apple and banana? 🍎🍌} {user what is a good fruit to multiply with?} {assistant Great question! I'd suggest a **pineapple** 🍍 - because it sounds like "pine-apple" and we could assign it the value of **π (pi)**, which is approximately **3.14159...**
+
+That way:
+- 1.33 × π ≈ 1.33 × 3.14159 ≈ **4.18**
+
+Plus, multiplying by pi makes things nicely mathematical and a bit transcendental! 
+
+Other fun options:
+- **Pairs** (pears 🍐) = 2
+- **Dates** 📅 = whatever today's date number is
+- **Figs** = figures/numbers in general
+
+What do you think - should we go with pineapple-pi?} {user ok multiply by two dates} {assistant Perfect! Let's multiply by two dates 📅📅
+
+1.33 × 2 = **2.66**
+
+So our final answer is approximately **2.66**!
+
+To recap the whole journey:
+- 6 × 6 = 36
+- \+ 55 = 91
+- × 5 = 455
+- √455 ≈ 21.33
+- \- 20 carrots = 1.33
+- × 2 dates = **2.66**
+
+That's quite the fruit salad calculation! 🥕📅} {user [{text test that again}]}] %!s(int=20000)  %!s(bool=true) %!s(*claude_model.ThinkingBlock=&{enabled 2000}) %!s(float32=1)}
+2025/10/12 22:20:31 claude-model.go:190: FULL JSON PAYLOAD:
+2025/10/12 22:20:31 claude-model.go:191: 
+{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"what is 6 times six?"},{"role":"assistant","content":"6 times 6 equals 36."},{"role":"user","content":"How about if we add fifty5 to that and then take the square root of 5 times the previous sum?"},{"role":"assistant","content":"Let me work through this step by step:\n\n1. We had: 6 × 6 = 36\n2. Add 55 (interpreting \"fifty5\" as 55): 36 + 55 = 91\n3. Multiply that sum by 5: 91 × 5 = 455\n4. Take the square root: √455 ≈ 21.33\n\nSo the answer is approximately **21.33** (or exactly √455)."},{"role":"user","content":"subtract 20 carrots"},{"role":"assistant","content":"21.33 - 20 = **1.33** (or more precisely: √455 - 20 ≈ 1.33)\n\nSo you'd have approximately **1.33 carrots** left! 🥕"},{"role":"user","content":"multiply by apple and half a banana"},{"role":"assistant","content":"I can't multiply by \"apple\" and \"half a banana\" unless we assign them numerical values! \n\nIf you'd like, we could:\n- Treat them as variables (giving us: 1.33 × apple × 0.5 banana)\n- Assign them specific numbers (like apple = 1, banana = 2)\n\nWhat values would you like to use for the apple and banana? 🍎🍌"},{"role":"user","content":"what is a good fruit to multiply with?"},{"role":"assistant","content":"Great question! I'd suggest a **pineapple** 🍍 - because it sounds like \"pine-apple\" and we could assign it the value of **π (pi)**, which is approximately **3.14159...**\n\nThat way:\n- 1.33 × π ≈ 1.33 × 3.14159 ≈ **4.18**\n\nPlus, multiplying by pi makes things nicely mathematical and a bit transcendental! \n\nOther fun options:\n- **Pairs** (pears 🍐) = 2\n- **Dates** 📅 = whatever today's date number is\n- **Figs** = figures/numbers in general\n\nWhat do you think - should we go with pineapple-pi?"},{"role":"user","content":"ok multiply by two dates"},{"role":"assistant","content":"Perfect! Let's multiply by two dates 📅📅\n\n1.33 × 2 = **2.66**\n\nSo our final answer is approximately **2.66**!\n\nTo recap the whole journey:\n- 6 × 6 = 36\n- \\+ 55 = 91\n- × 5 = 455\n- √455 ≈ 21.33\n- \\- 20 carrots = 1.33\n- × 2 dates = **2.66**\n\nThat's quite the fruit salad calculation! 🥕📅"},{"role":"user","content":[{"type":"text","text":"test that again"}]}],"max_tokens":20000,"system":"","stream":true,"thinking":{"type":"enabled","budget_tokens":2000},"temperature":1}
+2025/10/12 22:20:33 claude-model.go:62: event: message_start
+
+2025/10/12 22:20:33 claude-model.go:62: data: {"type":"message_start","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_01QXyCNfESZxdBsBTK6mfzgV","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":722,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":7,"service_tier":"standard"}}            }
+
+2025/10/12 22:20:33 claude-model.go:62: 
+
+2025/10/12 22:20:33 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:20:33 claude-model.go:62: data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}          }
+
+2025/10/12 22:20:33 claude-model.go:62: 
+
+2025/10/12 22:20:33 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:33 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"The user wants me to \""}     }
+
+2025/10/12 22:20:33 claude-model.go:62: 
+
+2025/10/12 22:20:33 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:33 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:33 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:33 chat_view.go:147: inside the fuction
+2025/10/12 22:20:33 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:33 claude-model.go:62: event: ping
+
+2025/10/12 22:20:33 claude-model.go:62: data: {"type": "ping"}
+
+2025/10/12 22:20:33 claude-model.go:62: 
+
+2025/10/12 22:20:33 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:33 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"test that again\" - they might want me to verify"}        }
+
+2025/10/12 22:20:33 claude-model.go:62: 
+
+2025/10/12 22:20:33 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:33 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:33 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:33 chat_view.go:147: inside the fuction
+2025/10/12 22:20:33 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:34 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:34 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" the calculation. Let me go through it step by step to make sure I got"}             }
+
+2025/10/12 22:20:34 claude-model.go:62: 
+
+2025/10/12 22:20:34 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:34 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:34 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:34 chat_view.go:147: inside the fuction
+2025/10/12 22:20:34 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:34 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:34 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" it right:\n\n1. 6 × 6 = 36"}               }
+
+2025/10/12 22:20:34 claude-model.go:62: 
+
+2025/10/12 22:20:34 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:34 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:34 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:34 chat_view.go:147: inside the fuction
+2025/10/12 22:20:34 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:34 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:34 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" ✓\n2. 36 + 55 = 91"} }
+
+2025/10/12 22:20:34 claude-model.go:62: 
+
+2025/10/12 22:20:34 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:34 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:34 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:34 chat_view.go:147: inside the fuction
+2025/10/12 22:20:34 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:34 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:34 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" ✓\n3. 91 × 5 = "}          }
+
+2025/10/12 22:20:34 claude-model.go:62: 
+
+2025/10/12 22:20:34 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:34 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:34 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:34 chat_view.go:147: inside the fuction
+2025/10/12 22:20:34 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:34 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:34 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"455 ✓\n4. √455 ≈ "} }
+
+2025/10/12 22:20:34 claude-model.go:62: 
+
+2025/10/12 22:20:34 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:34 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:34 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:34 chat_view.go:147: inside the fuction
+2025/10/12 22:20:34 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"21.3307... ✓\n5. "}  }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"21.3307 - 20 = 1."}               }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"3307 ✓\n6. 1.3307 ×"}      }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" 2 = 2.6614 ✓\n\nSo"}        }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" approximately 2.66 is correct."}    }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:35 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:35 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" Let me present this verification clearly."}            }
+
+2025/10/12 22:20:35 claude-model.go:62: 
+
+2025/10/12 22:20:35 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:35 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:35 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:35 chat_view.go:147: inside the fuction
+2025/10/12 22:20:35 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"Ep8ECkYICBgCKkBTndYkAtzcSPBrYAM9dC7kgFul1Z0A0BKsLf97SRJ32GVYfFQVAVteyxXjTfrX5CYvp17D5hmnChowFwiO48TgEgzwUOiRpw+MfOrqyOEaDEYDrqSYlocpeFk9NCIw1RDcxY03d1dhzrVFYa3y4O7uSDftsFcH0GRwHn1y3PZTf7lAVKZUwGfsmRJBAnt3KoYD1qIvEJLWIabLlT7M2/R0zTZFswvS36t4Ugj2+2FEiIve4hbT2q7uIvhb55WkaTMzLzcOKX2HJr3a27+C6qw+GLiz/b/DsVZ2xC9D29SMZupJzA63sXnEd2IrbXzdJ0eymRLroeCdy8/aWaYrUGuKa+EIxRYFLqoSr/cmkvFOzMjvLoQzIsY7KOkSprMvR4emrBssS1Rt9bmJiWoOQHpNCSU4tZD+wNhPYuKVUP4ZbpNeKBZZ/bMvD4Qi+MMWnsE8VsUAVtiD8ReR4+vS1VMIT7O7RU0BU08uuXrFj/yljyd8oIdgzFUvxkirulANOIkFYcM7zxvP7x6RBuCce+5vbtOAIobB+6UpolTP9GBk8xcMOf5++t3HiODHabmV5W0H6WGbkv+Vy9IDhTSpxirbUA6VcK6XxrqWcoTQoNvXDwDdSkkybE1Xr4gs1o1t5i2BZQUABNC69XATHwDd6WXHcYf72DsKlNq32/d6xdB2NxcXSvIkiLfglCf6mDun6VOl5YWk4Z1dGAE="}   }
+
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:36 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:36 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:36 chat_view.go:147: inside the fuction
+2025/10/12 22:20:36 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_stop","index":0            }
+
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""} }
+
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Let me verify the calculation step-by-step:\n\n1. **6 × 6** = "}           }
+
+2025/10/12 22:20:36 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:36 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:36 chat_view.go:147: inside the fuction
+2025/10/12 22:20:36 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:36 chat_view.go:151: responseChan: true: Let me verify the calculation step-by-step:
+
+1. **6 × 6** = 
+2025/10/12 22:20:36 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:36 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:36 chat_view.go:147: inside the fuction
+2025/10/12 22:20:36 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"36 ✓\n2. **36 + 55** ="}        }
+
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 chat_view.go:151: responseChan: true: 36 ✓
+2. **36 + 55** =
+2025/10/12 22:20:36 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:36 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:36 chat_view.go:147: inside the fuction
+2025/10/12 22:20:36 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:36 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:36 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" 91 ✓\n3. **91 × 5**"}            }
+
+2025/10/12 22:20:36 claude-model.go:62: 
+
+2025/10/12 22:20:36 chat_view.go:151: responseChan: true:  91 ✓
+3. **91 × 5**
+2025/10/12 22:20:36 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:36 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:36 chat_view.go:147: inside the fuction
+2025/10/12 22:20:36 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" = 455 ✓\n4. **√455** ="}     }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" 21.3307... ✓\n5. **21.3"}         }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"307 - 20** = 1.3307 ✓"}        }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true:  = 455 ✓
+4. **√455** =
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true:  21.3307... ✓
+5. **21.3
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: 307 - 20** = 1.3307 ✓
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"\n6. **1.3307 × 2** = 2"}           }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: 
+6. **1.3307 × 2** = 2
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":".6614 ✓\n\nConfirme"}  }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"d! The answer is approximately **2."}           }
+
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: .6614 ✓
+
+Confirme
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: d! The answer is approximately **2.
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"66** (or more precisely **"}        }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: 66** (or more precisely **
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:37 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:37 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"2.6614**).\n\nThe"}      }
+
+2025/10/12 22:20:37 claude-model.go:62: 
+
+2025/10/12 22:20:37 chat_view.go:151: responseChan: true: 2.6614**).
+
+The
+2025/10/12 22:20:37 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:37 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:37 chat_view.go:147: inside the fuction
+2025/10/12 22:20:37 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:38 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:20:38 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" math checks out! 🎯"} }
+
+2025/10/12 22:20:38 claude-model.go:62: 
+
+2025/10/12 22:20:38 chat_view.go:151: responseChan: true:  math checks out! 🎯
+2025/10/12 22:20:38 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:38 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:38 chat_view.go:147: inside the fuction
+2025/10/12 22:20:38 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:38 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:20:38 claude-model.go:62: data: {"type":"content_block_stop","index":1             }
+
+2025/10/12 22:20:38 claude-model.go:62: 
+
+2025/10/12 22:20:38 chat_view.go:151: responseChan: true: 
+2025/10/12 22:20:38 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:20:38 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:20:38 chat_view.go:147: inside the fuction
+2025/10/12 22:20:38 chat_view.go:148: responseChan %!s(chan string=0x140002ca000)
+2025/10/12 22:20:38 claude-model.go:62: event: message_delta
+
+2025/10/12 22:20:38 claude-model.go:62: data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":722,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":341}       }
+
+2025/10/12 22:20:38 claude-model.go:62: 
+
+2025/10/12 22:20:38 claude-model.go:62: event: message_stop
+
+2025/10/12 22:20:38 claude-model.go:62: data: {"type":"message_stop"            }
+
+2025/10/12 22:20:38 chat_view.go:353: Final text in tui response channel
+2025/10/12 22:20:38 chat_view.go:354: closing doneChan and responseChan
+2025/10/12 22:20:38 chat_view.go:163: doneChan from waitForChatActivity
+2025/10/12 22:20:38 chat_view.go:186: got chatCompleteMsg
+2025/10/12 22:20:38 chat_view.go:75: loadHistory
+2025/10/12 22:20:38 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:20:38 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:20:38 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:20:38 chat_view.go:282: passed guard
+2025/10/12 22:20:38 chat_view.go:286: history count %!i(int=6)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:20:38 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:20:38 claude-model.go:62: 
+
+2025/10/12 22:21:14 chat_view.go:66: init
+2025/10/12 22:21:14 chat_view.go:75: loadHistory
+2025/10/12 22:21:14 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:21:14 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:21:14 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:21:14 chat_view.go:282: passed guard
+2025/10/12 22:21:14 chat_view.go:286: history count %!i(int=7)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:21:14 chat_view.go:255: windowSizeMsg
+2025/10/12 22:21:14 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:21:14 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:21:14 chat_view.go:282: passed guard
+2025/10/12 22:21:14 chat_view.go:286: history count %!i(int=7)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:21:14 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:23:47 chat_view.go:66: init
+2025/10/12 22:23:47 chat_view.go:75: loadHistory
+2025/10/12 22:23:47 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:23:47 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:23:47 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:23:47 chat_view.go:282: passed guard
+2025/10/12 22:23:47 chat_view.go:286: history count %!i(int=7)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:23:47 chat_view.go:255: windowSizeMsg
+2025/10/12 22:23:47 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:23:47 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:23:47 chat_view.go:282: passed guard
+2025/10/12 22:23:47 chat_view.go:286: history count %!i(int=7)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:23:47 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:35:50 logger.go:18: Logger initialized
+2025/10/12 22:35:53 chat_view.go:66: init
+2025/10/12 22:35:53 chat_view.go:75: loadHistory
+2025/10/12 22:35:53 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:35:53 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:35:53 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:35:53 chat_view.go:282: passed guard
+2025/10/12 22:35:53 chat_view.go:286: history count %!i(int=2)
+2025/10/12 22:35:53 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:35:53 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:35:53 chat_view.go:255: windowSizeMsg
+2025/10/12 22:35:53 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:35:53 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:35:53 chat_view.go:282: passed guard
+2025/10/12 22:35:53 chat_view.go:286: history count %!i(int=2)
+2025/10/12 22:35:53 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:35:53 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:36:03 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:03 chat_view.go:147: inside the fuction
+2025/10/12 22:36:03 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:03 claude-model.go:175: FULL PAYLOAD:
+2025/10/12 22:36:03 claude-model.go:176: 
+{claude-sonnet-4-5-20250929 [{user Hi, what's blue?} {assistant Hello! Blue is a color that falls between green and violet on the visible light spectrum. It's one of the primary colors (along with red and yellow in traditional color theory).
+
+Some common things that are blue include:
+- The sky on a clear day
+- The ocean
+- Blueberries
+- Sapphires
+- Blue jays
+
+Is there something specific about blue you'd like to know more about?} {user what's orange?} {assistant Orange is a color that falls between red and yellow on the visible light spectrum. It's a secondary color, created by mixing red and yellow.
+
+Some common things that are orange include:
+- Oranges (the fruit, which the color is named after!)
+- Pumpkins
+- Carrots
+- Autumn leaves
+- Sunsets
+- Traffic cones
+
+Orange is often associated with warmth, energy, enthusiasm, and autumn. Is there anything specific about orange you'd like to know?} {user [{text what's green?}]}] %!s(int=20000)  %!s(bool=true) %!s(*claude_model.ThinkingBlock=&{enabled 2000}) %!s(float32=1)}
+2025/10/12 22:36:03 claude-model.go:190: FULL JSON PAYLOAD:
+2025/10/12 22:36:03 claude-model.go:191: 
+{"model":"claude-sonnet-4-5-20250929","messages":[{"role":"user","content":"Hi, what's blue?"},{"role":"assistant","content":"Hello! Blue is a color that falls between green and violet on the visible light spectrum. It's one of the primary colors (along with red and yellow in traditional color theory).\n\nSome common things that are blue include:\n- The sky on a clear day\n- The ocean\n- Blueberries\n- Sapphires\n- Blue jays\n\nIs there something specific about blue you'd like to know more about?"},{"role":"user","content":"what's orange?"},{"role":"assistant","content":"Orange is a color that falls between red and yellow on the visible light spectrum. It's a secondary color, created by mixing red and yellow.\n\nSome common things that are orange include:\n- Oranges (the fruit, which the color is named after!)\n- Pumpkins\n- Carrots\n- Autumn leaves\n- Sunsets\n- Traffic cones\n\nOrange is often associated with warmth, energy, enthusiasm, and autumn. Is there anything specific about orange you'd like to know?"},{"role":"user","content":[{"type":"text","text":"what's green?"}]}],"max_tokens":20000,"system":"","stream":true,"thinking":{"type":"enabled","budget_tokens":2000},"temperature":1}
+2025/10/12 22:36:05 claude-model.go:62: event: message_start
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"message_start","message":{"model":"claude-sonnet-4-5-20250929","id":"msg_016HGTpsrPpag1TVyy64Z4zA","type":"message","role":"assistant","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":259,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"cache_creation":{"ephemeral_5m_input_tokens":0,"ephemeral_1h_input_tokens":0},"output_tokens":3,"service_tier":"standard"}}       }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}        }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"The user"} }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: ping
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type": "ping"}
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" is asking about the color green,"}         }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" following the same pattern as their"}     }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":" previous questions about blue and orange."}       }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"EqECCkYICBgCKkBzYaMV8Rnuh1nHvJumFImj7xjgLPZPmckKZ/OUUDcefW8EsOeFA7Y0YUpaPgakCjXlVWvJuyNPVX+1uHM598j2EgyYSjKuFrYJ9QyQCR4aDNHbbezqtLurK3vNQSIw1dcNywm6YNCXil93XX9zrva679W2ZLZZ2uNF0T92l3ryPtm+oThDVPgoOnO7u9mBKogBOJ7X1DhdIOjcc01aaQYS6JOM1aF3Zl0ee4HKDENyIJWVYD8VIv47aQw9EFYlBv+bLvCZktw8nd4JEmebxpYINYkTXz/ahfExnT/iikJQRGWKlCTWErYn2GXEKcFvGgd1l8nHXZ7zXXjaGxWU+9WMx/drwXBcb/8fw2kYgjd4gnveBY9kME2S2BgB"}     }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_stop","index":0   }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_start
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}     }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"Green is a color that falls between yellow and blue on the visible light spectrum."}    }
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true: Green is a color that falls between yellow and blue on the visible light spectrum.
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:05 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:05 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" It's a secondary color, created by mixing blue"}}
+
+2025/10/12 22:36:05 claude-model.go:62: 
+
+2025/10/12 22:36:05 chat_view.go:151: responseChan: true:  It's a secondary color, created by mixing blue
+2025/10/12 22:36:05 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:05 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:05 chat_view.go:147: inside the fuction
+2025/10/12 22:36:05 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" and yellow.\n\nSome common things that are green include:\n-"}            }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true:  and yellow.
+
+Some common things that are green include:
+-
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" Grass and leaves\n- Emeralds\n- L"}         }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true:  Grass and leaves
+- Emeralds
+- L
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"imes\n- Frogs\n- Traffic"}             }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true: imes
+- Frogs
+- Traffic
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" lights (the \"go\" signal)\n- Four"}     }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true:  lights (the "go" signal)
+- Four
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"-leaf clovers\n\nGreen is often associated with nature, growth, fresh"}              }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true: -leaf clovers
+
+Green is often associated with nature, growth, fresh
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:06 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:06 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"ness, and environmental themes. It"}          }
+
+2025/10/12 22:36:06 claude-model.go:62: 
+
+2025/10/12 22:36:06 chat_view.go:151: responseChan: true: ness, and environmental themes. It
+2025/10/12 22:36:06 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:06 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:06 chat_view.go:147: inside the fuction
+2025/10/12 22:36:06 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:07 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"'s also one of the most rest"}       }
+
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 chat_view.go:151: responseChan: true: 's also one of the most rest
+2025/10/12 22:36:07 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:07 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:07 chat_view.go:147: inside the fuction
+2025/10/12 22:36:07 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:07 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"ful colors for the human eye.\n\nIs there something particular"}               }
+
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 chat_view.go:151: responseChan: true: ful colors for the human eye.
+
+Is there something particular
+2025/10/12 22:36:07 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:07 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:07 chat_view.go:147: inside the fuction
+2025/10/12 22:36:07 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:07 claude-model.go:62: event: content_block_delta
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":" about green you'd like to explore?"}       }
+
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 claude-model.go:62: event: content_block_stop
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"content_block_stop","index":1 }
+
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 chat_view.go:151: responseChan: true:  about green you'd like to explore?
+2025/10/12 22:36:07 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:07 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:07 chat_view.go:147: inside the fuction
+2025/10/12 22:36:07 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:07 chat_view.go:151: responseChan: true: 
+2025/10/12 22:36:07 chat_view.go:177: got chatChunkMsg
+2025/10/12 22:36:07 chat_view.go:144: waitForChatActivity started
+2025/10/12 22:36:07 chat_view.go:147: inside the fuction
+2025/10/12 22:36:07 chat_view.go:148: responseChan %!s(chan string=0x1400034e0e0)
+2025/10/12 22:36:07 claude-model.go:62: event: message_delta
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"input_tokens":259,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":158}            }
+
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 claude-model.go:62: event: message_stop
+
+2025/10/12 22:36:07 claude-model.go:62: data: {"type":"message_stop"     }
+
+2025/10/12 22:36:07 chat_view.go:374: Final text in tui response channel
+2025/10/12 22:36:07 chat_view.go:375: closing doneChan and responseChan
+2025/10/12 22:36:07 claude-model.go:62: 
+
+2025/10/12 22:36:07 chat_view.go:163: doneChan from waitForChatActivity
+2025/10/12 22:36:07 chat_view.go:186: got chatCompleteMsg
+2025/10/12 22:36:07 chat_view.go:75: loadHistory
+2025/10/12 22:36:07 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:36:07 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:36:07 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:36:07 chat_view.go:282: passed guard
+2025/10/12 22:36:07 chat_view.go:286: history count %!i(int=3)
+2025/10/12 22:36:07 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:36:07 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:36:07 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:36:37 chat_view.go:66: init
+2025/10/12 22:36:37 chat_view.go:75: loadHistory
+2025/10/12 22:36:37 chat_view.go:86: returning historyLoadedMsg
+2025/10/12 22:36:37 chat_view.go:234: historyLoaded msg handled
+2025/10/12 22:36:37 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:36:37 chat_view.go:282: passed guard
+2025/10/12 22:36:37 chat_view.go:286: history count %!i(int=10)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=7)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=8)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=9)
+2025/10/12 22:36:37 chat_view.go:255: windowSizeMsg
+2025/10/12 22:36:37 chat_view.go:257: windowSizeMsg not ready
+2025/10/12 22:36:37 chat_view.go:278: historyLoaded %!s(bool=true)
+2025/10/12 22:36:37 chat_view.go:282: passed guard
+2025/10/12 22:36:37 chat_view.go:286: history count %!i(int=10)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=0)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=1)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=2)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=3)
+2025/10/12 22:36:37 chat_view.go:288: add history %!i(int=4)
+2025/10/12 22:36:38 chat_view.go:288: add history %!i(int=5)
+2025/10/12 22:36:38 chat_view.go:288: add history %!i(int=6)
+2025/10/12 22:36:38 chat_view.go:288: add history %!i(int=7)
+2025/10/12 22:36:38 chat_view.go:288: add history %!i(int=8)
+2025/10/12 22:36:38 chat_view.go:288: add history %!i(int=9)

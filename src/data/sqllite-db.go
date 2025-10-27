@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"owl/logger"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -64,8 +66,10 @@ func createHistoryTables(db *sql.DB) {
              context_id INTEGER,
              prompt TEXT,
              response TEXT,
+			 response_content TEXT,
              abreviation TEXT,
              token_count INTEGER
+			 created INT
          )
      `
 	_, err := db.Exec(createTableQuery)
@@ -120,8 +124,8 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
-	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count) VALUES (?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount)
+	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created) VALUES (?, ?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now())
 	if err != nil {
 		println(err)
 		defer db.Close()
@@ -143,21 +147,22 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, context_id, prompt, response, abreviation, token_count FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
+	logger.Debug.Printf("Fetching history for contextId: %v, maxCount: %v", contextId, maxCount)
+	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
 	rows, err := db.Query(selectQuery, contextId, maxCount)
 	if err != nil {
+		logger.Debug.Printf("Error in sql %s", err)
 		return nil, err
 	}
 
 	var histories []History
 	for rows.Next() {
 		var history History
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.Abbreviation, &history.TokenCount)
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created)
 		if err != nil {
 			return nil, err
 		}
 		histories = append(histories, history)
-
 	}
 	for i, j := 0, len(histories)-1; i < j; i, j = i+1, j-1 {
 		histories[i], histories[j] = histories[j], histories[i]
