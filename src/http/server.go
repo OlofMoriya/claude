@@ -168,7 +168,7 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
-func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string) {
+func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string) {
 
 	repository, ok := httpResponseHandler.Repository.(*data.PostgresHistoryRepository)
 
@@ -177,12 +177,13 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 	}
 
 	history := data.History{
-		ContextId:    contextId,
-		Prompt:       prompt,
-		Response:     response,
-		Abbreviation: "",
-		TokenCount:   0,
-		UserId:       int64(repository.User.Id),
+		ContextId:       contextId,
+		Prompt:          prompt,
+		Response:        response,
+		Abbreviation:    "",
+		TokenCount:      0,
+		UserId:          int64(repository.User.Id),
+		ResponseContent: responseContent,
 		//TODO abreviation
 		//TODO tokencount
 	}

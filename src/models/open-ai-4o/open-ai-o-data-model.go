@@ -12,8 +12,16 @@ type RequestMessage struct {
 type ChatCompletionRequest struct {
 	Model     string           `json:"model"`
 	Messages  []RequestMessage `json:"messages"`
+	Tools     []Tool           `json:"tools"`
 	Stream    bool             `json:"stream"`
 	MaxTokens int              `json:"max_tokens"`
+}
+
+type Tool interface {
+}
+
+type SimpleTool struct {
+	Type string `json:"type"`
 }
 
 type Choice struct {

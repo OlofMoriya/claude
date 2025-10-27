@@ -42,8 +42,8 @@ func (r *PostgresHistoryRepository) GetContextById(contextId int64) (Context, er
 
 func (r *PostgresHistoryRepository) InsertHistory(history History) (int64, error) {
 	var id int64
-	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, user_id, created) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
-		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.UserId, time.Now()).
+	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, user_id, created, response_content) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.UserId, time.Now(), history.ResponseContent).
 		Scan(&id)
 	if err != nil {
 		return 0, err

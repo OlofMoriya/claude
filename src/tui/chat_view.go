@@ -666,7 +666,7 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 	h.responseChan <- text
 }
 
-func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string) {
+func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string) {
 	h.fullResponse = response
 
 	// Signal done BEFORE closing responseChan
@@ -676,11 +676,12 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	close(h.responseChan)
 
 	history := data.History{
-		ContextId:    contextId,
-		Prompt:       prompt,
-		Response:     response,
-		Abbreviation: "",
-		TokenCount:   0,
+		ContextId:       contextId,
+		Prompt:          prompt,
+		Response:        response,
+		Abbreviation:    "",
+		TokenCount:      0,
+		ResponseContent: responseContent,
 	}
 
 	_, err := h.Repository.InsertHistory(history)
