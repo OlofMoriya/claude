@@ -5,10 +5,17 @@ import (
 	"owl/data"
 )
 
+type ToolResponse struct {
+	Id              string
+	Response        string
+	ResponseMessage interface{}
+}
+
 type PayloadModifiers struct {
-	Pdf   string
-	Web   bool
-	Image bool
+	ToolResponses []ToolResponse
+	Pdf           string
+	Web           bool
+	Image         bool
 }
 
 type Model interface {

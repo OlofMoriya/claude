@@ -80,5 +80,5 @@ func (model *OpenAiEmbeddingsModel) HandleBodyBytes(bytes []byte) {
 		println(err)
 	}
 
-	model.ResponseHandler.FinalText(0, model.prompt, string(embeddingsArray))
+	model.ResponseHandler.FinalText(0, model.prompt, string(embeddingsArray), "")
 }

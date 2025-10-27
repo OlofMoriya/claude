@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"owl/data"
+	"owl/logger"
 	"owl/models"
 	services "owl/services"
 	"strings"
@@ -38,9 +39,14 @@ func (model *OpenAi4oModel) HandleStreamedLine(line []byte) {
 	if strings.HasPrefix(responseLine, "data: ") {
 		var apiResponse ChatCompletionChunk
 		data, _ := strings.CutPrefix(responseLine, "data: ")
+
+		logger.Debug.Printf("json")
+		logger.Debug.Printf("%s", apiResponse)
 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
 			// fmt.Printf("Error unmarshalling response: %v\n %s", err, line)
 		}
+
+		logger.Debug.Printf("%s", apiResponse)
 
 		if len(apiResponse.Choices) > 0 {
 			choice := apiResponse.Choices[0]
@@ -50,7 +56,7 @@ func (model *OpenAi4oModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*&choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "")
 			}
 		}
 	}
@@ -63,7 +69,7 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
 
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content)
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "")
 }
 
 func createOpenaiPayload(prompt string, streamed bool, history []data.History, image bool) ChatCompletionRequest {
@@ -99,6 +105,7 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History, i
 		Model:     "gpt-4o",
 		Stream:    streamed,
 		Messages:  messages,
+		Tools:     []Tool{},
 		MaxTokens: 15000,
 	}
 
