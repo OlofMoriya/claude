@@ -81,8 +81,8 @@ func init() {
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
 	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
-	flag.BoolVar(&stream_thinkning, "stream thinking", true, "stream thinking")
-	flag.BoolVar(&output_thinkning, "output thinking", false, "output thinking")
+	flag.BoolVar(&stream_thinkning, "stream_thinking", true, "stream thinking")
+	flag.BoolVar(&output_thinkning, "output_thinking", false, "output thinking")
 	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
 	flag.BoolVar(&view, "view", false, "view")
 	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
@@ -93,10 +93,7 @@ func init() {
 
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Print("Error loading .env file")
-	}
+	godotenv.Load()
 
 	flag.Parse()
 
