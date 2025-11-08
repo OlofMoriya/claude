@@ -669,12 +669,6 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string) {
 	h.fullResponse = response
 
-	// Signal done BEFORE closing responseChan
-	logger.Debug.Println("Final text in tui response channel")
-	logger.Debug.Println("closing doneChan and responseChan")
-	close(h.doneChan)
-	close(h.responseChan)
-
 	history := data.History{
 		ContextId:       contextId,
 		Prompt:          prompt,
