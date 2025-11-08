@@ -9,6 +9,7 @@ import (
 	"owl/data"
 	"owl/logger"
 	"owl/models"
+	"strings"
 )
 
 func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
@@ -60,11 +61,18 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 
+	validHistory := make([]data.History, 0)
+	for _, h := range history {
+		if strings.TrimSpace(h.Prompt) != "" && strings.TrimSpace(h.Response) != "" {
+			validHistory = append(validHistory, h)
+		}
+	}
+
 	if err != nil {
 		panic(fmt.Sprintf("Could not fetch history %s", err))
 	}
 
-	req := model.CreateRequest(context, prompt, true, history, modifiers)
+	req := model.CreateRequest(context, prompt, true, validHistory, modifiers)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
