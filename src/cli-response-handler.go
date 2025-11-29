@@ -24,27 +24,26 @@ func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
 }
 
 // All models should call this regardless of if they stream or not.
-func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responeContent string) {
+func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
 	history := data.History{
 		ContextId:       contextId,
 		Prompt:          prompt,
 		Response:        response,
 		Abbreviation:    "",
 		TokenCount:      0,
-		ResponseContent: responeContent,
-		//TODO abreviation
-		//TODO tokencount
+		ResponseContent: responseContent,
+		ToolResults:     toolResults,
 	}
 
 	_, err := cli.Repository.InsertHistory(history)
 	if err != nil {
-		println(fmt.Sprintf("Error while trying to save history: %s", err))
+		println(fmt.Sprintf("Error while trying to save history: %s",
+			err))
 	}
 
 	code := services.ExtractCodeBlocks(response)
 	allCode := strings.Join(code, "\n\n")
 
-	// Copy to clipboard
 	err = clipboard.WriteAll(allCode)
 	if err != nil {
 		fmt.Printf("Error copying to clipboard: %v\n", err)
