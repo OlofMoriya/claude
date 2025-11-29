@@ -168,7 +168,7 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
-func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string) {
+func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
 
 	repository, ok := httpResponseHandler.Repository.(*data.PostgresHistoryRepository)
 

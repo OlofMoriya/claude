@@ -23,4 +23,5 @@ type History struct {
 	TokenCount      int    `json:"token_count"`
 	UserId          int64  `json:"userId"`
 	Created         string `json:"created"`
+	ToolResults     string `json:"toolResults"`
 }

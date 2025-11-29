@@ -84,7 +84,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 		} else if apiResponse.Type == content_block_stop {
 			model.ResponseHandler.RecievedText("\n", nil)
 		} else if apiResponse.Type == message_stop {
-			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, "")
+			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, "", "")
 		}
 		//TODO: catch the token count response
 	}
@@ -95,11 +95,9 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 	logger.Debug.Printf("bytes %s", string(bytes))
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
-		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 		logger.Debug.Println(err)
 	}
-	// log.Fatalf("full resposne: %v", apiResponse)
 
 	logger.Debug.Println("response")
 	logger.Debug.Printf("%s", apiResponse)
@@ -116,17 +114,30 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 			}
 			toolResponses = append(toolResponses, response)
 		}
-		logger.Debug.Printf("i: %i, content: %s", i, content)
+		logger.Debug.Printf("i: %d, content: %s", i, content)
 	}
 
 	contentJson, err := json.Marshal(apiResponse.Content)
 	if err != nil {
-		logger.Debug.Printf("Error marchalling json content from response: %s", err)
+		logger.Debug.Printf("Error marshalling json content from response: %s", err)
 	}
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson))
 
-	//TODO: This ain't pretty but I have no better plan at the moment. It does not belong in the response handler and not really in the handle body bytes either. I really need to have an abstraction that works here... The models are going to have to ability to respond with the tool use and it needs to be model independent.
+	// Marshal tool results
+	toolResultsJson := ""
 	if len(toolResponses) > 0 {
+		toolResultsBytes, err := json.Marshal(toolResponses)
+		if err != nil {
+			logger.Debug.Printf("Error marshalling tool results: %s", err)
+		} else {
+			toolResultsJson = string(toolResultsBytes)
+		}
+	}
+
+	// Save the assistant response with tool results
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson)
+
+	if len(toolResponses) > 0 {
+		// Continue conversation with tool results
 		services.AwaitedQuery("", model, model.HistoryRepository, 3, model.Context, &models.PayloadModifiers{
 			ToolResponses: toolResponses,
 		})
@@ -175,12 +186,16 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse,
 }
 
 func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
-
-	logger.Debug.Printf("crateClaudePayload called with responseCount: %s and history count: %s", len(modifiers.ToolResponses), len(history))
+	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolResponses), len(history))
 
 	messages := []Message{}
-	for _, h := range history {
+
+	// Process history and handle tool results
+	for i, h := range history {
+		// Add user message
 		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
+
+		// Add assistant message
 		if h.ResponseContent != "" {
 			var content []ResponseMessage
 			err := json.Unmarshal([]byte(h.ResponseContent), &content)
@@ -189,11 +204,46 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				panic(err)
 			}
 			messages = append(messages, HistoricMessage{Role: "assistant", Content: content})
+
+			// Check if this response contains tool_use blocks
+			hasToolUse := false
+			for _, c := range content {
+				if c.Type == "tool_use" {
+					hasToolUse = true
+					break
+				}
+			}
+
+			// If there was a tool use, add the tool results as a user message
+			if hasToolUse && i+1 < len(history) {
+				// Get the tool results from the next history entry
+				// You'll need to store tool results somewhere accessible
+				toolResultContent := []Content{}
+
+				// This is a placeholder - you need to implement how to retrieve tool results
+				// One option is to store them in a new field in History
+				if h.ToolResults != "" {
+					var toolResults []models.ToolResponse
+					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
+					if err == nil {
+						for _, tr := range toolResults {
+							toolResultContent = append(toolResultContent, ToolResponseContent{
+								Type:    "tool_result",
+								Content: tr.Response,
+								IsError: false,
+								Id:      tr.Id,
+							})
+						}
+						messages = append(messages, RequestMessage{Role: "user", Content: toolResultContent})
+					}
+				}
+			}
 		} else {
 			messages = append(messages, TextMessage{Role: "assistant", Content: h.Response})
 		}
 	}
 
+	// Handle current message with tool responses
 	if modifiers.Image {
 		imageMessage := createImageMessage(prompt, *modifiers)
 		messages = append(messages, imageMessage)

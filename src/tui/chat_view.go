@@ -666,7 +666,7 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 	h.responseChan <- text
 }
 
-func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string) {
+func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
 	h.fullResponse = response
 
 	history := data.History{

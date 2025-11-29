@@ -93,7 +93,7 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*&choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "")
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "")
 			}
 		}
 	}
@@ -149,7 +149,7 @@ func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
 	}
 
 	logger.Debug.Printf("Final text from responses: %s", text)
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "")
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "", "")
 }
 
 func (model *OpenAiResponseModel) SetResponseHandler(responseHandler models.ResponseHandler) {
