@@ -15,6 +15,7 @@ func getContext(user data.HistoryRepository, system_prompt *string) *data.Contex
 		if err != nil {
 			panic(fmt.Sprintf("Could not create a new context with name %s, %s", context_name, err))
 		}
+		context = &new_context
 	}
 	return context
 }
