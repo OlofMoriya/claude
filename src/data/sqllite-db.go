@@ -124,8 +124,8 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
-	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created) VALUES (?, ?, ?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now())
+	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created, tool_results) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now(), history.ToolResults)
 	if err != nil {
 		println(err)
 		defer db.Close()
@@ -148,7 +148,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	defer db.Close()
 
 	logger.Debug.Printf("Fetching history for contextId: %v, maxCount: %v", contextId, maxCount)
-	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
+	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
 	rows, err := db.Query(selectQuery, contextId, maxCount)
 	if err != nil {
 		logger.Debug.Printf("Error in sql %s", err)
@@ -158,7 +158,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	var histories []History
 	for rows.Next() {
 		var history History
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created)
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults)
 		if err != nil {
 			return nil, err
 		}
