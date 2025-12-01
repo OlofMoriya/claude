@@ -70,7 +70,7 @@ func init() {
 	flag.IntVar(
 		&history_count,
 		"history",
-		0,
+		1,
 		"The number of previous messages to include in the context",
 	)
 	flag.BoolVar(&serve, "serve", false, "Enable server mode")

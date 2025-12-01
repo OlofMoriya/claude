@@ -146,32 +146,38 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse, error) {
 	var result string
+	var toolInput interface{}
+
 	switch content.Name {
 	case "early_bird_track_lookup":
-
-		toolInput := tools.TrackingNumberLookupInput{
+		toolInput = tools.TrackingNumberLookupInput{
 			TrackingNumber: content.Input["TrackingNumber"],
 		}
-
-		runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}
-		result = runner.RunTool("early_bird_track_lookup", toolInput).(string)
 	case "image_generator":
-		toolInput := tools.ImageInput{
+		toolInput = tools.ImageInput{
 			Prompt:  content.Input["Prompt"],
 			Context: model.Context,
 		}
-
-		runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}
-		result = runner.RunTool("image_generation", toolInput).(string)
-
 	case "issue_list":
-		toolInput := tools.IssueListLookupInput{
+		toolInput = tools.IssueListLookupInput{
 			Span: content.Input["Span"],
 		}
-
-		runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}
-		result = runner.RunTool("issue_list", toolInput).(string)
+	case "file_list":
+		toolInput = tools.FileListInput{
+			Filter: content.Input["Filter"],
+		}
+	case "read_files":
+		toolInput = tools.ReadFileInput{
+			FileNames: content.Input["FileNames"],
+		}
+		// case "create_file_with_text":
+		// 	toolInput = tools.FileWriteInput{
+		// 		Files: content.Input["FileWrites"],
+		// 	}
 	}
+
+	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}
+	result = runner.RunTool(content.Name, toolInput).(string)
 
 	if result != "" {
 		return models.ToolResponse{
@@ -192,10 +198,13 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 
 	// Process history and handle tool results
 	for i, h := range history {
-		// Add user message
-		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
+		j, err := json.Marshal(h)
+		if err != nil {
+			panic("failed to marshall h")
+		}
+		logger.Debug.Printf("added history: %s", j)
 
-		// Add assistant message
+		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
 		if h.ResponseContent != "" {
 			var content []ResponseMessage
 			err := json.Unmarshal([]byte(h.ResponseContent), &content)
@@ -214,14 +223,8 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				}
 			}
 
-			// If there was a tool use, add the tool results as a user message
 			if hasToolUse && i+1 < len(history) {
-				// Get the tool results from the next history entry
-				// You'll need to store tool results somewhere accessible
 				toolResultContent := []Content{}
-
-				// This is a placeholder - you need to implement how to retrieve tool results
-				// One option is to store them in a new field in History
 				if h.ToolResults != "" {
 					var toolResults []models.ToolResponse
 					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
@@ -243,7 +246,6 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		}
 	}
 
-	// Handle current message with tool responses
 	if modifiers.Image {
 		imageMessage := createImageMessage(prompt, *modifiers)
 		messages = append(messages, imageMessage)
@@ -280,7 +282,20 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	if modifiers.Web {
 		payload.Tools = []Tool{getWebSearchTool()}
 	} else {
-		payload.Tools = []Tool{getImageTool(), getTrackingNumberLookupTool(), getIssueListTool()}
+		// payload.Tools =
+
+		list, err := json.Marshal(tools.GetCustomTools())
+		if err != nil {
+			panic("failed to marshal json from tools definitions")
+		}
+
+		var t *[]Tool
+		err = json.Unmarshal(list, &t)
+		if err != nil {
+			panic("failed to unmarshal json to tools definitions")
+		}
+		payload.Tools = *t
+
 	}
 
 	if context != nil && context.SystemPrompt != "" {
@@ -335,57 +350,6 @@ func createPdfMessage(prompt string, modifiers models.PayloadModifiers) RequestM
 		}},
 	}}
 	return imageMessage
-}
-
-func getImageTool() Tool {
-	return Tool{
-		Name:        "image_generator",
-		Description: "Generates images from a prompt. This call takes time so don't generate more than two at the time. Can take a subject and a style and creates a image which it returns as base64 and saves it to disc as png",
-
-		InputSchema: InputSchema{
-			Type: "object",
-			Properties: map[string]Property{
-				"Prompt": {
-					Type:        "string",
-					Description: "Promt with description of the image that should be created",
-				},
-			},
-		},
-	}
-}
-
-func getIssueListTool() Tool {
-	return Tool{
-		Name:        "issue_list",
-		Description: "Fetches a list of completed issue from my companies issue tracker. It will return itemes from last 7 days that has been marked as Done or Released. This list can be useful for putting together a demo or reporting status on weekly meetings.",
-
-		InputSchema: InputSchema{
-			Type: "object",
-			Properties: map[string]Property{
-				"Span": {
-					Type:        "string",
-					Description: "The duration of time that should be used to look up the issues. Finite list of values [Day, Week, Month]",
-				},
-			},
-		},
-	}
-}
-
-func getTrackingNumberLookupTool() Tool {
-	return Tool{
-		Name:        "early_bird_track_lookup",
-		Description: "Fetches status from a shipment trackingnumber in the early bird logistics chain. Can help anwser questions about where a delivery is in the process or if anything went wrong with the shipment.",
-
-		InputSchema: InputSchema{
-			Type: "object",
-			Properties: map[string]Property{
-				"TrackingNumber": {
-					Type:        "string",
-					Description: "TrackingNumber that can be used to look up the order.",
-				},
-			},
-		},
-	}
 }
 
 func getWebSearchTool() Tool {
