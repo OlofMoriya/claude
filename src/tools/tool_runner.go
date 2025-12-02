@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"owl/data"
 	"owl/models"
@@ -28,10 +29,6 @@ type ReadFileInput struct {
 }
 
 type FileWriteInput struct {
-	Files []FileWrite
-}
-
-type FileWrite struct {
 	FileName string
 	Content  string
 }
@@ -53,10 +50,53 @@ func (toolRunner *ToolRunner) RunTool(name string, input interface{}) interface{
 		return toolRunner.RunReadFiles(input.(ReadFileInput))
 	case "file_list":
 		return toolRunner.RunListFiles(input.(FileListInput))
+	case "write_file":
+		return toolRunner.RunWriteFile(input.(FileWriteInput))
+
 	default:
 		return "Err: Could not find any execution for specified tool"
 
 	}
+}
+
+func (toolRunner *ToolRunner) RunWriteFile(input FileWriteInput) string {
+	var results []string
+	var errors []string
+
+	if strings.Contains(input.FileName, "..") {
+		errors = append(errors, fmt.Sprintf("Error: Invalid path '%s' - parent directory references not allowed", input.FileName))
+	}
+	if strings.HasPrefix(input.FileName, "/") {
+		errors = append(errors, fmt.Sprintf("Error: Invalid path '%s' - root not allowed", input.FileName))
+	}
+	if strings.HasPrefix(input.FileName, "~") {
+		errors = append(errors, fmt.Sprintf("Error: Invalid path '%s' - home not allowed", input.FileName))
+	}
+
+	if len(errors) == 0 {
+		err := os.WriteFile(input.FileName, []byte(input.Content), 0644)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to write '%s': %s", input.FileName, err.Error()))
+		} else {
+			results = append(results, fmt.Sprintf("Successfully wrote '%s' (%d bytes)", input.FileName, len(input.Content)))
+		}
+	}
+
+	// Build response message
+	var response strings.Builder
+	if len(results) > 0 {
+		response.WriteString("Completed:\n")
+		response.WriteString(strings.Join(results, "\n"))
+	}
+	if len(errors) > 0 {
+		if response.Len() > 0 {
+			response.WriteString("\n\n")
+		}
+		response.WriteString("Errors:\n")
+		response.WriteString(strings.Join(errors, "\n"))
+	}
+
+	return response.String()
 }
 
 type ToolResponseHandler struct {
@@ -146,6 +186,7 @@ func GetCustomTools() []Tool {
 		getTrackingNumberLookupTool(),
 		getReadFilesTool(),
 		getListFilesTool(),
+		getWriteFileTool(),
 	}
 }
 
@@ -228,6 +269,27 @@ func getTrackingNumberLookupTool() Tool {
 				"TrackingNumber": {
 					Type:        "string",
 					Description: "TrackingNumber that can be used to look up the order.",
+				},
+			},
+		},
+	}
+}
+
+func getWriteFileTool() Tool {
+	return Tool{
+		Name:        "write_file",
+		Description: "Writes content to one or more files. Can create new files or overwrite existing ones. Path is relative to the current working directory. Parent directory references (..) are not allowed for security.",
+
+		InputSchema: InputSchema{
+			Type: "object",
+			Properties: map[string]Property{
+				"FileName": {
+					Type:        "string",
+					Description: "The name/path of the file to write (relative to current directory), never acces any parent directory or root or home. Never try to circumvent this restriction. You cannor write to a directory that does not exist. ",
+				},
+				"Content": {
+					Type:        "string",
+					Description: "The content to write to the file",
 				},
 			},
 		},

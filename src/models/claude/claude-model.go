@@ -170,10 +170,11 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse,
 		toolInput = tools.ReadFileInput{
 			FileNames: content.Input["FileNames"],
 		}
-		// case "create_file_with_text":
-		// 	toolInput = tools.FileWriteInput{
-		// 		Files: content.Input["FileWrites"],
-		// 	}
+	case "write_file":
+		toolInput = tools.FileWriteInput{
+			FileName: content.Input["FileName"],
+			Content:  content.Input["Content"],
+		}
 	}
 
 	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}

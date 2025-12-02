@@ -81,11 +81,11 @@ func createHistoryTables(db *sql.DB) {
 func (user User) InsertContext(context Context) (int64, error) {
 	db := user.getUserDb()
 
-	log.Println("inserting context", context.Name, user.Name, user.Id)
+	logger.Debug.Printf("inserting context %v, %v, %v", context.Name, user.Name, user.Id)
 
 	insertQuery := "INSERT INTO context (name, system_prompt) VALUES (?, ?)"
 	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt)
-	log.Println("result of context insert", result)
+	logger.Debug.Println("result of context insert", result)
 
 	defer db.Close()
 	if err != nil {
