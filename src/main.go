@@ -184,6 +184,8 @@ func main() {
 			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
 		case "sonnet":
 			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
+		case "haiku":
+			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "haiku"}
 		default:
 			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		}

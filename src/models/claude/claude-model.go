@@ -45,6 +45,8 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 		model_version = "claude-opus-4-5-20251101"
 	case "sonnet":
 		model_version = "claude-sonnet-4-5-20250929"
+	case "haiku":
+		model_version = "claude-haiku-4-5-20251001"
 	default:
 		model_version = "claude-sonnet-4-5-20250929"
 	}
