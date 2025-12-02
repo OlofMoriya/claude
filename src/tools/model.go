@@ -15,6 +15,8 @@ type InputSchema struct {
 }
 
 type Property struct {
-	Type        string `json:"type"`
-	Description string `json:"description,omitempty"`
+	Type        string              `json:"type"`
+	Description string              `json:"description,omitempty"`
+	Properties  map[string]Property `json:"properties"`
+	Items       *Property           `json:"items"`
 }
