@@ -1,5 +1,7 @@
 package claude_model
 
+import "encoding/json"
+
 type MessageBody struct {
 	Model     string         `json:"model"`
 	Messages  Message        `json:"messages"`
@@ -8,7 +10,7 @@ type MessageBody struct {
 	Stream    bool           `json:"stream"`
 	Thinking  *ThinkingBlock `json:"thinking,omitempty"`
 	Temp      float32        `json:"temperature"`
-	Tools     []Tool         `json:"tools"`
+	Tools     []ToolModel    `json:"tools"`
 }
 
 type Property struct {
@@ -16,11 +18,25 @@ type Property struct {
 	Description string `json:"description,omitempty"`
 }
 
+type ToolModel struct {
+	Value interface{}
+}
+
+func (t ToolModel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Value)
+}
+
+type BasicTool struct {
+	Type    string `json:"type,omitempty"`
+	Name    string `json:"name"`
+	MaxUses int    `json:"max_uses,omitempty"`
+}
+
 type Tool struct {
-	Type        string      `json:"Type,omitempty"`
+	Type        string      `json:"type,omitempty"`
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
-	InputSchema InputSchema `json:"input_schema,omitempty"`
+	InputSchema InputSchema `json:"input_schema"`
 	MaxUses     int         `json:"max_uses,omitempty"`
 }
 
