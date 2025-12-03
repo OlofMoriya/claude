@@ -281,22 +281,23 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	}
 
 	if modifiers.Web {
-		payload.Tools = []Tool{getWebSearchTool()}
+		payload.Tools = []ToolModel{{Value: getWebSearchTool()}}
 	} else {
-		// payload.Tools =
-
 		list, err := json.Marshal(tools.GetCustomTools())
 		if err != nil {
 			panic("failed to marshal json from tools definitions")
 		}
 
-		var t *[]Tool
+		var t []Tool
 		err = json.Unmarshal(list, &t)
 		if err != nil {
 			panic("failed to unmarshal json to tools definitions")
 		}
-		payload.Tools = *t
 
+		payload.Tools = make([]ToolModel, len(t))
+		for i := range t {
+			payload.Tools[i] = ToolModel{Value: t[i]}
+		}
 	}
 
 	if context != nil && context.SystemPrompt != "" {
@@ -353,8 +354,8 @@ func createPdfMessage(prompt string, modifiers models.PayloadModifiers) RequestM
 	return imageMessage
 }
 
-func getWebSearchTool() Tool {
-	return Tool{
+func getWebSearchTool() BasicTool {
+	return BasicTool{
 		Type:    "web_search_20250305",
 		Name:    "web_search",
 		MaxUses: 2,
