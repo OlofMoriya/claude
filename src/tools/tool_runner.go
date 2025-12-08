@@ -38,7 +38,7 @@ type ToolRunner struct {
 	HistoryRepository *data.HistoryRepository
 }
 
-func (toolRunner *ToolRunner) RunTool(name string, input interface{}) interface{} {
+func (toolRunner *ToolRunner) RunTool(name string, input any) any {
 	switch name {
 	case "image_generation":
 		return toolRunner.RunImageGeneration(input.(ImageInput))
