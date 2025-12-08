@@ -214,6 +214,12 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
+		case "g":
+			m.cursor = 0
+
+		case "G":
+			m.cursor = len(m.shared.contexts) - 1
+
 		case "enter":
 			// Open chat view for selected context
 			if len(m.shared.contexts) > 0 {
