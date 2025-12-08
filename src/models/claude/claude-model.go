@@ -42,7 +42,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	case "4-sonnet":
 		model_version = "claude-sonnet-4-20250514"
 	case "opus":
-		model_version = "claude-opus-4-20250514"
+		model_version = "claude-opus-4-5-20251101"
 	case "sonnet":
 		model_version = "claude-sonnet-4-5-20250929"
 	default:
