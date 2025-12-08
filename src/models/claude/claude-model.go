@@ -53,8 +53,8 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	model.AccumulatedAnswer = ""
 	model.Context = context
 
-	request := createClaudeRequest(payload, history)
 	// fmt.Printf("\nmodel: \n %v", request)
+	request := createClaudeRequest(payload)
 
 	return request
 }
@@ -100,10 +100,11 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	}
 
 	logger.Debug.Println("response")
-	logger.Debug.Printf("%s", apiResponse)
+	logger.Debug.Printf("%v", apiResponse)
 
 	textIndex := 0
 	toolResponses := []models.ToolResponse{}
+	webSearchResults := []ResponseMessage{}
 	for i, content := range apiResponse.Content {
 		if content.Type == "text" {
 			textIndex = i
@@ -113,6 +114,8 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 				logger.Debug.Println(err)
 			}
 			toolResponses = append(toolResponses, response)
+		} else if content.Type == "web_search_tool_result" {
+			webSearchResults = append(webSearchResults, content)
 		}
 		logger.Debug.Printf("i: %d, content: %s", i, content)
 	}
@@ -146,7 +149,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse, error) {
 	var result string
-	var toolInput interface{}
+	var toolInput any
 
 	switch content.Name {
 	case "early_bird_track_lookup":
@@ -248,7 +251,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	}
 
 	if modifiers.Image {
-		imageMessage := createImageMessage(prompt, *modifiers)
+		imageMessage := createImageMessage(prompt)
 		messages = append(messages, imageMessage)
 	} else if modifiers.Pdf != "" {
 		imageMessage := createPdfMessage(prompt, *modifiers)
@@ -313,11 +316,11 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	}
 
 	logger.Debug.Println("FULL PAYLOAD:")
-	logger.Debug.Printf("\n%s", payload)
+	logger.Debug.Printf("\n%v", payload)
 	return payload
 }
 
-func createImageMessage(prompt string, payloadModifiers models.PayloadModifiers) RequestMessage {
+func createImageMessage(prompt string) RequestMessage {
 	image, err := services.GetImageFromClipboard()
 	if err != nil {
 		panic(fmt.Sprintf("could not get image from clipboard, %v", err))
@@ -362,7 +365,7 @@ func getWebSearchTool() BasicTool {
 	}
 }
 
-func createClaudeRequest(payload MessageBody, history []data.History) *http.Request {
+func createClaudeRequest(payload MessageBody) *http.Request {
 	apiKey, ok := os.LookupEnv("CLAUDE_API_KEY")
 	if !ok {
 		panic(fmt.Errorf("Could not fetch api key"))
