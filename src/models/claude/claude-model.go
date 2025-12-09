@@ -148,48 +148,16 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 }
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse, error) {
-	var result string
-	var toolInput any
-
-	switch content.Name {
-	case "early_bird_track_lookup":
-		toolInput = tools.TrackingNumberLookupInput{
-			TrackingNumber: content.Input["TrackingNumber"],
-		}
-	case "image_generator":
-		toolInput = tools.ImageInput{
-			Prompt:  content.Input["Prompt"],
-			Context: model.Context,
-		}
-	case "issue_list":
-		toolInput = tools.IssueListLookupInput{
-			Span: content.Input["Span"],
-		}
-	case "file_list":
-		toolInput = tools.FileListInput{
-			Filter: content.Input["Filter"],
-		}
-	case "read_files":
-		toolInput = tools.ReadFileInput{
-			FileNames: content.Input["FileNames"],
-		}
-	case "write_file":
-		toolInput = tools.FileWriteInput{
-			FileName: content.Input["FileName"],
-			Content:  content.Input["Content"],
-		}
-	}
 
 	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository}
-	result = runner.RunTool(content.Name, toolInput).(string)
+	result, err := runner.ExecuteTool(*model.Context, content.Name, content.Input)
 
-	if result != "" {
+	if result != "" && err == nil {
 		return models.ToolResponse{
 			Response:        result,
 			Id:              content.Id,
 			ResponseMessage: content,
 		}, nil
-
 	}
 
 	return models.ToolResponse{Id: content.Id, Response: "error"}, errors.New(fmt.Sprintf("No such tool is defined: %s", content.Name))
