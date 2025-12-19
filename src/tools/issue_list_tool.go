@@ -3,6 +3,9 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/logger"
+
+	"github.com/fatih/color"
 )
 
 type IssueListTool struct {
@@ -35,6 +38,9 @@ func (tool *IssueListTool) GetName() string {
 }
 
 func (toolRunner *IssueListTool) Run(i map[string]string) (string, error) {
+
+	logger.Screen(fmt.Sprintf("fetching the completed issue list"), color.RGB(150, 150, 150))
+
 	out, err := exec.Command("item-list.sh").Output()
 	if err != nil {
 		fmt.Printf("Failed to fetch data, %s", err)

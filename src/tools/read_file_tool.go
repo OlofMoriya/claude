@@ -3,7 +3,10 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/logger"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type ReadFileTool struct {
@@ -20,6 +23,8 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 	if !ok {
 		return "", fmt.Errorf("Could not parse FileWriteInput from input")
 	}
+
+	logger.Screen(fmt.Sprintf("Asked to read file %v", input), color.RGB(150, 150, 150))
 
 	files := strings.Split(input, ";")
 

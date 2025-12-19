@@ -3,7 +3,10 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/logger"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type GitStatusTool struct {
@@ -14,6 +17,8 @@ func (tool *GitStatusTool) Run(i map[string]string) (string, error) {
 	if action == "" {
 		action = "status"
 	}
+
+	logger.Screen(fmt.Sprintf("Asked to use git with action %v", action), color.RGB(150, 150, 150))
 
 	var cmd *exec.Cmd
 
