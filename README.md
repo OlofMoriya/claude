@@ -1,11 +1,11 @@
 # Owlllm / Claude
 This is a cli-tool/service that prompts different llms and saves the contexts of the prompts to maintain a full conversation between a user and multiple llms.
 
-To start server 
-owl --serve
-
 To use cli 
 owl --context_name="$context" --prompt="$message" --stream --history=20
+
+To start server 
+owl --serve
 
 The response can be streamed or awaited. the streamed response is outputted without any formatting while the final text will be formatted with as markdown when using the cli. 
 
@@ -26,16 +26,19 @@ Api keys are supplied from environment for the different llm services.
 - [x] Open AI
 - [x] Vision (send in image)
 - [x] Pdf (send in pdf, claude only)
-
-- [ ] Tool use
-- [ ] MCP
+- [x] Tool use
+    - [ ] Git status and logs
+    - [ ] list files
+    - [ ] Write file
+    - [ ] Read file
+- [ ] Tool use for streamed queries
 - [ ] Cache files and history in cluade
 - [ ] Split history in branches
 - [ ] File support for web server
-  
 - [ ] Implement ollama as a model
 
-## Won't do
+## Maybe
+- [ ] MCP  
 - [ ] Store texts with embeddings for RAG
 - [ ] Implement vector search with vertex ai
 - [ ] Prompt with embeddings search string
