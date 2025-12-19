@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/mitchellh/go-homedir"
 )
 
@@ -24,4 +25,12 @@ func Init(filename string) error {
 	Debug = log.New(f, "", log.LstdFlags|log.Lshortfile)
 	Debug.Println("Logger initialized")
 	return nil
+}
+
+func Screen(text string, color *color.Color) {
+	if color != nil {
+		color.Print(text)
+	} else {
+		print(text)
+	}
 }

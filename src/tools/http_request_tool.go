@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"owl/logger"
 	"strings"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 type HTTPRequestTool struct {
@@ -19,6 +22,9 @@ type HTTPRequestInput struct {
 }
 
 func (tool *HTTPRequestTool) Run(i map[string]string) (string, error) {
+
+	logger.Screen(fmt.Sprintf("Asked to use http request with input %v", i), color.RGB(150, 150, 150))
+
 	url, ok := i["URL"]
 	if !ok || url == "" {
 		return "", fmt.Errorf("URL is required")

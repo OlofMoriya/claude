@@ -141,7 +141,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
-		services.AwaitedQuery("", model, model.HistoryRepository, 3, model.Context, &models.PayloadModifiers{
+		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
 			ToolResponses: toolResponses,
 		})
 	}
@@ -284,7 +284,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	}
 
 	logger.Debug.Println("FULL PAYLOAD:")
-	logger.Debug.Printf("\n%v", payload)
+	logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
 	return payload
 }
 
