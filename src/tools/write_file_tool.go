@@ -3,7 +3,10 @@ package tools
 import (
 	"fmt"
 	"os"
+	"owl/logger"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type FileWriteInput struct {
@@ -60,6 +63,8 @@ func (tool *FileWriterTool) Run(i map[string]string) (string, error) {
 		response.WriteString("Errors:\n")
 		response.WriteString(strings.Join(errors, "\n"))
 	}
+
+	logger.Screen(response.String(), color.RGB(150, 150, 150))
 
 	return response.String(), nil
 }

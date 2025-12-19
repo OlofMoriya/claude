@@ -10,9 +10,14 @@ import (
 	"owl/logger"
 	"owl/models"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
+
+	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
+
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 	if err != nil {
 		logger.Debug.Printf("error while fetching history for context", err)
@@ -29,8 +34,6 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		// println(fmt.Sprintf("\nresp: %v", resp))
-		// println(fmt.Sprintf("\n\body: %v\n\n", resp.Body))
 		logger.Debug.Printf("\n\body: %v\n\n", resp.Body)
 		bytes, err := io.ReadAll(resp.Body)
 		if err != nil {

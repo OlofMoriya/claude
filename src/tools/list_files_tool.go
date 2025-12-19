@@ -3,6 +3,9 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/logger"
+
+	"github.com/fatih/color"
 )
 
 type ListFilesTool struct {
@@ -34,6 +37,9 @@ func (tool *ListFilesTool) GetDefinition() Tool {
 }
 
 func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
+
+	logger.Screen("Asked to read files", color.RGB(150, 150, 150))
+
 	out, err := exec.Command("/bin/ls", "-R").Output()
 	if err != nil {
 		fmt.Printf("Failed to read files, %s", err)
