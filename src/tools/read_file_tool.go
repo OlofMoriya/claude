@@ -19,12 +19,11 @@ type ReadFileInput struct {
 func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 
 	input, ok := i["FileNames"]
+	logger.Screen(fmt.Sprintf("\nAsked to read file %v", input), color.RGB(150, 150, 150))
 
 	if !ok {
 		return "", fmt.Errorf("Could not parse FileWriteInput from input")
 	}
-
-	logger.Screen(fmt.Sprintf("Asked to read file %v", input), color.RGB(150, 150, 150))
 
 	files := strings.Split(input, ";")
 
@@ -37,20 +36,20 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 }
 
 func (tool *ReadFileTool) GetName() string {
-	return "file_list"
+	return "read_file"
 }
 
 func (tool *ReadFileTool) GetDefinition() Tool {
 	return Tool{
 		Name:        tool.GetName(),
-		Description: "Fetches the list of files under the current directory recursively. This enable the model to see the current project to analyze which files are present in a code prodject or similar. In combination with the read_file tool this should enable the model to gather what information is needed to assist with a project. Especially important in codeing assignments. ",
+		Description: "Fetches the contents of the files specified by name and dynamic path. Path starts from where script is being executed. Prefere reading files with .go, .md, .tsx, .ts, .csv, .js, .txt, .mod, .cs, .csproj, .gitignore, .tsx, .jsx, .json extentions. Don't overuse this tool as it increase token use a lot",
 
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{
-				"Filter": {
+				"FileNames": {
 					Type:        "string",
-					Description: "Just a placeholder for now. Send in a greeting for now.",
+					Description: "filename with dynamic path",
 				},
 			},
 		},
