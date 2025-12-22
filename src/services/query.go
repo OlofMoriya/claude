@@ -57,12 +57,15 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 
 	logger.Debug.Println("Received a response without streaming")
 	logger.Debug.Printf("bodyBytes %s", string(bodyBytes))
+
 	model.HandleBodyBytes(bodyBytes)
 	//TODO: Handle token use
 }
 
 func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
+
+	logger.Screen("sending streamed query", color.RGB(150, 150, 150))
 
 	validHistory := make([]data.History, 0)
 	for _, h := range history {

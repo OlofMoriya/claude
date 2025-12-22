@@ -143,7 +143,7 @@ func main() {
 		httpResponseHandler := &server.HttpResponseHandler{}
 		httpResponseHandler.Repository = &repository
 
-		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler}
+		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler, UseStreaming: stream}
 		server.Run(secure, port, httpResponseHandler, &model, stream, connectionString)
 	} else if embeddings {
 		// Get values from environment variables
@@ -179,13 +179,13 @@ func main() {
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
 		case "claude":
-			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
+			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		case "opus":
-			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
+			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
 		case "sonnet":
-			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
+			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
 		default:
-			model = &claude_model.ClaudeModel{HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
+			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		}
 		//TODO: Select database
 		context := getContext(user, &system_prompt)

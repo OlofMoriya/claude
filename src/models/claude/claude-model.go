@@ -25,6 +25,18 @@ type ClaudeModel struct {
 	OutputThought     bool
 	StreamThought     bool
 	UseThinking       bool
+	UseStreaming      bool
+
+	//Track streamed content
+	CurrentEvent     string
+	CurrentToolUse   *StreamedToolUse
+	StreamedToolUses []StreamedToolUse
+}
+
+type StreamedToolUse struct {
+	Id    string
+	Name  string
+	Input string
 }
 
 func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
@@ -64,36 +76,141 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 	logger.Debug.Println(responseLine)
 
-	if strings.HasPrefix(responseLine, "data: ") {
-		var apiResponse StreamData
-		data, _ := strings.CutPrefix(responseLine, "data: ")
-		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
-			println(fmt.Sprintf("Error unmarshalling response: %v\n %s", err, line))
-		}
+	// Capture event type
+	if strings.HasPrefix(responseLine, "event: ") {
+		event, _ := strings.CutPrefix(responseLine, "event: ")
+		model.CurrentEvent = strings.TrimSpace(event)
+		return
+	}
 
-		if apiResponse.Type == content_block_delta {
-			model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Text
-			if model.OutputThought {
-				model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Thinking
-			}
-			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
-			if model.StreamThought {
-				color := "grey"
-				model.ResponseHandler.RecievedText(apiResponse.Delta.Thinking, &color)
-			}
-		} else if apiResponse.Type == content_block_stop {
+	// Parse data based on current event
+	if strings.HasPrefix(responseLine, "data: ") {
+		data, _ := strings.CutPrefix(responseLine, "data: ")
+
+		switch model.CurrentEvent {
+		case "content_block_start":
+			model.handleContentBlockStart(data)
+		case "content_block_delta":
+			model.handleContentBlockDelta(data)
+		case "content_block_stop":
 			model.ResponseHandler.RecievedText("\n", nil)
-		} else if apiResponse.Type == message_stop {
+		case "message_delta":
+			model.handleMessageDelta(data)
+		case "message_stop":
 			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, "", "")
 		}
-		//TODO: catch the token count response
 	}
 }
+
+func (model *ClaudeModel) handleContentBlockStart(data string) {
+	var response struct {
+		Type         string `json:"type"`
+		Index        int    `json:"index"`
+		ContentBlock struct {
+			Type string `json:"type"`
+			Id   string `json:"id,omitempty"`
+			Name string `json:"name,omitempty"`
+		} `json:"content_block"`
+	}
+
+	if err := json.Unmarshal([]byte(data), &response); err != nil {
+		println(fmt.Sprintf("Error unmarshalling content_block_start: %v", err))
+		return
+	}
+
+	if response.ContentBlock.Type == "tool_use" {
+		model.CurrentToolUse.Id = response.ContentBlock.Id
+		model.CurrentToolUse.Name = response.ContentBlock.Name
+		model.CurrentToolUse.Input = ""
+	}
+}
+
+func (model *ClaudeModel) handleContentBlockDelta(data string) {
+	var response struct {
+		Type  string `json:"type"`
+		Index int    `json:"index"`
+		Delta struct {
+			Type        string `json:"type"`
+			Text        string `json:"text,omitempty"`
+			Thinking    string `json:"thinking,omitempty"`
+			PartialJson string `json:"partial_json,omitempty"`
+		} `json:"delta"`
+	}
+
+	if err := json.Unmarshal([]byte(data), &response); err != nil {
+		println(fmt.Sprintf("Error unmarshalling content_block_delta: %v", err))
+		return
+	}
+
+	if response.Delta.Type == "input_json_delta" {
+		// Accumulate tool input
+		model.CurrentToolUse.Input += response.Delta.PartialJson
+	} else if response.Delta.Type == "text_delta" {
+		model.AccumulatedAnswer = model.AccumulatedAnswer + response.Delta.Text
+		model.ResponseHandler.RecievedText(response.Delta.Text, nil)
+	} else if response.Delta.Type == "thinking_delta" {
+		model.AccumulatedAnswer = model.AccumulatedAnswer + response.Delta.Thinking
+		if model.StreamThought {
+			color := "grey"
+			model.ResponseHandler.RecievedText(response.Delta.Thinking, &color)
+		}
+	}
+}
+
+func (model *ClaudeModel) handleMessageDelta(data string) {
+	var response struct {
+		Type  string `json:"type"`
+		Delta struct {
+			StopReason string `json:"stop_reason"`
+		} `json:"delta"`
+	}
+
+	if err := json.Unmarshal([]byte(data), &response); err != nil {
+		println(fmt.Sprintf("Error unmarshalling message_delta: %v", err))
+		return
+	}
+
+	if response.Delta.StopReason == "tool_use" {
+		// Tool use detected - execute the tool
+		model.StreamedToolUses = append(model.StreamedToolUses, *model.CurrentToolUse)
+		model.CurrentToolUse = nil
+	}
+}
+
+// func (model *ClaudeModel) HandleStreamedLine(line []byte) {
+// 	responseLine := string(line)
+//
+// 	logger.Debug.Println(responseLine)
+//
+// 	if strings.HasPrefix(responseLine, "data: ") {
+// 		var apiResponse StreamData
+// 		data, _ := strings.CutPrefix(responseLine, "data: ")
+// 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
+// 			println(fmt.Sprintf("Error unmarshalling response: %v\n %s", err, line))
+// 		}
+//
+// 		if apiResponse.Type == content_block_delta {
+// 			model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Text
+// 			if model.OutputThought {
+// 				model.AccumulatedAnswer = model.AccumulatedAnswer + apiResponse.Delta.Thinking
+// 			}
+// 			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
+// 			if model.StreamThought {
+// 				color := "grey"
+// 				model.ResponseHandler.RecievedText(apiResponse.Delta.Thinking, &color)
+// 			}
+// 		} else if apiResponse.Type == content_block_stop {
+// 			model.ResponseHandler.RecievedText("\n", nil)
+// 		} else if apiResponse.Type == message_stop {
+// 			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, "", "")
+// 		}
+// 		//TODO: catch the token count response
+// 	}
+// }
 
 func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	var apiResponse MessageResponse
 
-	logger.Debug.Printf("bytes %s", string(bytes))
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 		logger.Debug.Println(err)
@@ -103,26 +220,42 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	logger.Debug.Printf("%v", apiResponse)
 
 	textIndex := 0
-	toolResponses := []models.ToolResponse{}
-	webSearchResults := []ResponseMessage{}
 	for i, content := range apiResponse.Content {
 		if content.Type == "text" {
 			textIndex = i
-		} else if content.Type == "tool_use" {
+		}
+	}
+
+	toolResponses, toolResultsJson := model.handleToolCalls(apiResponse)
+
+	// Save the assistant response with tool results
+	contentJson, err := json.Marshal(apiResponse.Content)
+	if err != nil {
+		logger.Debug.Printf("Error marshalling json content from response: %s", err)
+	}
+
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson)
+
+	if len(toolResponses) > 0 {
+		// Continue conversation with tool results
+		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
+			ToolResponses: toolResponses,
+		})
+	}
+}
+
+func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]models.ToolResponse, string) {
+	toolResponses := []models.ToolResponse{}
+	for i, content := range apiResponse.Content {
+		//possible handle web search results too... But I don't know what we should do with it here
+		if content.Type == "tool_use" {
 			response, err := model.useTool(content)
 			if err != nil {
 				logger.Debug.Println(err)
 			}
 			toolResponses = append(toolResponses, response)
-		} else if content.Type == "web_search_tool_result" {
-			webSearchResults = append(webSearchResults, content)
 		}
 		logger.Debug.Printf("i: %d, content: %s", i, content)
-	}
-
-	contentJson, err := json.Marshal(apiResponse.Content)
-	if err != nil {
-		logger.Debug.Printf("Error marshalling json content from response: %s", err)
 	}
 
 	// Marshal tool results
@@ -136,15 +269,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		}
 	}
 
-	// Save the assistant response with tool results
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson)
-
-	if len(toolResponses) > 0 {
-		// Continue conversation with tool results
-		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
-			ToolResponses: toolResponses,
-		})
-	}
+	return toolResponses, toolResultsJson
 }
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse, error) {
