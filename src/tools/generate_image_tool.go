@@ -3,9 +3,12 @@ package tools
 import (
 	"fmt"
 	"owl/data"
+	"owl/logger"
 	"owl/models"
 	open_ai_responses "owl/models/open-ai-responses"
 	"owl/services"
+
+	"github.com/fatih/color"
 )
 
 type GenerateImageTool struct {
@@ -18,11 +21,18 @@ type GenerateImageInput struct {
 	Prompt string
 }
 
+func (tool *GenerateImageTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
+	tool.Context = context
+	tool.HistoryRepository = repo
+}
+
 func (tool *GenerateImageTool) Run(i map[string]string) (string, error) {
 	prompt, exists := i["Prompt"]
 	if !exists {
 		return "", fmt.Errorf("Could not parse FileWriteInput from input")
 	}
+
+	logger.Screen(fmt.Sprintf("Asked to generate image with prompt: %v", prompt), color.RGB(150, 150, 150))
 
 	toolHandler := ToolResponseHandler{
 		ResponseHandler: tool.ResponseHandler,
@@ -31,7 +41,7 @@ func (tool *GenerateImageTool) Run(i map[string]string) (string, error) {
 
 	model := &open_ai_responses.OpenAiResponseModel{ResponseHandler: &toolHandler}
 
-	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 20, tool.Context, &models.PayloadModifiers{})
+	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 0, tool.Context, &models.PayloadModifiers{})
 	//I need to await the answer on the channel toolHandler.ResponseChannel and then return with that value.
 	response := <-toolHandler.ResponseChannel
 	return response, nil

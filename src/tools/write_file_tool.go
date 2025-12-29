@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"os"
+	"owl/data"
 	"owl/logger"
 	"strings"
 
@@ -16,6 +17,8 @@ type FileWriteInput struct {
 
 type FileWriterTool struct {
 }
+
+func (tool *FileWriterTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {}
 
 func (tool *FileWriterTool) Run(i map[string]string) (string, error) {
 	var results []string

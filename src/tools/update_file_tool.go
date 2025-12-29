@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"owl/data"
 	"owl/logger"
 	"strconv"
 	"strings"
@@ -15,6 +16,9 @@ import (
 
 type FileUpdateTool struct {
 	RequireApproval bool // Set to true to require user approval before applying changes
+}
+
+func (tool *FileUpdateTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
@@ -47,14 +51,14 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 	// Determine update method based on provided parameters
 	if diff, ok := i["Diff"]; ok && diff != "" {
 		logger.Screen(fmt.Sprintf("\nAsked to apply diff"), color.RGB(150, 150, 150))
-		
+
 		// Show diff for approval if required
 		if requireApproval {
 			result, err := tool.requestApproval(fileName, diff, "diff")
 			if err != nil {
 				return "", fmt.Errorf("Failed to show approval dialog: %s", err)
 			}
-			
+
 			switch result {
 			case Approved:
 				logger.Screen("✓ User approved changes", color.RGB(0, 255, 0))
@@ -64,7 +68,7 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 				return "Operation cancelled by user", nil
 			}
 		}
-		
+
 		return tool.applyDiff(fileName, diff)
 	}
 
@@ -72,7 +76,7 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 		// Check for line number method
 		if startLine, hasStart := i["StartLine"]; hasStart {
 			endLine := i["EndLine"] // optional
-			
+
 			// Generate preview diff for approval
 			if requireApproval {
 				previewDiff, err := tool.generatePreviewDiff(fileName, content, startLine, endLine, "line")
@@ -81,7 +85,7 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 					if err != nil {
 						return "", fmt.Errorf("Failed to show approval dialog: %s", err)
 					}
-					
+
 					switch result {
 					case Approved:
 						logger.Screen("✓ User approved changes", color.RGB(0, 255, 0))
@@ -92,14 +96,14 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 					}
 				}
 			}
-			
+
 			return tool.updateByLineNumbers(fileName, content, startLine, endLine)
 		}
 
 		// Check for text marker method
 		if startText, hasStartText := i["StartText"]; hasStartText {
 			endText := i["EndText"] // optional
-			
+
 			// Generate preview diff for approval
 			if requireApproval {
 				previewDiff, err := tool.generatePreviewDiff(fileName, content, startText, endText, "text")
@@ -108,7 +112,7 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 					if err != nil {
 						return "", fmt.Errorf("Failed to show approval dialog: %s", err)
 					}
-					
+
 					switch result {
 					case Approved:
 						logger.Screen("✓ User approved changes", color.RGB(0, 255, 0))
@@ -119,7 +123,7 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 					}
 				}
 			}
-			
+
 			return tool.updateByTextMarkers(fileName, content, startText, endText)
 		}
 
@@ -138,7 +142,7 @@ func (tool *FileUpdateTool) requestApproval(fileName, diff, method string) (Diff
 	}
 
 	logger.Screen("\n"+lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFF00")).Render("⚡ Review required - launching diff viewer..."), color.RGB(255, 255, 0))
-	
+
 	// Use the best available viewer
 	return ShowDiffWithBestViewer(fileName, diff)
 }
