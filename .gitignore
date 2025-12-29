@@ -3,3 +3,4 @@ src/owl
 .DS_Store
 src/debug.log
 input-data
+.env
