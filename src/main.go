@@ -9,6 +9,7 @@ import (
 	"owl/models"
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
+	ollama_model "owl/models/ollama"
 	openai_4o_model "owl/models/open-ai-4o"
 	embeddings_model "owl/models/open-ai-embedings"
 	open_ai_responses "owl/models/open-ai-responses"
@@ -178,6 +179,8 @@ func main() {
 			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
+		case "qwen3":
+			model = ollama_model.NewOllamaModel(cliResponseHandler, "")
 		case "claude":
 			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
 		case "opus":
