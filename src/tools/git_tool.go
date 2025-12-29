@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/data"
 	"owl/logger"
 	"strings"
 
@@ -10,6 +11,9 @@ import (
 )
 
 type GitStatusTool struct {
+}
+
+func (tool *GitStatusTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *GitStatusTool) Run(i map[string]string) (string, error) {

@@ -18,10 +18,15 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 
 	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
 
-	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
-	if err != nil {
-		logger.Debug.Printf("error while fetching history for context", err)
-		log.Println("error while fetching history for context", err)
+	history := []data.History{}
+	if historyCount > 0 {
+		logger.Debug.Printf("Fetching history for HistoryRepository: >%v<, with context: >%v<", historyRepository, context)
+		h, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
+		if err != nil {
+			logger.Debug.Printf("error while fetching history for context", err)
+			logger.Screen(fmt.Sprintf("error while fetching history for context", err), color.RGB(250, 100, 100))
+		}
+		history = h
 	}
 
 	req := model.CreateRequest(context, prompt, false, history, modifiers)
@@ -103,7 +108,7 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 	for !finished {
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
-			fmt.Println("failed to read bytes from stream response")
+			logger.Debug.Println("failed to read bytes from stream response")
 			finished = true
 			continue
 		}

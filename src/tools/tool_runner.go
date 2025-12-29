@@ -11,11 +11,13 @@ type ToolModel interface {
 	GetDefinition() Tool
 	Run(input map[string]string) (string, error)
 	GetName() string
+	SetHistory(*data.HistoryRepository, *data.Context)
 }
 
 type ToolRunner struct {
 	ResponseHandler   *models.ResponseHandler
 	HistoryRepository *data.HistoryRepository
+	Context           *data.Context
 }
 
 type ToolRegistry struct {
@@ -48,6 +50,8 @@ func GetTool(name string) (ToolModel, error) {
 
 func (runner *ToolRunner) ExecuteTool(ctx data.Context, name string, rawInput map[string]string) (string, error) {
 	tool, err := GetTool(name)
+	tool.SetHistory(runner.HistoryRepository, runner.Context)
+
 	if err != nil {
 		return "", err
 	}

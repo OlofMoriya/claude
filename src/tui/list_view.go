@@ -52,8 +52,8 @@ func newListViewModel(config TUIConfig) *listViewModel {
 	ti := textinput.New()
 	ti.Placeholder = "Enter text..."
 	ti.Focus()
-	ti.CharLimit = 500
-	ti.Width = 50
+	ti.CharLimit = 5000
+	ti.Width = 100
 
 	return &listViewModel{
 		shared:    shared,

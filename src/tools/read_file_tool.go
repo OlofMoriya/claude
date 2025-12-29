@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/data"
 	"owl/logger"
 	"strings"
 
@@ -14,6 +15,9 @@ type ReadFileTool struct {
 
 type ReadFileInput struct {
 	FileNames string
+}
+
+func (tool *ReadFileTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *ReadFileTool) Run(i map[string]string) (string, error) {

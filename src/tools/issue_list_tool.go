@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/data"
 	"owl/logger"
 
 	"github.com/fatih/color"
@@ -13,6 +14,9 @@ type IssueListTool struct {
 
 type IssueListLookupInput struct {
 	Span string
+}
+
+func (tool *IssueListTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *IssueListTool) GetDefinition() Tool {
