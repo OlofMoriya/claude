@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"os/exec"
+	"owl/data"
 )
 
 type TrackingNumberTool struct {
@@ -10,6 +11,9 @@ type TrackingNumberTool struct {
 
 type TrackingNumberLookupInput struct {
 	TrackingNumber string
+}
+
+func (tool *TrackingNumberTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *TrackingNumberTool) Run(i map[string]string) (string, error) {

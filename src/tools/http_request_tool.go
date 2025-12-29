@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"owl/data"
 	"owl/logger"
 	"strings"
 	"time"
@@ -19,6 +20,9 @@ type HTTPRequestInput struct {
 	Method  string
 	Headers string
 	Body    string
+}
+
+func (tool *HTTPRequestTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (tool *HTTPRequestTool) Run(i map[string]string) (string, error) {

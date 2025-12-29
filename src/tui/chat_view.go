@@ -154,17 +154,49 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 		switch m.availableModels[m.selectedModelIdx] {
 		case "grok":
 			logger.Debug.Println("setting grok as model")
-			model = &grok_model.GrokModel{ResponseHandler: handler}
+			model = &grok_model.GrokModel{
+				ResponseHandler: handler,
+				// HistoryRepository: m.shared.config.Repository,
+			}
 		case "4o":
-			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: handler}
+			model = &openai_4o_model.OpenAi4oModel{
+				ResponseHandler: handler,
+				// HistoryRepository: m.shared.config.Repository,
+			}
 		case "claude":
-			model = &claude_model.ClaudeModel{ResponseHandler: handler, UseThinking: true, StreamThought: true, OutputThought: false}
+			model = &claude_model.ClaudeModel{
+				ResponseHandler:   handler,
+				HistoryRepository: m.shared.config.Repository,
+				UseThinking:       true,
+				StreamThought:     true,
+				OutputThought:     false,
+			}
 		case "opus":
-			model = &claude_model.ClaudeModel{ResponseHandler: handler, UseThinking: true, StreamThought: true, OutputThought: false, ModelVersion: "opus"}
+			model = &claude_model.ClaudeModel{
+				ResponseHandler:   handler,
+				HistoryRepository: m.shared.config.Repository,
+				UseThinking:       true,
+				StreamThought:     true,
+				OutputThought:     false,
+				ModelVersion:      "opus",
+			}
 		case "sonnet":
-			model = &claude_model.ClaudeModel{ResponseHandler: handler, UseThinking: true, StreamThought: true, OutputThought: false, ModelVersion: "sonnet"}
+			model = &claude_model.ClaudeModel{
+				ResponseHandler:   handler,
+				HistoryRepository: m.shared.config.Repository,
+				UseThinking:       true,
+				StreamThought:     true,
+				OutputThought:     false,
+				ModelVersion:      "sonnet",
+			}
 		default:
-			model = &claude_model.ClaudeModel{ResponseHandler: handler, UseThinking: true, StreamThought: true, OutputThought: false}
+			model = &claude_model.ClaudeModel{
+				ResponseHandler:   handler,
+				HistoryRepository: m.shared.config.Repository,
+				UseThinking:       true,
+				StreamThought:     true,
+				OutputThought:     false,
+			}
 		}
 
 		m.shared.config.Model = model
@@ -676,6 +708,7 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 		Abbreviation:    "",
 		TokenCount:      0,
 		ResponseContent: responseContent,
+		ToolResults:     toolResults,
 	}
 
 	_, err := h.Repository.InsertHistory(history)
@@ -692,9 +725,14 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 		fmt.Printf("Error copying to clipboard: %v\n", err)
 	}
 
-	// Signal done BEFORE closing responseChan
 	logger.Debug.Println("Final text in tui response channel")
-	logger.Debug.Println("closing doneChan and responseChan")
-	close(h.doneChan)
-	close(h.responseChan)
+	if toolResults == "" {
+		logger.Debug.Println("closing doneChan and responseChan")
+		// Signal done BEFORE closing responseChan
+		close(h.doneChan)
+		close(h.responseChan)
+	} else {
+		logger.Debug.Println("not closing doneChan and responseChan because of expected response to tool call answers.")
+		logger.Debug.Printf("contents of results: %v", toolResults)
+	}
 }

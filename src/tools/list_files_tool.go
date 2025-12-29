@@ -1,8 +1,8 @@
 package tools
 
 import (
-	"fmt"
 	"os/exec"
+	"owl/data"
 	"owl/logger"
 
 	"github.com/fatih/color"
@@ -13,6 +13,9 @@ type ListFilesTool struct {
 
 type FileListInput struct {
 	Filter string
+}
+
+func (tool *ListFilesTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
 func (ool *ListFilesTool) GetName() string {
@@ -42,10 +45,8 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 
 	out, err := exec.Command("/bin/ls", "-R").Output()
 	if err != nil {
-		fmt.Printf("Failed to read files, %s", err)
+		logger.Debug.Printf("error while fetching history for context", err)
 	}
-
-	logger.Screen(fmt.Sprintf("\nlisting files %v", out), color.RGB(150, 150, 150))
 
 	value := string(out)
 	return value, nil

@@ -253,10 +253,11 @@ func launchTUI() {
 	// Setup default model (you can make this configurable)
 	cliResponseHandler := CliResponseHandler{Repository: user}
 	model := &claude_model.ClaudeModel{
-		ResponseHandler: cliResponseHandler,
-		UseThinking:     true,
-		StreamThought:   false,
-		OutputThought:   false,
+		ResponseHandler:   cliResponseHandler,
+		HistoryRepository: user,
+		UseThinking:       true,
+		StreamThought:     false,
+		OutputThought:     false,
 	}
 
 	config := tui.TUIConfig{

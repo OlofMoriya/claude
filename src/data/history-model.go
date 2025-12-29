@@ -10,7 +10,7 @@ type Context struct {
 	History      []History `json:"history"`
 	UserId       int64     `json:"userId"`
 	Created      time.Time `json:"created"`
-	SystemPrompt string    `json:"systemPrompt"`
+	SystemPrompt string    `json:"system_prompt"`
 }
 
 type History struct {
@@ -18,10 +18,10 @@ type History struct {
 	ContextId       int64  `json:"context_id"`
 	Prompt          string `json:"prompt"`
 	Response        string `json:"response"`
-	ResponseContent string `json:"responseContent"`
+	ResponseContent string `json:"response_content"`
 	Abbreviation    string `json:"abreviation"`
 	TokenCount      int    `json:"token_count"`
 	UserId          int64  `json:"userId"`
 	Created         string `json:"created"`
-	ToolResults     string `json:"toolResults"`
+	ToolResults     string `json:"tool_results"`
 }
