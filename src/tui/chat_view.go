@@ -11,6 +11,7 @@ import (
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
 	openai_4o_model "owl/models/open-ai-4o"
+	openai_base "owl/models/open-ai-base"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -155,9 +156,15 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 		case "grok":
 			logger.Debug.Println("setting grok as model")
 			model = &grok_model.GrokModel{
-				ResponseHandler: handler,
-				// HistoryRepository: m.shared.config.Repository,
+				OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+					ResponseHandler:   handler,
+					HistoryRepository: m.shared.config.Repository,
+				},
 			}
+			// model = &grok_model.GrokModel{
+			// 	ResponseHandler:   handler,
+			// 	HistoryRepository: m.shared.config.Repository,
+			// }
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{
 				ResponseHandler:   handler,
