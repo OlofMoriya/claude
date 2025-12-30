@@ -11,6 +11,7 @@ import (
 	grok_model "owl/models/grok"
 	ollama_model "owl/models/ollama"
 	openai_4o_model "owl/models/open-ai-4o"
+	openai_base "owl/models/open-ai-base"
 	embeddings_model "owl/models/open-ai-embedings"
 	open_ai_responses "owl/models/open-ai-responses"
 
@@ -176,7 +177,7 @@ func main() {
 		case "tools":
 			model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: cliResponseHandler}
 		case "grok":
-			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
+			model = &grok_model.GrokModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: cliResponseHandler, HistoryRepository: user}}
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler, HistoryRepository: user}
 		case "qwen3":
