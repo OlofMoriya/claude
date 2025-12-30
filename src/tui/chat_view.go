@@ -7,6 +7,7 @@ import (
 	"owl/models"
 	"owl/services"
 	"strings"
+	"time"
 
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
@@ -51,7 +52,8 @@ type chatViewModel struct {
 	selectedModelIdx int
 	modelCursor      int
 
-	historyCount int
+	historyCount  int
+	statusMessage string // Current status message from logger
 }
 
 type historyLoadedMsg []data.History
@@ -59,6 +61,25 @@ type messageReceivedMsg string
 type messageDoneMsg struct {
 	prompt   string
 	response string
+}
+
+// Status message from logger channel
+type statusMsg string
+
+type chatChunkMsg struct {
+	text         string
+	responseChan chan string
+	doneChan     chan struct{}
+	prompt       string
+}
+
+type chatCompleteMsg struct {
+	prompt   string
+	response string
+}
+
+type chatErrorMsg struct {
+	err error
 }
 
 func newChatViewModel(shared *sharedState) *chatViewModel {
@@ -93,6 +114,7 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		selectedModelIdx: 0,
 		mode:             chatInputMode,
 		historyCount:     shared.config.HistoryCount,
+		statusMessage:    "",
 	}
 }
 
@@ -102,7 +124,26 @@ func (m *chatViewModel) Init() tea.Cmd {
 	return tea.Batch(
 		textarea.Blink,
 		m.loadHistory(),
+		m.listenForStatus(), // Start listening to logger status channel
 	)
+}
+
+// listenForStatus waits for messages from the logger channel
+func (m *chatViewModel) listenForStatus() tea.Cmd {
+	return func() tea.Msg {
+		if logger.StatusChan == nil {
+			return nil
+		}
+
+		// This will block until a message arrives or channel closes
+		msg, ok := <-logger.StatusChan
+		if !ok {
+			// Channel closed, don't listen anymore
+			return nil
+		}
+
+		return statusMsg(msg)
+	}
 }
 
 func (m *chatViewModel) loadHistory() tea.Cmd {
@@ -118,22 +159,6 @@ func (m *chatViewModel) loadHistory() tea.Cmd {
 		logger.Debug.Println("returning historyLoadedMsg")
 		return historyLoadedMsg(history)
 	}
-}
-
-type chatChunkMsg struct {
-	text         string
-	responseChan chan string
-	doneChan     chan struct{}
-	prompt       string
-}
-
-type chatCompleteMsg struct {
-	prompt   string
-	response string
-}
-
-type chatErrorMsg struct {
-	err error
 }
 
 func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
@@ -161,10 +186,6 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 					HistoryRepository: m.shared.config.Repository,
 				},
 			}
-			// model = &grok_model.GrokModel{
-			// 	ResponseHandler:   handler,
-			// 	HistoryRepository: m.shared.config.Repository,
-			// }
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{
 				ResponseHandler:   handler,
@@ -270,6 +291,17 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	shouldUpdateViewport := false
 
 	switch msg := msg.(type) {
+	case statusMsg:
+		// Received status message from logger channel
+		m.statusMessage = string(msg)
+		logger.Debug.Printf("Received status: %s", msg)
+
+		// Keep listening for more status messages
+		return m, tea.Batch(
+			m.listenForStatus(),
+			m.clearStatusAfterDelay(),
+		)
+
 	case chatChunkMsg:
 		// Update UI with new text chunk
 		m.currentResponse += msg.text
@@ -282,6 +314,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Streaming complete, finalize UI
 		m.sending = false
 		m.loading = false
+		m.statusMessage = "" // Clear status when done
 		// Reload history to show the new message
 		return m, m.loadHistory()
 
@@ -290,6 +323,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = msg.err
 		m.loading = false
 		m.sending = false
+		m.statusMessage = "" // Clear status on error
 		return m, nil
 
 	case tea.KeyMsg:
@@ -563,6 +597,13 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd)
 }
 
+// clearStatusAfterDelay clears the status message after 3 seconds
+func (m *chatViewModel) clearStatusAfterDelay() tea.Cmd {
+	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
+		return statusMsg("") // Clear status by sending empty message
+	})
+}
+
 func (m *chatViewModel) View() string {
 	if m.loading || !m.historyLoaded {
 		return loadingStyle.Render("Loading conversation...")
@@ -581,6 +622,10 @@ func (m *chatViewModel) View() string {
 	status := ""
 	if m.sending {
 		status = sendingStyle.Render(" Sending...")
+	}
+
+	if m.statusMessage != "" {
+		status = dimStyle.Render(fmt.Sprintf("%s %s", status, m.statusMessage))
 	}
 
 	// Show mode indicator
