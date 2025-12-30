@@ -10,6 +10,7 @@ import (
 
 // Global logger - accessible from anywhere
 var Debug *log.Logger
+var StatusChan chan string
 
 // Init sets up the logger - call this from main
 func Init(filename string) error {
@@ -27,10 +28,22 @@ func Init(filename string) error {
 	return nil
 }
 
+// Screen outputs text to screen (CLI) or sends to TUI via channel
 func Screen(text string, color *color.Color) {
-	if color != nil {
-		color.Print(text)
+	// If TUI channel exists, send status message there
+	if StatusChan != nil {
+		// Non-blocking send - don't hang if channel is full
+		select {
+		case StatusChan <- text:
+		default:
+			// Channel full, drop message
+		}
 	} else {
-		print(text)
+		// Normal CLI output
+		if color != nil {
+			color.Print(text)
+		} else {
+			print(text)
+		}
 	}
 }
