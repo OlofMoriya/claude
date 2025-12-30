@@ -160,8 +160,8 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 			}
 		case "4o":
 			model = &openai_4o_model.OpenAi4oModel{
-				ResponseHandler: handler,
-				// HistoryRepository: m.shared.config.Repository,
+				ResponseHandler:   handler,
+				HistoryRepository: m.shared.config.Repository,
 			}
 		case "claude":
 			model = &claude_model.ClaudeModel{

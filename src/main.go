@@ -178,7 +178,7 @@ func main() {
 		case "grok":
 			model = &grok_model.GrokModel{ResponseHandler: cliResponseHandler}
 		case "4o":
-			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler}
+			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler, HistoryRepository: user}
 		case "qwen3":
 			model = ollama_model.NewOllamaModel(cliResponseHandler, "")
 		case "claude":
