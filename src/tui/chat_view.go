@@ -294,7 +294,9 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case statusMsg:
 		// Received status message from logger channel
 		m.statusMessage = string(msg)
-		logger.Debug.Printf("Received status: %s", msg)
+		if msg != "" {
+			logger.Debug.Printf("Received status: %s", msg)
+		}
 
 		// Keep listening for more status messages
 		return m, tea.Batch(
