@@ -2,12 +2,12 @@ package tools
 
 import (
 	"fmt"
-	"os/exec"
 	"owl/data"
 	"owl/logger"
 	"strings"
 
 	"github.com/fatih/color"
+	"os"
 )
 
 type ReadFileTool struct {
@@ -23,20 +23,33 @@ func (tool *ReadFileTool) SetHistory(repo *data.HistoryRepository, context *data
 func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 
 	input, ok := i["FileNames"]
+
 	logger.Screen(fmt.Sprintf("\nAsked to read file %v", input), color.RGB(150, 150, 150))
+
+	logger.Debug.Printf("\nAsked to read file %v", input)
 
 	if !ok {
 		return "", fmt.Errorf("Could not parse FileWriteInput from input")
 	}
 
 	files := strings.Split(input, ";")
+	complete_output := ""
+	complete_error := ""
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			complete_error += err.Error()
+			logger.Debug.Printf("Error reading file: %v", err)
+		}
 
-	out, err := exec.Command("/bin/cat", files...).Output()
-	if err != nil {
-		fmt.Printf("Failed to read files, %s", err)
+		complete_output += fmt.Sprintf("\n%s\n%s", file, content)
+		logger.Debug.Printf("\ncomplete_output: %v", complete_output)
 	}
-	value := string(out)
-	return value, err
+
+	if complete_error != "" {
+		return complete_output, fmt.Errorf("%s", complete_error)
+	}
+	return complete_output, nil
 }
 
 func (tool *ReadFileTool) GetName() string {
@@ -53,7 +66,7 @@ func (tool *ReadFileTool) GetDefinition() Tool {
 			Properties: map[string]Property{
 				"FileNames": {
 					Type:        "string",
-					Description: "filename with dynamic path",
+					Description: "filenames with dynamic path. multiple files can be read by adding them together with ; between. i.e 'README.md;package.json'",
 				},
 			},
 		},
