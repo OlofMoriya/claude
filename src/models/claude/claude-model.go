@@ -3,7 +3,6 @@ package claude_model
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -306,7 +305,7 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse,
 		}, nil
 	}
 
-	return models.ToolResponse{Id: content.Id, Response: "error"}, errors.New(fmt.Sprintf("No such tool is defined: %s", content.Name))
+	return models.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("No response or err from tool: %s, err: %s", content.Name, err.Error())
 }
 
 func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
