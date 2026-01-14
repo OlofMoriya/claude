@@ -9,7 +9,9 @@ import (
 	data "owl/data"
 	"owl/logger"
 	models "owl/models"
+	claude_model "owl/models/claude"
 	"owl/services"
+	tools "owl/tools"
 	"strconv"
 	"strings"
 	"time"
@@ -404,12 +406,36 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 
 	logger.Screen(fmt.Sprintf("\nCurrent user in repository %v\n", repository.User), color.RGB(150, 150, 150))
 
+	if req.ContextName == "" {
+		logger.Screen("Naming context...", color.RGB(150, 150, 150))
+		logger.Debug.Println("Sending Haiku request to name context")
+		//Create a context name
+		toolHandler := tools.ToolResponseHandler{}
+		toolHandler.Init()
+
+		model := &claude_model.ClaudeModel{ResponseHandler: &toolHandler, ModelVersion: "Haiku"}
+
+		prompt := fmt.Sprintf("Create a short name for this prompt so that I can store it with a name in a database. Maximum 100 characters but try to keep it short. ONLY EVER answer with the name and nothing else!!!! here's the prompt to name the context for: %s", req.Prompt)
+
+		services.AwaitedQuery(prompt, model, repository, 0, &data.Context{
+			Name:    "Create name for context",
+			Id:      999,
+			History: []data.History{},
+		}, &models.PayloadModifiers{})
+		response := <-toolHandler.ResponseChannel
+
+		logger.Debug.Printf("naming reponse: %s", response)
+		logger.Screen(fmt.Sprintf("naming reponse: %s", response), color.RGB(150, 150, 150))
+		req.ContextName = response
+	}
+
 	context, _ := repository.GetContextByName(req.ContextName)
 	if context == nil {
 		new_context := data.Context{Name: req.ContextName}
-		_, err := repository.InsertContext(new_context)
+		id, err := repository.InsertContext(new_context)
 
 		context = &new_context
+		context.Id = id
 		if err != nil {
 			log.Println(fmt.Sprintf("Could not create a new context with name %s for user %s, %s", req.ContextName, username, err))
 		}
