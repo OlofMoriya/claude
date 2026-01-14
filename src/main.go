@@ -128,25 +128,12 @@ func main() {
 	}
 
 	if serve {
-		projectID := os.Getenv("GCP_PROJECT_ID")
-
-		connectionString := os.Getenv("DB_CONNECTIONSTRING")
-		if connectionString == "" {
-			secretName := fmt.Sprintf("projects/%s/secrets/owlllm-db-go-cn/versions/latest", projectID)
-			connectionString = GetSecretFromGCP(secretName)
-		}
-
-		repository := data.PostgresHistoryRepository{}
-		err := repository.Init(connectionString)
-		if err != nil {
-			log.Println("Error initializing db", err)
-		}
-
 		httpResponseHandler := &server.HttpResponseHandler{}
-		httpResponseHandler.Repository = &repository
+		httpResponseHandler.Repository = &data.MultiUserContext{}
 
-		model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler, UseStreaming: stream}
-		server.Run(secure, port, httpResponseHandler, &model, stream, connectionString)
+		model := ollama_model.NewOllamaModel(httpResponseHandler, "qwen3")
+		// model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler, UseStreaming: stream}
+		server.Run(secure, port, httpResponseHandler, model, stream)
 	} else if embeddings {
 		// Get values from environment variables
 		db := os.Getenv("OWL_LOCAL_DATABASE")

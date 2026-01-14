@@ -68,8 +68,9 @@ func createHistoryTables(db *sql.DB) {
              response TEXT,
 			 response_content TEXT,
              abreviation TEXT,
-             token_count INTEGER
-			 created INT
+             token_count INTEGER,
+			 created INT,
+			 tool_results TEXT
          )
      `
 	_, err := db.Exec(createTableQuery)
@@ -106,7 +107,7 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name, system_pronmpt FROM context WHERE id = ?"
+	selectQuery := "SELECT id, name, system_prompt FROM context WHERE id = ?"
 	row := db.QueryRow(selectQuery, contextId)
 
 	var context Context
