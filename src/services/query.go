@@ -30,6 +30,7 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	}
 
 	req := model.CreateRequest(context, prompt, false, history, modifiers)
+	logger.Debug.Printf("sending req: %v", req)
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
@@ -45,9 +46,9 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 			log.Fatal(err)
 		}
 
-		fmt.Println(string(bytes))
-		println(fmt.Sprintf("\nerr: %v", err))
-
+		logger.Debug.Printf("Issue from llm", string(bytes))
+		logger.Debug.Printf("received non-OK response status: %d", resp.StatusCode)
+		logger.Debug.Printf("\nerr: %v", err)
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
 

@@ -7,8 +7,15 @@ import (
 	"log"
 	"net/http"
 	data "owl/data"
+	"owl/logger"
 	models "owl/models"
 	"owl/services"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/fatih/color"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type server_data struct {
@@ -18,7 +25,7 @@ type server_data struct {
 	db_connectionString string
 }
 
-func Run(secure bool, port int, responseHandler *HttpResponseHandler, model models.Model, streaming bool, dbConnectionString string) {
+func Run(secure bool, port int, responseHandler *HttpResponseHandler, model models.Model, streaming bool) {
 
 	server_data := server_data{
 		model:           model,
@@ -29,7 +36,11 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 	log.Println("server running on port", port)
 
 	http.HandleFunc("/", server_data.handleRoot)
-	http.HandleFunc("/prompt", server_data.handlePrompt)
+	http.HandleFunc("/api/prompt", server_data.handlePrompt)
+	http.HandleFunc("/api/login", server_data.handleLogin)
+	http.HandleFunc("/api/context", server_data.handleContexts)
+	http.HandleFunc("/api/context/{id}", server_data.handleContext)
+	http.HandleFunc("/api/context/{id}/systemPrompt", server_data.handleSetSystemPrompt)
 	http.HandleFunc("/status", server_data.handleStatus)
 
 	var err error
@@ -44,15 +55,19 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 	}
 }
 
-type owlRequest struct {
-	Prompt      string  `json:"prompt"`
-	ContextName string  `json:"contextName"`
-	User        string  `json:"user"`
-	SlackId     *string `json:"slackId"`
+type promptRequest struct {
+	Prompt      string `json:"prompt"`
+	ContextName string `json:"contextName"`
 }
 
-func parseOwlRequest(r *http.Request) (owlRequest, error) {
-	var req owlRequest
+type loginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func parseSetSystemPromptRequest(r *http.Request) (SetSystemPromptRequest, error) {
+	logger.Screen("Recieved login through http", color.RGB(150, 150, 150))
+	var req SetSystemPromptRequest
 
 	// Check if the Content-Type is application/json
 	if r.Header.Get("Content-Type") != "application/json" {
@@ -61,7 +76,9 @@ func parseOwlRequest(r *http.Request) (owlRequest, error) {
 
 	// Read the body
 	body, err := io.ReadAll(r.Body)
+
 	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
 		return req, fmt.Errorf("error reading request body: %v", err)
 	}
 	defer r.Body.Close()
@@ -69,90 +86,346 @@ func parseOwlRequest(r *http.Request) (owlRequest, error) {
 	// Unmarshal the JSON into the owlRequest struct
 	err = json.Unmarshal(body, &req)
 	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
 		return req, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
 	return req, nil
 }
 
-// Helper to get or create user. Should be moved somewhere else?
-func getUser(repository *data.PostgresHistoryRepository, req owlRequest) (data.User, error) {
-	emailUser, err := repository.GetUserByEmail(req.User)
+func parseLoginRequest(r *http.Request) (loginRequest, error) {
+	logger.Screen("Recieved login through http", color.RGB(150, 150, 150))
+	var req loginRequest
+
+	// Check if the Content-Type is application/json
+	if r.Header.Get("Content-Type") != "application/json" {
+		return req, fmt.Errorf("Content-Type must be application/json")
+	}
+
+	// Read the body
+	body, err := io.ReadAll(r.Body)
+
 	if err != nil {
-		log.Panic("error trying to find user by email", err)
+		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error reading request body: %v", err)
 	}
+	defer r.Body.Close()
 
-	if emailUser != nil {
-		return *emailUser, nil
-	}
-
-	if req.SlackId != nil {
-		slackUser, err := repository.GetUserBySlackId(*req.SlackId)
-		if err != nil {
-			log.Panic("error trying to find user by email", err)
-		}
-		if slackUser != nil {
-			return *slackUser, nil
-		}
-	}
-
-	newUser := data.User{Name: &req.User, SlackId: req.SlackId, Email: &req.User}
-	id, err := repository.CreateUser(newUser)
+	// Unmarshal the JSON into the owlRequest struct
+	err = json.Unmarshal(body, &req)
 	if err != nil {
-		return newUser, err
+		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	newUser.Id = id
-
-	return newUser, nil
+	return req, nil
 }
 
-func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		// Parse the request body
+func parsePromptRequest(r *http.Request) (promptRequest, error) {
+	logger.Screen("Recieved prompt through http", color.RGB(150, 150, 150))
+	var req promptRequest
 
-		req, err := parseOwlRequest(r)
-		if err != nil {
-			http.Error(w, "Bad input", http.StatusBadRequest)
-		}
+	// Check if the Content-Type is application/json
+	if r.Header.Get("Content-Type") != "application/json" {
+		return req, fmt.Errorf("Content-Type must be application/json")
+	}
 
-		repository, ok := server_data.responseHandler.Repository.(*data.PostgresHistoryRepository)
-		if !ok {
-			log.Fatal("Repository is not of type *PostgresHistoryRepository")
-		}
+	// Read the body
+	body, err := io.ReadAll(r.Body)
 
-		user, err := getUser(repository, req)
-		if err != nil {
-			log.Panic("could not get or create user", err)
-		}
-		repository.User = user
+	logger.Screen(fmt.Sprintf("\nReceived body %s\n", body), color.RGB(150, 150, 150))
 
-		context, _ := repository.GetContextByName(req.ContextName)
-		if context == nil {
-			new_context := data.Context{Name: req.ContextName, UserId: int64(user.Id)}
-			_, err := repository.InsertContext(new_context)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error reading request body: %v", err)
+	}
+	defer r.Body.Close()
 
-			if err != nil {
-				log.Println(fmt.Sprintf("Could not create a new context with name %s, %s", req.ContextName, err))
-			}
-		}
+	// Unmarshal the JSON into the owlRequest struct
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error parsing JSON: %v", err)
+	}
 
-		w.Header().Set("Connection", "Keep-Alive")
-		w.Header().Set("Transfer-Encoding", "chunked")
+	if req.Prompt == "" {
+		return req, fmt.Errorf("no prompt in request body")
+	}
+
+	return req, nil
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+func GetUsernameFromToken(tokenString string) (string, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return secretKey, nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		return claims["username"].(string), nil
+	}
+
+	return "", fmt.Errorf("invalid token")
+}
+
+func (server_data *server_data) handleLogin(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+
+	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
+		return
+	}
+	req, err := parseLoginRequest(r)
+	if err != nil {
+		http.Error(w, "Bad input", http.StatusBadRequest)
+		return
+	}
+	token, err := CreateToken(req.Username)
+	if err != nil {
+		http.Error(w, "Could not generate token", http.StatusInternalServerError)
+		return
+	}
 
-		//trigger awaited query
-		server_data.responseHandler.SetResponseWriter(w)
-		if server_data.streaming {
-			services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, nil)
-		} else {
-			services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, nil)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(LoginResponse{
+		Token: token,
+	})
+}
+
+var secretKey = []byte("my-test-secret-key-change-in-production")
+
+func CreateToken(username string) (string, error) {
+	claims := jwt.MapClaims{
+		"username": username,
+		"exp":      time.Now().Add(7 * 24 * time.Hour).Unix(), // 7 days
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(secretKey)
+}
+
+type ContextsResponse struct {
+	Contexts []data.Context `json:"contexts"`
+}
+
+func (server_data *server_data) handleContexts(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	logger.Screen("hit the handle contexts endpoint handler", color.RGB(150, 150, 150))
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	username, err := authenticate(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	repository, _ := server_data.responseHandler.Repository.(*data.MultiUserContext)
+	repository.SetCurrentDb(username)
+
+	contexts, err := repository.GetAllContexts()
+	if err != nil {
+		logger.Debug.Printf("error when fetching contexts %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ContextsResponse{
+		Contexts: contexts,
+	})
+}
+
+type ContextResponse struct {
+	Name         string         `json:"name"`
+	Id           string         `json:"id"`
+	Created      time.Time      `json:"created"`
+	History      []data.History `json:"history"`
+	SystemPrompt string         `json:"systemPrompt"`
+}
+
+type SetSystemPromptRequest struct {
+	SystemPrompt string `json:"systemPrompt"`
+}
+
+func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	} else if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+
+	id := r.PathValue("id")
+	logger.Screen(fmt.Sprintf("Called for context at id: {%s}", id), color.RGB(150, 150, 150))
+	logger.Debug.Printf("Called for context at id: {%s}", id)
+	username, err := authenticate(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	repository, _ := server_data.responseHandler.Repository.(*data.MultiUserContext)
+	repository.SetCurrentDb(username)
+
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	req, err := parseSetSystemPromptRequest(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = repository.UpdateSystemPrompt(intId, req.SystemPrompt)
+	if err != nil {
+		logger.Debug.Printf("error while setting system prompt %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (server_data *server_data) handleContext(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	} else if r.Method == "GET" {
+		id := r.PathValue("id")
+		logger.Screen(fmt.Sprintf("Called for context at id: {%s}", id), color.RGB(150, 150, 150))
+		logger.Debug.Printf("Called for context at id: {%s}", id)
+		username, err := authenticate(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
+
+		repository, _ := server_data.responseHandler.Repository.(*data.MultiUserContext)
+		repository.SetCurrentDb(username)
+
+		intId, err := strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		context, err := repository.GetContextById(intId)
+		if err != nil {
+			logger.Debug.Printf("error when fetching context %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		history, err := repository.GetHistoryByContextId(intId, 1000)
+		if err != nil {
+			logger.Debug.Printf("error when fetching context %v", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(ContextResponse{
+			Id:           id,
+			Name:         context.Name,
+			SystemPrompt: context.SystemPrompt,
+			Created:      context.Created,
+			History:      history,
+		})
+		return
 
 	} else {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
 
+}
+
+func authenticate(r *http.Request) (string, error) {
+	authenticationHeader := r.Header.Get("Authorization")
+	if authenticationHeader == "" {
+		logger.Screen("Recieved empty authorization header", color.RGB(150, 150, 150))
+		return "", fmt.Errorf("Did not receive authentication header")
+	}
+	possibleToken, _ := strings.CutPrefix(authenticationHeader, "Bearer ")
+	username, err := GetUsernameFromToken(possibleToken)
+	if err != nil {
+		logger.Screen("Could not get username from token", color.RGB(150, 150, 150))
+		return "", fmt.Errorf("incorrectly formated authentication header")
+	}
+	return username, nil
+}
+
+func enableCors(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
+}
+
+func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// Parse the request body
+	username, err := authenticate(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	req, err := parsePromptRequest(r)
+	if err != nil {
+		http.Error(w, "Bad input", http.StatusBadRequest)
+		return
+	}
+
+	repository, _ := server_data.responseHandler.Repository.(*data.MultiUserContext)
+
+	logger.Debug.Printf("Handling prompt request: %v", req)
+
+	repository.SetCurrentDb(username)
+
+	logger.Screen(fmt.Sprintf("\nCurrent user in repository %v\n", repository.User), color.RGB(150, 150, 150))
+
+	context, _ := repository.GetContextByName(req.ContextName)
+	if context == nil {
+		new_context := data.Context{Name: req.ContextName}
+		_, err := repository.InsertContext(new_context)
+
+		context = &new_context
+		if err != nil {
+			log.Println(fmt.Sprintf("Could not create a new context with name %s for user %s, %s", req.ContextName, username, err))
+		}
+	}
+
+	w.Header().Set("Connection", "Keep-Alive")
+	w.Header().Set("Transfer-Encoding", "chunked")
+	w.WriteHeader(http.StatusOK)
+
+	//trigger awaited query
+	server_data.responseHandler.SetResponseWriter(w)
+	if server_data.streaming {
+		services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{})
+	} else {
+		services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{})
+	}
 }
 
 type HttpResponseHandler struct {
@@ -168,9 +441,10 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 	fmt.Fprintf(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
+
 func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
 
-	repository, ok := httpResponseHandler.Repository.(*data.PostgresHistoryRepository)
+	repository, ok := httpResponseHandler.Repository.(*data.MultiUserContext)
 
 	if !ok {
 		log.Panic("This needs to be called with a repository that supplies user")
@@ -196,6 +470,7 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 }
 
 func (server_data *server_data) handleStatus(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "OK")
 }

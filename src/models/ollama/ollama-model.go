@@ -47,6 +47,7 @@ func (model *OllamaModel) SetResponseHandler(responseHandler models.ResponseHand
 
 func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := model.createOllamaPayload(prompt, streaming, history, modifiers.Image)
+	logger.Debug.Printf("created ollama payload: %s", payload)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
