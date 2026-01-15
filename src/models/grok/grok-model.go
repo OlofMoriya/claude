@@ -29,7 +29,7 @@ func (model *GrokModel) CreateRequest(context *data.Context, prompt string, stre
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
 
 	// Create payload using base implementation with Grok-specific settings
-	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "grok-3", 8000)
+	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "grok-3", 8000, context)
 
 	return createGrokRequest(payload)
 }
