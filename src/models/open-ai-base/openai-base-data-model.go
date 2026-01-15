@@ -8,18 +8,18 @@ type Message struct {
 }
 
 type RequestMessage struct {
-	Role       string           `json:"role"`
-	Content    []RequestContent `json:"content,omitempty"`
-	ToolCalls  []ToolCall       `json:"tool_calls,omitempty"`
-	ToolCallId string           `json:"tool_call_id,omitempty"`
+	Role       string      `json:"role"`
+	Content    interface{} `json:"content,omitempty"`
+	ToolCalls  []ToolCall  `json:"tool_calls,omitempty"`
+	ToolCallId string      `json:"tool_call_id,omitempty"`
 }
 
 type ChatCompletionRequest struct {
-	Model     string        `json:"model"`
-	Messages  []interface{} `json:"messages"`
+	Model     string         `json:"model"`
+	Messages  []interface{}  `json:"messages"`
 	Tools     []FunctionTool `json:"tools,omitempty"`
-	Stream    bool          `json:"stream"`
-	MaxTokens int           `json:"max_tokens"`
+	Stream    bool           `json:"stream"`
+	MaxTokens int            `json:"max_tokens"`
 }
 
 // Tool calling structures (OpenAI format)

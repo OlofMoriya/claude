@@ -46,7 +46,7 @@ func (model *OllamaModel) SetResponseHandler(responseHandler models.ResponseHand
 }
 
 func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
-	payload := model.createOllamaPayload(prompt, streaming, history, modifiers.Image)
+	payload := model.createOllamaPayload(prompt, streaming, history, modifiers.Image, context)
 	logger.Debug.Printf("created ollama payload: %s", payload)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
@@ -99,8 +99,15 @@ func (model *OllamaModel) HandleBodyBytes(bytes []byte) {
 	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "")
 }
 
-func (model *OllamaModel) createOllamaPayload(prompt string, streamed bool, history []data.History, image bool) ChatCompletionRequest {
+func (model *OllamaModel) createOllamaPayload(prompt string, streamed bool, history []data.History, image bool, context *data.Context) ChatCompletionRequest {
 	messages := []RequestMessage{}
+
+	if context.SystemPrompt != "" {
+		messages = append(messages, RequestMessage{
+			Role:    "developer",
+			Content: context.SystemPrompt,
+		})
+	}
 
 	// Add conversation history
 	for _, h := range history {
