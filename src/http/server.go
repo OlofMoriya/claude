@@ -42,7 +42,7 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 	http.HandleFunc("/api/login", server_data.handleLogin)
 	http.HandleFunc("/api/context", server_data.handleContexts)
 	http.HandleFunc("/api/context/{id}", server_data.handleContext)
-	http.HandleFunc("/api/context/{id}/systemPrompt", server_data.handleSetSystemPrompt)
+	http.HandleFunc("/api/context/{id}/systemprompt", server_data.handleSetSystemPrompt)
 	http.HandleFunc("/status", server_data.handleStatus)
 
 	var err error
@@ -68,7 +68,6 @@ type loginRequest struct {
 }
 
 func parseSetSystemPromptRequest(r *http.Request) (SetSystemPromptRequest, error) {
-	logger.Screen("Recieved login through http", color.RGB(150, 150, 150))
 	var req SetSystemPromptRequest
 
 	// Check if the Content-Type is application/json
@@ -261,6 +260,7 @@ type SetSystemPromptRequest struct {
 }
 
 func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *http.Request) {
+	logger.Screen(fmt.Sprintf("\nhit set system prompt with method %s", r.Method), color.RGB(150, 150, 150))
 	enableCors(w)
 
 	if r.Method == "OPTIONS" {
@@ -271,7 +271,7 @@ func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *
 	}
 
 	id := r.PathValue("id")
-	logger.Screen(fmt.Sprintf("Called for context at id: {%s}", id), color.RGB(150, 150, 150))
+	logger.Screen(fmt.Sprintf("\nCalled for context at id: {%s}", id), color.RGB(150, 150, 150))
 	logger.Debug.Printf("Called for context at id: {%s}", id)
 	username, err := authenticate(r)
 	if err != nil {
@@ -284,12 +284,14 @@ func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *
 
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
+		logger.Screen(fmt.Sprintf("\nFailed to convert id to int: %s", id), color.RGB(250, 150, 150))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	req, err := parseSetSystemPromptRequest(r)
 	if err != nil {
+		logger.Screen(fmt.Sprintf("\nFailed to parse body: %s", err), color.RGB(250, 150, 150))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -300,6 +302,9 @@ func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
+	return
 }
 
 func (server_data *server_data) handleContext(w http.ResponseWriter, r *http.Request) {

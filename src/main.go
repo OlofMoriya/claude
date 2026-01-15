@@ -129,10 +129,11 @@ func main() {
 
 	if serve {
 		httpResponseHandler := &server.HttpResponseHandler{}
-		httpResponseHandler.Repository = &data.MultiUserContext{}
+		user := &data.MultiUserContext{}
+		httpResponseHandler.Repository = user
 
-		model := ollama_model.NewOllamaModel(httpResponseHandler, "qwen3")
-		// model := claude_model.ClaudeModel{ResponseHandler: httpResponseHandler, UseStreaming: stream}
+		// model := ollama_model.NewOllamaModel(httpResponseHandler, "qwen3")
+		model := &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: httpResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "haiku"}
 		server.Run(secure, port, httpResponseHandler, model, stream)
 	} else if embeddings {
 		// Get values from environment variables

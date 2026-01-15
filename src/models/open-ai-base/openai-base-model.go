@@ -247,8 +247,15 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.T
 }
 
 // CreatePayload builds the request payload with history and tool definitions
-func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers, model string, maxTokens int) ChatCompletionRequest {
+func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers, model string, maxTokens int, context *data.Context) ChatCompletionRequest {
 	messages := []interface{}{}
+
+	if context.SystemPrompt != "" {
+		messages = append(messages, RequestMessage{
+			Role:    "developer",
+			Content: context.SystemPrompt,
+		})
+	}
 
 	// Process history (including tool results)
 	for i, h := range history {
