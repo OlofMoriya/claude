@@ -11,6 +11,8 @@ import (
 	"github.com/fatih/color"
 )
 
+var MODELNAME = "generate_image_tool"
+
 type GenerateImageTool struct {
 	ResponseHandler   models.ResponseHandler
 	HistoryRepository *data.HistoryRepository
@@ -41,7 +43,7 @@ func (tool *GenerateImageTool) Run(i map[string]string) (string, error) {
 
 	model := &open_ai_responses.OpenAiResponseModel{ResponseHandler: &toolHandler}
 
-	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 0, tool.Context, &models.PayloadModifiers{})
+	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 0, tool.Context, &models.PayloadModifiers{}, MODELNAME)
 	//I need to await the answer on the channel toolHandler.ResponseChannel and then return with that value.
 	response := <-toolHandler.ResponseChannel
 	return response, nil

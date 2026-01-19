@@ -17,6 +17,8 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
+var MODELNAME = "open_ai_responses"
+
 type OpenAiResponseModel struct {
 	ResponseHandler   models.ResponseHandler
 	prompt            string
@@ -78,12 +80,10 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 		data, _ := strings.CutPrefix(responseLine, "data: ")
 
 		logger.Debug.Printf("json")
-		logger.Debug.Printf("%s", apiResponse)
+		logger.Debug.Printf("%v", apiResponse)
 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
 			// fmt.Printf("Error unmarshalling response: %v\n %s", err, line)
 		}
-
-		logger.Debug.Printf("%s", apiResponse)
 
 		if len(apiResponse.Choices) > 0 {
 			choice := apiResponse.Choices[0]
@@ -93,7 +93,7 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*&choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "")
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", MODELNAME)
 			}
 		}
 	}
@@ -149,7 +149,7 @@ func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
 	}
 
 	logger.Debug.Printf("Final text from responses: %s", text)
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "", "")
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "", "", MODELNAME)
 }
 
 func (model *OpenAiResponseModel) SetResponseHandler(responseHandler models.ResponseHandler) {

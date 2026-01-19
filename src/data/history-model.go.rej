@@ -1,0 +1,16 @@
+@@ -9,6 +9,7 @@
+ 	Response      string
+ 	InputTokens   int
+ 	OutputTokens  int
++	Model         string
+ 	CreatedAt     time.Time
+ }
+ 
+@@ -17,6 +18,7 @@
+ 	Name         string
+ 	SystemPrompt string
+ 	History      []History
++	PreferredModel string
+ 	CreatedAt    time.Time
+ 	UpdatedAt    time.Time
+ }
