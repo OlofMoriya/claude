@@ -44,6 +44,9 @@ func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHand
 }
 
 func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+
+	logger.Debug.Printf("\nMODEL USE: creating claude payload: %s", model.ModelVersion)
+
 	var model_version string
 	switch model.ModelVersion {
 	case "3.5-sonnet":
@@ -124,7 +127,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 			logger.Debug.Printf("Message stop with fakedResponse.Content: %v", fakeResponse.Content)
 			tool_responses, tool_result_json := model.handleToolCalls(fakeResponse)
-			logger.Debug.Printf("Results from tool calls", tool_responses)
+			logger.Debug.Printf("Results from tool calls %v", tool_responses)
 
 			savedContent := ""
 			if len(model.StreamedToolUses) > 0 {
@@ -135,13 +138,13 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 				savedContent = string(contentJson)
 			}
 
-			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, savedContent, tool_result_json)
+			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, savedContent, tool_result_json, model.ModelVersion)
 
 			if len(tool_responses) > 0 {
 				// Continue conversation with tool results
 				services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
 					ToolResponses: tool_responses,
-				})
+				}, model.ModelVersion)
 			}
 		}
 	}
@@ -256,13 +259,13 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		logger.Debug.Printf("Error marshalling json content from response: %s", err)
 	}
 
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson)
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson, model.ModelVersion)
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
 		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
 			ToolResponses: toolResponses,
-		})
+		}, model.ModelVersion)
 	}
 }
 

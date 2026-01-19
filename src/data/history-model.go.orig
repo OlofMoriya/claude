@@ -5,13 +5,12 @@ import (
 )
 
 type Context struct {
-	Id             int64     `json:"id"`
-	Name           string    `json:"name"`
-	History        []History `json:"history"`
-	UserId         int64     `json:"userId"`
-	Created        time.Time `json:"created"`
-	SystemPrompt   string    `json:"system_prompt"`
-	PreferredModel string    `json:"preferred_model"`
+	Id           int64     `json:"id"`
+	Name         string    `json:"name"`
+	History      []History `json:"history"`
+	UserId       int64     `json:"userId"`
+	Created      time.Time `json:"created"`
+	SystemPrompt string    `json:"system_prompt"`
 }
 
 type History struct {
@@ -25,5 +24,4 @@ type History struct {
 	UserId          int64  `json:"userId"`
 	Created         string `json:"created"`
 	ToolResults     string `json:"tool_results"`
-	Model           string `json:"model"`
 }

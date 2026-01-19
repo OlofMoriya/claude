@@ -32,8 +32,8 @@ func (postgresHistoryRepository *PostgresHistoryRepository) Init(connectionStrin
 
 func (r *PostgresHistoryRepository) GetContextById(contextId int64) (Context, error) {
 	var context Context
-	err := r.db.QueryRow("SELECT id, name, user_id FROM context WHERE id = $1 AND user_id = $2", contextId, r.User.Id).
-		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt)
+	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE id = $1 AND user_id = $2", contextId, r.User.Id).
+		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel)
 	if err != nil {
 		return Context{}, err
 	}
@@ -42,8 +42,8 @@ func (r *PostgresHistoryRepository) GetContextById(contextId int64) (Context, er
 
 func (r *PostgresHistoryRepository) InsertHistory(history History) (int64, error) {
 	var id int64
-	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, user_id, created, response_content) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
-		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.UserId, time.Now(), history.ResponseContent).
+	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, user_id, created, response_content, model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.UserId, time.Now(), history.ResponseContent, history.Model).
 		Scan(&id)
 	if err != nil {
 		return 0, err
@@ -53,8 +53,8 @@ func (r *PostgresHistoryRepository) InsertHistory(history History) (int64, error
 
 func (r *PostgresHistoryRepository) InsertContext(context Context) (int64, error) {
 	var id int64
-	err := r.db.QueryRow("INSERT INTO context (name, user_id, system_prompt) VALUES ($1, $2, $3) RETURNING id",
-		context.Name, context.UserId, context.SystemPrompt).
+	err := r.db.QueryRow("INSERT INTO context (name, user_id, system_prompt, preferred_model) VALUES ($1, $2, $3, $4) RETURNING id",
+		context.Name, context.UserId, context.SystemPrompt, context.PreferredModel).
 		Scan(&id)
 	if err != nil {
 		return 0, err
@@ -63,10 +63,7 @@ func (r *PostgresHistoryRepository) InsertContext(context Context) (int64, error
 }
 
 func (r *PostgresHistoryRepository) GetHistoryByContextId(contextId int64, maxCount int) ([]History, error) {
-
-	// log.Printf("\nSELECT id, context_id, prompt, response, abbreviation, token_count, user_id, created FROM history WHERE context_id = %s AND user_id = %s ORDER BY created DESC LIMIT %s \n", contextId, r.User.Id, maxCount)
-
-	rows, err := r.db.Query("SELECT id, context_id, prompt, response, abbreviation, token_count, user_id, created FROM history WHERE context_id = $1 AND user_id = $2 ORDER BY created DESC LIMIT $3",
+	rows, err := r.db.Query("SELECT id, context_id, prompt, response, abbreviation, token_count, user_id, created, COALESCE(model, 'sonnet') FROM history WHERE context_id = $1 AND user_id = $2 ORDER BY created DESC LIMIT $3",
 		contextId, r.User.Id, maxCount)
 	if err != nil {
 		return nil, err
@@ -77,7 +74,7 @@ func (r *PostgresHistoryRepository) GetHistoryByContextId(contextId int64, maxCo
 	for rows.Next() {
 		log.Println("row in history response")
 		var h History
-		err := rows.Scan(&h.Id, &h.ContextId, &h.Prompt, &h.Response, &h.Abbreviation, &h.TokenCount, &h.UserId, &h.Created)
+		err := rows.Scan(&h.Id, &h.ContextId, &h.Prompt, &h.Response, &h.Abbreviation, &h.TokenCount, &h.UserId, &h.Created, &h.Model)
 		if err != nil {
 			log.Println("error parsing history response", err)
 			return nil, err
@@ -89,8 +86,8 @@ func (r *PostgresHistoryRepository) GetHistoryByContextId(contextId int64, maxCo
 
 func (r *PostgresHistoryRepository) GetContextByName(name string) (*Context, error) {
 	var context Context
-	err := r.db.QueryRow("SELECT id, name, user_id FROM context WHERE name = $1 AND user_id = $2", name, r.User.Id).
-		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt)
+	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE name = $1 AND user_id = $2", name, r.User.Id).
+		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel)
 	if err != nil {
 		log.Println("err selecting context", err)
 		if err == sql.ErrNoRows {
@@ -102,7 +99,7 @@ func (r *PostgresHistoryRepository) GetContextByName(name string) (*Context, err
 }
 
 func (r *PostgresHistoryRepository) GetAllContexts() ([]Context, error) {
-	rows, err := r.db.Query("SELECT id, name, user_id FROM context WHERE user_id = $1", r.User.Id)
+	rows, err := r.db.Query("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE user_id = $1", r.User.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +108,7 @@ func (r *PostgresHistoryRepository) GetAllContexts() ([]Context, error) {
 	var contexts []Context
 	for rows.Next() {
 		var c Context
-		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.SystemPrompt)
+		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.SystemPrompt, &c.PreferredModel)
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +131,18 @@ func (r *PostgresHistoryRepository) DeleteHistory(historyId int64) (int64, error
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+func (r *PostgresHistoryRepository) UpdateSystemPrompt(contextId int64, systemPrompt string) error {
+	_, err := r.db.Exec("UPDATE contexts SET system_prompt = $1 WHERE id = $2",
+		systemPrompt, contextId)
+	return err
+}
+
+func (r *PostgresHistoryRepository) UpdatePreferredModel(contextId int64, model string) error {
+	_, err := r.db.Exec("UPDATE contexts SET preferred_model = $1 WHERE id = $2",
+		model, contextId)
+	return err
 }
 
 // User CRUD operations
@@ -199,10 +208,4 @@ func (r *PostgresHistoryRepository) GetUserBySlackId(slackId string) (*User, err
 		return nil, err
 	}
 	return &user, nil
-}
-
-func (r *PostgresHistoryRepository) UpdateSystemPrompt(contextId int64, systemPrompt string) error {
-	_, err := r.db.Exec("UPDATE contexts SET system_prompt = $1 WHERE id = $2",
-		systemPrompt, contextId)
-	return err
 }

@@ -59,3 +59,7 @@ func (mu_context *MultiUserContext) DeleteHistory(historyId int64) (int64, error
 func (mu_context *MultiUserContext) UpdateSystemPrompt(contextId int64, systemPrompt string) error {
 	return mu_context.User.UpdateSystemPrompt(contextId, systemPrompt)
 }
+
+func (mu_context *MultiUserContext) UpdatePreferredModel(contextId int64, model string) error {
+	return mu_context.User.UpdatePreferredModel(contextId, model)
+}

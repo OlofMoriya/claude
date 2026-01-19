@@ -10,6 +10,10 @@ import (
 	"owl/logger"
 	models "owl/models"
 	claude_model "owl/models/claude"
+	grok_model "owl/models/grok"
+	ollama_model "owl/models/ollama"
+	openai_4o_model "owl/models/open-ai-4o"
+	openai_base "owl/models/open-ai-base"
 	"owl/services"
 	tools "owl/tools"
 	"strconv"
@@ -43,6 +47,7 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 	http.HandleFunc("/api/context", server_data.handleContexts)
 	http.HandleFunc("/api/context/{id}", server_data.handleContext)
 	http.HandleFunc("/api/context/{id}/systemprompt", server_data.handleSetSystemPrompt)
+	http.HandleFunc("/api/context/{id}/setmodel", server_data.handleSetModel)
 	http.HandleFunc("/status", server_data.handleStatus)
 
 	var err error
@@ -67,24 +72,47 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
-func parseSetSystemPromptRequest(r *http.Request) (SetSystemPromptRequest, error) {
-	var req SetSystemPromptRequest
+type SetModelRequest struct {
+	Model string `json:"model"`
+}
 
-	// Check if the Content-Type is application/json
+func parseModelRequest(r *http.Request) (SetModelRequest, error) {
+	var req SetModelRequest
+
 	if r.Header.Get("Content-Type") != "application/json" {
 		return req, fmt.Errorf("Content-Type must be application/json")
 	}
 
-	// Read the body
 	body, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
 		return req, fmt.Errorf("error reading request body: %v", err)
 	}
 	defer r.Body.Close()
 
-	// Unmarshal the JSON into the owlRequest struct
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error parsing JSON: %v", err)
+	}
+
+	return req, nil
+}
+
+func parseSetSystemPromptRequest(r *http.Request) (SetSystemPromptRequest, error) {
+	var req SetSystemPromptRequest
+
+	if r.Header.Get("Content-Type") != "application/json" {
+		return req, fmt.Errorf("Content-Type must be application/json")
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
+		return req, fmt.Errorf("error reading request body: %v", err)
+	}
+	defer r.Body.Close()
+
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
@@ -98,21 +126,17 @@ func parseLoginRequest(r *http.Request) (loginRequest, error) {
 	logger.Screen("Recieved login through http", color.RGB(150, 150, 150))
 	var req loginRequest
 
-	// Check if the Content-Type is application/json
 	if r.Header.Get("Content-Type") != "application/json" {
 		return req, fmt.Errorf("Content-Type must be application/json")
 	}
 
-	// Read the body
 	body, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nerror reading request body\n: %v", err), color.RGB(250, 150, 150))
 		return req, fmt.Errorf("error reading request body: %v", err)
 	}
 	defer r.Body.Close()
 
-	// Unmarshal the JSON into the owlRequest struct
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
@@ -126,14 +150,11 @@ func parsePromptRequest(r *http.Request) (promptRequest, error) {
 	logger.Screen("Recieved prompt through http", color.RGB(150, 150, 150))
 	var req promptRequest
 
-	// Check if the Content-Type is application/json
 	if r.Header.Get("Content-Type") != "application/json" {
 		return req, fmt.Errorf("Content-Type must be application/json")
 	}
 
-	// Read the body
 	body, err := io.ReadAll(r.Body)
-
 	logger.Screen(fmt.Sprintf("\nReceived body %s\n", body), color.RGB(150, 150, 150))
 
 	if err != nil {
@@ -142,7 +163,6 @@ func parsePromptRequest(r *http.Request) (promptRequest, error) {
 	}
 	defer r.Body.Close()
 
-	// Unmarshal the JSON into the owlRequest struct
 	err = json.Unmarshal(body, &req)
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nerror parsing JSON: %v\n", err), color.RGB(250, 150, 150))
@@ -205,7 +225,7 @@ var secretKey = []byte("my-test-secret-key-change-in-production")
 func CreateToken(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"exp":      time.Now().Add(7 * 24 * time.Hour).Unix(), // 7 days
+		"exp":      time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -248,15 +268,63 @@ func (server_data *server_data) handleContexts(w http.ResponseWriter, r *http.Re
 }
 
 type ContextResponse struct {
-	Name         string         `json:"name"`
-	Id           string         `json:"id"`
-	Created      time.Time      `json:"created"`
-	History      []data.History `json:"history"`
-	SystemPrompt string         `json:"systemPrompt"`
+	Name           string         `json:"name"`
+	Id             string         `json:"id"`
+	Created        time.Time      `json:"created"`
+	History        []data.History `json:"history"`
+	SystemPrompt   string         `json:"systemPrompt"`
+	PreferredModel string         `json:"preferredModel"`
 }
 
 type SetSystemPromptRequest struct {
 	SystemPrompt string `json:"systemPrompt"`
+}
+
+func (server_data *server_data) handleSetModel(w http.ResponseWriter, r *http.Request) {
+	logger.Screen(fmt.Sprintf("\nhit set model with method %s", r.Method), color.RGB(150, 150, 150))
+	enableCors(w)
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	} else if r.Method != "POST" {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.PathValue("id")
+	logger.Debug.Printf("Called for context at id: {%s}", id)
+	username, err := authenticate(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	repository, _ := server_data.responseHandler.Repository.(*data.MultiUserContext)
+	repository.SetCurrentDb(username)
+
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nFailed to convert id to int: %s", id), color.RGB(250, 150, 150))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	req, err := parseModelRequest(r)
+	if err != nil {
+		logger.Screen(fmt.Sprintf("\nFailed to parse body: %s", err), color.RGB(250, 150, 150))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = repository.UpdatePreferredModel(intId, req.Model)
+	if err != nil {
+		logger.Debug.Printf("error while setting system prompt %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *http.Request) {
@@ -268,6 +336,7 @@ func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *
 		return
 	} else if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
 	}
 
 	id := r.PathValue("id")
@@ -304,7 +373,6 @@ func (server_data *server_data) handleSetSystemPrompt(w http.ResponseWriter, r *
 	}
 
 	w.WriteHeader(http.StatusOK)
-	return
 }
 
 func (server_data *server_data) handleContext(w http.ResponseWriter, r *http.Request) {
@@ -348,18 +416,18 @@ func (server_data *server_data) handleContext(w http.ResponseWriter, r *http.Req
 
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(ContextResponse{
-			Id:           id,
-			Name:         context.Name,
-			SystemPrompt: context.SystemPrompt,
-			Created:      context.Created,
-			History:      history,
+			Id:             id,
+			Name:           context.Name,
+			SystemPrompt:   context.SystemPrompt,
+			Created:        context.Created,
+			History:        history,
+			PreferredModel: context.PreferredModel,
 		})
 		return
 
 	} else {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	}
-
 }
 
 func authenticate(r *http.Request) (string, error) {
@@ -383,6 +451,77 @@ func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
 }
 
+// getModelForQuery returns the appropriate model based on context preferences
+func getModelForQuery(
+	requestedModel string,
+	context *data.Context,
+	responseHandler models.ResponseHandler,
+	historyRepository data.HistoryRepository,
+	streamMode bool,
+) (models.Model, string) {
+
+	modelToUse := requestedModel
+
+	if modelToUse == "" && context != nil && context.PreferredModel != "" {
+		modelToUse = context.PreferredModel
+	}
+
+	if modelToUse == "" {
+		modelToUse = "claude"
+	}
+
+	var model models.Model
+
+	switch modelToUse {
+	case "grok":
+		model = &grok_model.GrokModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+		}
+	case "4o":
+		model = &openai_4o_model.OpenAi4oModel{
+			ResponseHandler:   responseHandler,
+			HistoryRepository: historyRepository,
+		}
+	case "qwen3":
+		model = ollama_model.NewOllamaModel(responseHandler, "")
+	case "opus":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			ModelVersion:      "opus",
+		}
+	case "sonnet":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			ModelVersion:      "sonnet",
+		}
+	case "haiku":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			ModelVersion:      "haiku",
+		}
+	case "claude":
+		fallthrough
+	default:
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+		}
+		modelToUse = "claude"
+	}
+
+	return model, modelToUse
+}
+
 func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 	if r.Method == "OPTIONS" {
@@ -390,7 +529,6 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Parse the request body
 	username, err := authenticate(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -414,7 +552,6 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 	if req.ContextName == "" {
 		logger.Screen("Naming context...", color.RGB(150, 150, 150))
 		logger.Debug.Println("Sending Haiku request to name context")
-		//Create a context name
 		toolHandler := tools.ToolResponseHandler{}
 		toolHandler.Init()
 
@@ -426,7 +563,8 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 			Name:    "Create name for context",
 			Id:      999,
 			History: []data.History{},
-		}, &models.PayloadModifiers{})
+		}, &models.PayloadModifiers{}, "haiku")
+
 		response := <-toolHandler.ResponseChannel
 
 		logger.Debug.Printf("naming reponse: %s", response)
@@ -438,24 +576,26 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 	if context == nil {
 		new_context := data.Context{Name: req.ContextName}
 		id, err := repository.InsertContext(new_context)
-
-		context = &new_context
-		context.Id = id
 		if err != nil {
 			log.Println(fmt.Sprintf("Could not create a new context with name %s for user %s, %s", req.ContextName, username, err))
 		}
+
+		context = &new_context
+		context.Id = id
 	}
 
 	w.Header().Set("Connection", "Keep-Alive")
 	w.Header().Set("Transfer-Encoding", "chunked")
 	w.WriteHeader(http.StatusOK)
 
-	//trigger awaited query
 	server_data.responseHandler.SetResponseWriter(w)
+
+	selectedModel, modelName := getModelForQuery("", context, server_data.responseHandler, repository, server_data.streaming)
+
 	if server_data.streaming {
-		services.StreamedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{})
+		services.StreamedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{}, modelName)
 	} else {
-		services.AwaitedQuery(req.Prompt, server_data.model, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{})
+		services.AwaitedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{}, modelName)
 	}
 }
 
@@ -469,12 +609,11 @@ func (httpResponseHandler *HttpResponseHandler) SetResponseWriter(writer http.Re
 }
 
 func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useColor *string) {
-	fmt.Fprintf(httpResponseHandler.responseWriter, text)
+	fmt.Fprint(httpResponseHandler.responseWriter, text)
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
 
-func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
-
+func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
 	repository, ok := httpResponseHandler.Repository.(*data.MultiUserContext)
 
 	if !ok {
@@ -489,8 +628,7 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 		TokenCount:      0,
 		UserId:          int64(repository.User.Id),
 		ResponseContent: responseContent,
-		//TODO abreviation
-		//TODO tokencount
+		Model:           modelName,
 	}
 
 	_, err := httpResponseHandler.Repository.InsertHistory(history)

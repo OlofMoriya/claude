@@ -28,6 +28,7 @@ type OpenAICompatibleModel struct {
 	ContextId         int64
 	Context           *data.Context
 	StreamedToolCalls map[int]*StreamingToolCall
+	ModelName         string
 }
 
 // HandleStreamedLine processes a single line from a streaming response
@@ -130,13 +131,13 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model models.Model)
 		}
 
 		logger.Debug.Printf("Calling Final Text with answer: %v, \nand tool result: %v", model.AccumulatedAnswer, toolResultsJson)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, string(messageJson), toolResultsJson)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, string(messageJson), toolResultsJson, model.ModelName)
 
 		// Continue with results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
 				ToolResponses: toolResponses,
-			})
+			}, model.ModelName)
 		}
 
 		// Reset
@@ -144,7 +145,7 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model models.Model)
 	} else {
 		// Regular finish
 		logger.Debug.Printf("Calling Final Text with answer: %v", model.AccumulatedAnswer)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, "", "")
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, "", "", model.ModelName)
 	}
 }
 
@@ -177,17 +178,17 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 			logger.Debug.Printf("Error marshalling message: %s", err)
 		}
 
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, string(messageJson), toolResultsJson)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, string(messageJson), toolResultsJson, model.ModelName)
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
 				ToolResponses: toolResponses,
-			})
+			}, model.ModelName)
 		}
 	} else {
 		// Regular text response
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, "", "")
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, "", "", model.ModelName)
 	}
 }
 
@@ -248,6 +249,8 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.T
 
 // CreatePayload builds the request payload with history and tool definitions
 func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers, model string, maxTokens int, context *data.Context) ChatCompletionRequest {
+	logger.Debug.Printf("\nMODEL USE: creating grok payload: %s", "PLACEHOLDER FROM GROK")
+
 	messages := []interface{}{}
 
 	if context.SystemPrompt != "" {
