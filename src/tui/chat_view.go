@@ -11,6 +11,7 @@ import (
 
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
+	ollama_model "owl/models/ollama"
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 
@@ -53,7 +54,7 @@ type chatViewModel struct {
 	modelCursor      int
 
 	historyCount  int
-	statusMessage string // Current status message from logger
+	statusMessage string
 }
 
 type historyLoadedMsg []data.History
@@ -63,7 +64,6 @@ type messageDoneMsg struct {
 	response string
 }
 
-// Status message from logger channel
 type statusMsg string
 
 type chatChunkMsg struct {
@@ -93,7 +93,6 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 	vp := viewport.New(shared.width, shared.height-10)
 	vp.YPosition = 0
 
-	// TODO: Get this list from config or a model provider
 	availableModels := []string{
 		"claude",
 		"grok",
@@ -124,21 +123,18 @@ func (m *chatViewModel) Init() tea.Cmd {
 	return tea.Batch(
 		textarea.Blink,
 		m.loadHistory(),
-		m.listenForStatus(), // Start listening to logger status channel
+		m.listenForStatus(),
 	)
 }
 
-// listenForStatus waits for messages from the logger channel
 func (m *chatViewModel) listenForStatus() tea.Cmd {
 	return func() tea.Msg {
 		if logger.StatusChan == nil {
 			return nil
 		}
 
-		// This will block until a message arrives or channel closes
 		msg, ok := <-logger.StatusChan
 		if !ok {
-			// Channel closed, don't listen anymore
 			return nil
 		}
 
@@ -161,9 +157,90 @@ func (m *chatViewModel) loadHistory() tea.Cmd {
 	}
 }
 
+// getModelForQuery returns the appropriate model based on context preferences
+func getModelForQuery(
+	requestedModel string,
+	context *data.Context,
+	responseHandler models.ResponseHandler,
+	historyRepository data.HistoryRepository,
+) (models.Model, string) {
+	
+	modelToUse := requestedModel
+	
+	if modelToUse == "" && context != nil && context.PreferredModel != "" {
+		modelToUse = context.PreferredModel
+	}
+	
+	if modelToUse == "" {
+		modelToUse = "claude"
+	}
+	
+	var model models.Model
+	
+	switch modelToUse {
+	case "grok":
+		model = &grok_model.GrokModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+		}
+	case "4o":
+		model = &openai_4o_model.OpenAi4oModel{
+			ResponseHandler:   responseHandler,
+			HistoryRepository: historyRepository,
+		}
+	case "qwen3":
+		model = ollama_model.NewOllamaModel(responseHandler, "")
+	case "opus":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      true,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       true,
+			StreamThought:     true,
+			OutputThought:     false,
+			ModelVersion:      "opus",
+		}
+	case "sonnet":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      true,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       true,
+			StreamThought:     true,
+			OutputThought:     false,
+			ModelVersion:      "sonnet",
+		}
+	case "haiku":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      true,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       true,
+			StreamThought:     true,
+			OutputThought:     false,
+			ModelVersion:      "haiku",
+		}
+	case "claude":
+		fallthrough
+	default:
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      true,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       true,
+			StreamThought:     true,
+			OutputThought:     false,
+		}
+		modelToUse = "claude"
+	}
+	
+	return model, modelToUse
+}
+
 func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 	return func() tea.Msg {
-		// Create channels
 		responseChan := make(chan string, 100)
 		doneChan := make(chan struct{})
 
@@ -174,66 +251,19 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 			Repository:   m.shared.config.Repository,
 		}
 
-		model := m.shared.config.Model
-
-		logger.Debug.Printf("MODEL SELECTION: %s", m.availableModels[m.selectedModelIdx])
-		switch m.availableModels[m.selectedModelIdx] {
-		case "grok":
-			logger.Debug.Println("setting grok as model")
-			model = &grok_model.GrokModel{
-				OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-					ResponseHandler:   handler,
-					HistoryRepository: m.shared.config.Repository,
-				},
-			}
-		case "4o":
-			model = &openai_4o_model.OpenAi4oModel{
-				ResponseHandler:   handler,
-				HistoryRepository: m.shared.config.Repository,
-			}
-		case "claude":
-			model = &claude_model.ClaudeModel{
-				ResponseHandler:   handler,
-				HistoryRepository: m.shared.config.Repository,
-				UseThinking:       true,
-				StreamThought:     true,
-				OutputThought:     false,
-			}
-		case "opus":
-			model = &claude_model.ClaudeModel{
-				ResponseHandler:   handler,
-				HistoryRepository: m.shared.config.Repository,
-				UseThinking:       true,
-				StreamThought:     true,
-				OutputThought:     false,
-				ModelVersion:      "opus",
-			}
-		case "sonnet":
-			model = &claude_model.ClaudeModel{
-				ResponseHandler:   handler,
-				HistoryRepository: m.shared.config.Repository,
-				UseThinking:       true,
-				StreamThought:     true,
-				OutputThought:     false,
-				ModelVersion:      "sonnet",
-			}
-		default:
-			model = &claude_model.ClaudeModel{
-				ResponseHandler:   handler,
-				HistoryRepository: m.shared.config.Repository,
-				UseThinking:       true,
-				StreamThought:     true,
-				OutputThought:     false,
-			}
-		}
+		modelName := m.availableModels[m.selectedModelIdx]
+		
+		model, actualModelName := getModelForQuery(
+			modelName,
+			m.shared.selectedCtx,
+			handler,
+			m.shared.config.Repository,
+		)
 
 		m.shared.config.Model = model
 
-		logger.Debug.Printf("MODEL SELECTION after: %s", model)
+		logger.Debug.Printf("MODEL SELECTION: %s (actual: %s)", modelName, actualModelName)
 
-		model.SetResponseHandler(handler)
-
-		// Start query in goroutine
 		go func() {
 			services.StreamedQuery(
 				prompt,
@@ -246,10 +276,10 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 					Web:   false,
 					Image: false,
 				},
+				actualModelName,
 			)
 		}()
 
-		// Execute the wait function immediately
 		waitCmd := waitForChatActivity(responseChan, doneChan, prompt)
 		return waitCmd()
 	}
@@ -266,7 +296,6 @@ func waitForChatActivity(responseChan chan string, doneChan chan struct{},
 		case text, ok := <-responseChan:
 			logger.Debug.Printf("responseChan: %v: %s", ok, text)
 			if !ok {
-				// Channel closed, streaming done
 				return chatCompleteMsg{prompt: prompt}
 			}
 			return chatChunkMsg{
@@ -292,40 +321,33 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case statusMsg:
-		// Received status message from logger channel
 		m.statusMessage = string(msg)
 		if msg != "" {
 			logger.Debug.Printf("Received status: %s", msg)
 		}
 
-		// Keep listening for more status messages
 		return m, tea.Batch(
 			m.listenForStatus(),
 			m.clearStatusAfterDelay(),
 		)
 
 	case chatChunkMsg:
-		// Update UI with new text chunk
 		m.currentResponse += msg.text
 		m.updateViewportContent()
-		// Important: return another command to keep listening
 		return m, waitForChatActivity(msg.responseChan, msg.doneChan, msg.prompt)
 
 	case chatCompleteMsg:
 		logger.Debug.Println("got chatCompleteMsg")
-		// Streaming complete, finalize UI
 		m.sending = false
 		m.loading = false
-		m.statusMessage = "" // Clear status when done
-		// Reload history to show the new message
+		m.statusMessage = ""
 		return m, m.loadHistory()
 
 	case chatErrorMsg:
-		// Handle error
 		m.err = msg.err
 		m.loading = false
 		m.sending = false
-		m.statusMessage = "" // Clear status on error
+		m.statusMessage = ""
 		return m, nil
 
 	case tea.KeyMsg:
@@ -333,17 +355,14 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle NORMAL mode - vim-like navigation
 		if m.mode == chatNormalMode {
 			switch msg.String() {
 			case "i":
-				// Enter input mode
 				m.mode = chatInputMode
 				m.textarea.Focus()
 				return m, nil
 
 			case "esc", "q":
-				// Return to list view from normal mode
 				listView := newListViewModel(m.shared.config)
 				return listView, tea.Sequence(
 					listView.Init(),
@@ -356,7 +375,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 
 			case "=", "+":
-				// Increase history count
 				if m.historyCount < 50 {
 					m.historyCount++
 					return m, m.loadHistory()
@@ -364,7 +382,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "-", "_":
-				// Decrease history count
 				if m.historyCount > 0 {
 					m.historyCount--
 					return m, m.loadHistory()
@@ -372,47 +389,38 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "d", "ctrl+d":
-				// Scroll down (vim-like)
 				shouldUpdateViewport = true
 				m.viewport.HalfPageDown()
 
 			case "u", "ctrl+u":
-				// Scroll up (vim-like)
 				shouldUpdateViewport = true
 				m.viewport.HalfPageUp()
 
 			case "f", "ctrl+f", "pgdown":
-				// Page down
 				shouldUpdateViewport = true
 				m.viewport.PageDown()
 
 			case "b", "ctrl+b", "pgup":
-				// Page up
 				shouldUpdateViewport = true
 				m.viewport.PageUp()
 
 			case "g":
-				// Go to top
 				shouldUpdateViewport = true
 				m.viewport.GotoTop()
 
 			case "G":
-				// Go to bottom
 				shouldUpdateViewport = true
 				m.viewport.GotoBottom()
 
 			case "j", "down":
-				// Scroll down one line
 				shouldUpdateViewport = true
 				m.viewport.ScrollDown(1)
 
 			case "k", "up":
-				// Scroll up one line
 				shouldUpdateViewport = true
 				m.viewport.ScrollUp(1)
 
 			case "ctrl+a":
-				// Open history detail view
 				historyView := newChatHistoryViewModel(m.shared)
 				return historyView, tea.Sequence(
 					historyView.Init(),
@@ -425,27 +433,23 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 
 			case "ctrl+g":
-				// Open model selector
 				m.mode = chatModelSelectMode
 				m.modelCursor = m.selectedModelIdx
 				return m, nil
 
 			case "ctrl+s":
-				// Copy command to clipboard
 				cmd := fmt.Sprintf("owl --context_name %s --prompt \"\"",
 					m.shared.selectedCtx.Name)
 				clipboard.WriteAll(cmd)
 				return m, nil
 			}
 
-			// In normal mode, don't update textarea
 			if shouldUpdateViewport {
 				m.viewport, vpCmd = m.viewport.Update(msg)
 			}
 			return m, vpCmd
 		}
 
-		// Handle MODEL SELECT mode
 		if m.mode == chatModelSelectMode {
 			switch msg.String() {
 			case "esc", "q":
@@ -471,16 +475,13 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		// Handle INPUT mode (default)
 		switch msg.String() {
 		case "ctrl+n":
-			// Enter normal mode
 			m.mode = chatNormalMode
 			m.textarea.Blur()
 			return m, nil
 
 		case "ctrl+a":
-			// Open history detail view
 			historyView := newChatHistoryViewModel(m.shared)
 			return historyView, tea.Sequence(
 				historyView.Init(),
@@ -496,7 +497,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "esc":
-			// Return to list view from input mode
 			listView := newListViewModel(m.shared.config)
 			return listView, tea.Sequence(
 				listView.Init(),
@@ -509,19 +509,16 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 
 		case "ctrl+s":
-			// Copy command to clipboard
 			cmd := fmt.Sprintf("owl --context_name %s --prompt \"\"",
 				m.shared.selectedCtx.Name)
 			clipboard.WriteAll(cmd)
 
 		case "ctrl+g":
-			// Open model selector
 			m.mode = chatModelSelectMode
 			m.modelCursor = m.selectedModelIdx
 			return m, nil
 
 		case "ctrl+w":
-			// Send message
 			if !m.sending && m.textarea.Value() != "" {
 				m.sending = true
 				prompt := m.textarea.Value()
@@ -531,7 +528,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.sendMessage(prompt)
 			}
 
-		// Allow viewport scrolling ONLY with ctrl+ in input mode
 		case "ctrl+u":
 			shouldUpdateViewport = true
 			m.viewport.HalfPageUp()
@@ -548,9 +544,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			shouldUpdateViewport = true
 			m.viewport.PageDown()
 
-		// All other keys in input mode go to textarea
 		default:
-			// Update textarea for normal typing
 			m.textarea, tiCmd = m.textarea.Update(msg)
 			return m, tiCmd
 		}
@@ -564,7 +558,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case messageDoneMsg:
 		m.sending = false
-		// Reload history
 		return m, m.loadHistory()
 
 	case errorMsg:
@@ -591,7 +584,6 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.textarea.SetWidth(msg.Width - 4)
 	}
 
-	// Only update viewport if we explicitly want to scroll
 	if shouldUpdateViewport {
 		m.viewport, vpCmd = m.viewport.Update(msg)
 	}
@@ -599,10 +591,9 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd)
 }
 
-// clearStatusAfterDelay clears the status message after 3 seconds
 func (m *chatViewModel) clearStatusAfterDelay() tea.Cmd {
 	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
-		return statusMsg("") // Clear status by sending empty message
+		return statusMsg("")
 	})
 }
 
@@ -615,12 +606,10 @@ func (m *chatViewModel) View() string {
 		return errorStyle.Render(fmt.Sprintf("Error: %v\n\nPress ESC to go back", m.err))
 	}
 
-	// Show model selector
 	if m.mode == chatModelSelectMode {
 		return m.renderModelSelector()
 	}
 
-	// Normal chat view
 	status := ""
 	if m.sending {
 		status = sendingStyle.Render(" Sending...")
@@ -630,7 +619,6 @@ func (m *chatViewModel) View() string {
 		status = dimStyle.Render(fmt.Sprintf("%s %s", status, m.statusMessage))
 	}
 
-	// Show mode indicator
 	modeIndicator := ""
 	switch m.mode {
 	case chatNormalMode:
@@ -642,7 +630,6 @@ func (m *chatViewModel) View() string {
 	currentModel := m.availableModels[m.selectedModelIdx]
 	modelInfo := dimStyle.Render(fmt.Sprintf(" [%s] [history: %d]", currentModel, m.historyCount))
 
-	// Different help text based on mode
 	helpText := ""
 	if m.mode == chatNormalMode {
 		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+h: history • esc: back"
@@ -673,11 +660,9 @@ func (m *chatViewModel) updateViewportContent() {
 	logger.Debug.Printf("history count %d", len(m.history))
 	for i, h := range m.history {
 		logger.Debug.Printf("add history %d", i)
-		// Render user prompt
 		b.WriteString(userPromptStyle.Render(fmt.Sprintf("You: %s", h.Prompt)))
 		b.WriteString("\n\n")
 
-		// Render AI response with glamour
 		rendered, err := glamour.Render(h.Response, "dark")
 		if err != nil {
 			rendered = h.Response
@@ -688,7 +673,6 @@ func (m *chatViewModel) updateViewportContent() {
 		b.WriteString("\n\n")
 	}
 
-	// Show current response if streaming
 	if m.sending && m.currentResponse != "" {
 		b.WriteString(userPromptStyle.Render(fmt.Sprintf("You: %s", m.currentPrompt)))
 		b.WriteString("\n\n")
@@ -722,7 +706,6 @@ func (m *chatViewModel) renderModelSelector() string {
 			style = selectedItemStyle
 		}
 
-		// Highlight the currently selected model
 		modelName := model
 		if i == m.selectedModelIdx {
 			modelName += " ✓"
@@ -739,7 +722,6 @@ func (m *chatViewModel) renderModelSelector() string {
 	return b.String()
 }
 
-// TUI-specific response handler
 type tuiResponseHandler struct {
 	responseChan chan string
 	doneChan     chan struct{}
@@ -752,7 +734,7 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 	h.responseChan <- text
 }
 
-func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
+func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
 	h.fullResponse = response
 
 	history := data.History{
@@ -763,6 +745,7 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 		TokenCount:      0,
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
+		Model:           modelName,
 	}
 
 	_, err := h.Repository.InsertHistory(history)
@@ -773,7 +756,6 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	code := services.ExtractCodeBlocks(response)
 	allCode := strings.Join(code, "\n\n")
 
-	// Copy to clipboard
 	err = clipboard.WriteAll(allCode)
 	if err != nil {
 		fmt.Printf("Error copying to clipboard: %v\n", err)
@@ -782,7 +764,6 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	logger.Debug.Println("Final text in tui response channel")
 	if toolResults == "" {
 		logger.Debug.Println("closing doneChan and responseChan")
-		// Signal done BEFORE closing responseChan
 		close(h.doneChan)
 		close(h.responseChan)
 	} else {

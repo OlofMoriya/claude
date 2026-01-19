@@ -83,7 +83,7 @@ func (model *OllamaModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "")
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", model.modelName)
 			}
 		}
 	}
@@ -96,7 +96,7 @@ func (model *OllamaModel) HandleBodyBytes(bytes []byte) {
 		return
 	}
 
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "")
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "", model.modelName)
 }
 
 func (model *OllamaModel) createOllamaPayload(prompt string, streamed bool, history []data.History, image bool, context *data.Context) ChatCompletionRequest {

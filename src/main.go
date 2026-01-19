@@ -13,9 +13,7 @@ import (
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 	embeddings_model "owl/models/open-ai-embedings"
-	open_ai_responses "owl/models/open-ai-responses"
 
-	// openai_vision_model "claude/models/open-ai-vision"
 	"flag"
 	"fmt"
 	"os"
@@ -94,7 +92,6 @@ func init() {
 }
 
 func main() {
-
 	godotenv.Load()
 
 	flag.Parse()
@@ -132,11 +129,10 @@ func main() {
 		user := &data.MultiUserContext{}
 		httpResponseHandler.Repository = user
 
-		// model := ollama_model.NewOllamaModel(httpResponseHandler, "qwen3")
 		model := &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: httpResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "haiku"}
+
 		server.Run(secure, port, httpResponseHandler, model, stream)
 	} else if embeddings {
-		// Get values from environment variables
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
 			db = "owl"
@@ -146,8 +142,7 @@ func main() {
 		embeddingsResponseHandler := EmbeddingsResponseHandler{}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 
-		services.AwaitedQuery(prompt, &model, user, 0, nil, nil)
-
+		services.AwaitedQuery(prompt, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
 	} else if view {
 		view_history()
 	} else {
@@ -157,38 +152,108 @@ func main() {
 		}
 
 		user := data.User{Name: &db}
-
-		var model models.Model
 		cliResponseHandler := CliResponseHandler{Repository: user}
-
-		switch llm_model {
-		case "tools":
-			model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: cliResponseHandler}
-		case "grok":
-			model = &grok_model.GrokModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: cliResponseHandler, HistoryRepository: user}}
-		case "4o":
-			model = &openai_4o_model.OpenAi4oModel{ResponseHandler: cliResponseHandler, HistoryRepository: user}
-		case "qwen3":
-			model = ollama_model.NewOllamaModel(cliResponseHandler, "")
-		case "claude":
-			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
-		case "opus":
-			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "opus"}
-		case "sonnet":
-			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "sonnet"}
-		default:
-			model = &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: cliResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning}
-		}
-		//TODO: Select database
 		context := getContext(user, &system_prompt)
 
+		// Use model selector to get the appropriate model and model name
+		model, modelName := getModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+
 		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web})
+			services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web})
+			services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 		}
 	}
+}
 
+// getModelForQuery returns the appropriate model based on the request and context preferences
+func getModelForQuery(
+	requestedModel string,
+	context *data.Context,
+	responseHandler models.ResponseHandler,
+	historyRepository data.HistoryRepository,
+	streamMode bool,
+	thinkingMode bool,
+	streamThinkingMode bool,
+	outputThinkingMode bool,
+) (models.Model, string) {
+
+	// Determine which model to use
+	modelToUse := requestedModel
+
+	// If no model was explicitly requested, check context preferences
+	if modelToUse == "" && context != nil && context.PreferredModel != "" {
+		modelToUse = context.PreferredModel
+	}
+
+	// Default to claude if still not set
+	if modelToUse == "" {
+		modelToUse = "claude"
+	}
+
+	// Create and return the appropriate model
+	var model models.Model
+
+	switch modelToUse {
+	case "grok":
+		model = &grok_model.GrokModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+		}
+	case "4o":
+		model = &openai_4o_model.OpenAi4oModel{
+			ResponseHandler:   responseHandler,
+			HistoryRepository: historyRepository,
+		}
+	case "qwen3":
+		model = ollama_model.NewOllamaModel(responseHandler, "")
+	case "opus":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       thinkingMode,
+			StreamThought:     streamThinkingMode,
+			OutputThought:     outputThinkingMode,
+			ModelVersion:      "opus",
+		}
+	case "sonnet":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       thinkingMode,
+			StreamThought:     streamThinkingMode,
+			OutputThought:     outputThinkingMode,
+			ModelVersion:      "sonnet",
+		}
+	case "haiku":
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       thinkingMode,
+			StreamThought:     streamThinkingMode,
+			OutputThought:     outputThinkingMode,
+			ModelVersion:      "haiku",
+		}
+	case "claude":
+		fallthrough
+	default:
+		model = &claude_model.ClaudeModel{
+			UseStreaming:      streamMode,
+			HistoryRepository: historyRepository,
+			ResponseHandler:   responseHandler,
+			UseThinking:       thinkingMode,
+			StreamThought:     streamThinkingMode,
+			OutputThought:     outputThinkingMode,
+		}
+		modelToUse = "claude"
+	}
+
+	return model, modelToUse
 }
 
 func view_history() {
@@ -225,7 +290,6 @@ func view_history() {
 	fmt.Println(out)
 
 	for _, h := range history {
-
 		out, err := glamour.Render(fmt.Sprintf("--- \n## Q\n\n %s \n\n## A\n\n %s", h.Prompt, h.Response), "dark")
 		if err != nil {
 			println(fmt.Sprintf("%v", err))
@@ -242,7 +306,6 @@ func launchTUI() {
 
 	user := data.User{Name: &db}
 
-	// Setup default model (you can make this configurable)
 	cliResponseHandler := CliResponseHandler{Repository: user}
 	model := &claude_model.ClaudeModel{
 		ResponseHandler:   cliResponseHandler,

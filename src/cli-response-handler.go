@@ -19,12 +19,12 @@ func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
 	if useColor != nil {
 		color.RGB(150, 150, 150).Print(text)
 	} else {
-		print(text)
+		fmt.Print(text)
 	}
 }
 
 // All models should call this regardless of if they stream or not.
-func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string) {
+func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
 	history := data.History{
 		ContextId:       contextId,
 		Prompt:          prompt,
@@ -33,12 +33,12 @@ func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response
 		TokenCount:      0,
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
+		Model:           modelName,
 	}
 
 	_, err := cli.Repository.InsertHistory(history)
 	if err != nil {
-		println(fmt.Sprintf("Error while trying to save history: %s",
-			err))
+		println(fmt.Sprintf("Error while trying to save history: %s", err))
 	}
 
 	code := services.ExtractCodeBlocks(response)

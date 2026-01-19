@@ -21,6 +21,7 @@ type OpenAi4oModel struct {
 	contextId         int64
 	context           *data.Context
 	HistoryRepository data.HistoryRepository
+	modelName         string
 
 	// Streaming tool call tracking
 	streamedToolCalls map[int]*StreamingToolCall
@@ -44,6 +45,7 @@ func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, 
 	model.contextId = context.Id
 	model.context = context
 	model.streamedToolCalls = make(map[int]*StreamingToolCall)
+	model.modelName = "4o"
 	return createRequest(payload, history)
 }
 
@@ -144,13 +146,13 @@ func (model *OpenAi4oModel) finishStreaming() {
 		}
 
 		logger.Debug.Printf("Calling Final Text with anwer: %v, \nand tool result: %v", model.accumulatedAnswer, toolResultsJson)
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, string(messageJson), toolResultsJson)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, string(messageJson), toolResultsJson, model.modelName)
 
 		// Continue with results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &models.PayloadModifiers{
 				ToolResponses: toolResponses,
-			})
+			}, model.modelName)
 		}
 
 		// Reset
@@ -158,7 +160,7 @@ func (model *OpenAi4oModel) finishStreaming() {
 	} else {
 		// Regular finish
 		logger.Debug.Printf("Calling Final Text with anwer: %v", model.accumulatedAnswer)
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "")
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", model.modelName)
 	}
 }
 
@@ -190,17 +192,17 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 			logger.Debug.Printf("Error marshalling message: %s", err)
 		}
 
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, string(messageJson), toolResultsJson)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, string(messageJson), toolResultsJson, model.modelName)
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &models.PayloadModifiers{
 				ToolResponses: toolResponses,
-			})
+			}, model.modelName)
 		}
 	} else {
 		// Regular text response
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, "", "")
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, "", "", model.modelName)
 	}
 }
 
@@ -259,6 +261,7 @@ func (model *OpenAi4oModel) handleToolCalls(message Message) ([]models.ToolRespo
 }
 
 func createOpenaiPayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers) ChatCompletionRequest {
+	logger.Debug.Printf("\nMODEL USE: creating openai payload: %s", "PLACEHOLDER FROM OPENAI_API")
 	messages := []interface{}{}
 
 	// Process history (including tool results)

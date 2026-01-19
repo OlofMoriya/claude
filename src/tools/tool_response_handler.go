@@ -15,9 +15,9 @@ func (toolResponseHandler *ToolResponseHandler) RecievedText(text string, color 
 	//TODO: Implement streaming tool use
 }
 
-func (toolResponseHandler *ToolResponseHandler) FinalText(contextId int64, prompt string, response string, resposneContent string, toolResults string) {
+func (toolResponseHandler *ToolResponseHandler) FinalText(contextId int64, prompt string, response string, resposneContent string, toolResults string, modelName string) {
 	if toolResponseHandler.ResponseHandler != nil {
-		toolResponseHandler.ResponseHandler.FinalText(contextId, prompt, response, "", "")
+		toolResponseHandler.ResponseHandler.FinalText(contextId, prompt, response, resposneContent, toolResults, modelName)
 	}
 	toolResponseHandler.ResponseChannel = make(chan string, 100)
 	toolResponseHandler.ResponseChannel <- response

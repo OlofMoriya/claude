@@ -49,7 +49,8 @@ func createContextTable(db *sql.DB) {
          CREATE TABLE IF NOT EXISTS context (
              id INTEGER PRIMARY KEY AUTOINCREMENT,
              name TEXT,
-			 system_prompt TEXT
+			 system_prompt TEXT,
+			 preferred_model TEXT
          )
      `
 
@@ -70,7 +71,8 @@ func createHistoryTables(db *sql.DB) {
              abreviation TEXT,
              token_count INTEGER,
 			 created INT,
-			 tool_results TEXT
+			 tool_results TEXT,
+			 model TEXT
          )
      `
 	_, err := db.Exec(createTableQuery)
@@ -84,8 +86,8 @@ func (user User) InsertContext(context Context) (int64, error) {
 
 	logger.Debug.Printf("inserting context %v, %v, %v", context.Name, user.Name, user.Id)
 
-	insertQuery := "INSERT INTO context (name, system_prompt) VALUES (?, ?)"
-	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt)
+	insertQuery := "INSERT INTO context (name, system_prompt, preferred_model) VALUES (?, ?, ?)"
+	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt, context.PreferredModel)
 	logger.Debug.Println("result of context insert", result)
 
 	defer db.Close()
@@ -107,11 +109,11 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name, system_prompt FROM context WHERE id = ?"
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE id = ?"
 	row := db.QueryRow(selectQuery, contextId)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// return context, fmt.Errorf("context with ID %d not found", contextId)
@@ -125,8 +127,8 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
-	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created, tool_results) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now(), history.ToolResults)
+	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created, tool_results, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now(), history.ToolResults, history.Model)
 	if err != nil {
 		println(err)
 		defer db.Close()
@@ -149,7 +151,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	defer db.Close()
 
 	logger.Debug.Printf("Fetching history for contextId: %v, maxCount: %v", contextId, maxCount)
-	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
+	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results, COALESCE(model, 'sonnet') FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
 	rows, err := db.Query(selectQuery, contextId, maxCount)
 	if err != nil {
 		logger.Debug.Printf("Error in sql %s", err)
@@ -159,7 +161,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	var histories []History
 	for rows.Next() {
 		var history History
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults)
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults, &history.Model)
 		if err != nil {
 			return nil, err
 		}
@@ -181,11 +183,11 @@ func (user User) GetContextByName(name string) (*Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name, system_prompt FROM context WHERE name = ?"
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE name = ?"
 	row := db.QueryRow(selectQuery, name)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
 
 	if err != nil {
 		return nil, err
@@ -198,7 +200,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, name, system_prompt FROM context")
+	rows, err := db.Query("SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context")
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +209,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	var contexts []Context
 	for rows.Next() {
 		var context Context
-		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt)
+		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
 		if err != nil {
 			return nil, err
 		}
@@ -252,7 +254,16 @@ func (user User) UpdateSystemPrompt(contextId int64, systemPrompt string) error 
 
 	fmt.Printf("setting system %s %d :::", systemPrompt, contextId)
 
-	_, err := db.Exec("UPDATE context SET system_prompt = $1 WHERE id = $2",
+	_, err := db.Exec("UPDATE context SET system_prompt = ? WHERE id = ?",
 		systemPrompt, contextId)
+	return err
+}
+
+func (user User) UpdatePreferredModel(contextId int64, model string) error {
+	db := user.getUserDb()
+	defer db.Close()
+
+	_, err := db.Exec("UPDATE context SET preferred_model = ? WHERE id = ?",
+		model, contextId)
 	return err
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/fatih/color"
 )
 
-func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
+func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers, modelName string) {
 
 	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
 
@@ -56,19 +56,25 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Debug.Println(err)
-		// Handle error, maybe return or log
 		println(fmt.Sprintf("Error reading response body: %v\n", err))
-	} // Close the response body when done
+	}
 	defer resp.Body.Close()
 
 	logger.Debug.Println("Received a response without streaming")
 	logger.Debug.Printf("bodyBytes %s", string(bodyBytes))
 
 	model.HandleBodyBytes(bodyBytes)
-	//TODO: Handle token use
+
+	// Update the context's preferred model after successful query
+	if context != nil && modelName != "" {
+		err := historyRepository.UpdatePreferredModel(context.Id, modelName)
+		if err != nil {
+			logger.Debug.Printf("Failed to update preferred model: %v", err)
+		}
+	}
 }
 
-func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers) {
+func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *models.PayloadModifiers, modelName string) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 
 	logger.Screen("sending streamed query", color.RGB(150, 150, 150))
@@ -115,5 +121,13 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 		}
 
 		model.HandleStreamedLine(line)
+	}
+
+	// Update the context's preferred model after successful query
+	if context != nil && modelName != "" {
+		err := historyRepository.UpdatePreferredModel(context.Id, modelName)
+		if err != nil {
+			logger.Debug.Printf("Failed to update preferred model: %v", err)
+		}
 	}
 }
