@@ -71,13 +71,15 @@ type Usage struct {
 }
 
 type ResponseMessage struct {
-	Type      string            `json:"type"`
-	Text      string            `json:"text,omitempty"`
-	Id        string            `json:"id,omitempty"`
-	Name      string            `json:"name,omitempty"`
-	Input     map[string]string `json:"input,omitempty"`
-	Thinking  string            `json:"thinking,omitempty"`
-	Signature string            `json:"signature,omitempty"`
+	Type      string              `json:"type"`
+	Text      string              `json:"text,omitempty"`
+	Id        string              `json:"id,omitempty"`
+	ToolUseId string              `json:"tool_use_id,omitempty"`
+	Content   []map[string]string `json:"content,omitempty"`
+	Name      string              `json:"name,omitempty"`
+	Input     map[string]string   `json:"input,omitempty"`
+	Thinking  string              `json:"thinking,omitempty"`
+	Signature string              `json:"signature,omitempty"`
 }
 
 type Role string

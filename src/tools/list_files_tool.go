@@ -22,7 +22,7 @@ func (ool *ListFilesTool) GetName() string {
 	return "list_files"
 }
 
-func (tool *ListFilesTool) GetDefinition() Tool {
+func (tool *ListFilesTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Lists all files in and under this directory. Can be used to understand the project structure.",
@@ -36,7 +36,7 @@ func (tool *ListFilesTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 func (tool *ListFilesTool) Run(i map[string]string) (string, error) {

@@ -56,7 +56,7 @@ func (tool *ReadFileTool) GetName() string {
 	return "read_file"
 }
 
-func (tool *ReadFileTool) GetDefinition() Tool {
+func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Fetches the contents of the files specified by name and dynamic path. Path starts from where script is being executed. Prefere reading files with .go, .md, .tsx, .ts, .csv, .js, .txt, .mod, .cs, .csproj, .gitignore, .tsx, .jsx, .json extentions. Don't overuse this tool as it increase token use a lot",
@@ -70,7 +70,7 @@ func (tool *ReadFileTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 func init() {
