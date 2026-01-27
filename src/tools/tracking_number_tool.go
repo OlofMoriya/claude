@@ -39,7 +39,7 @@ func (tool *TrackingNumberTool) GetName() string {
 	return "early_bird_track_lookup"
 }
 
-func (tool *TrackingNumberTool) GetDefinition() Tool {
+func (tool *TrackingNumberTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Fetches status from a shipment trackingnumber in the early bird logistics chain. Can help anwser questions about where a delivery is in the process or if anything went wrong with the shipment.",
@@ -53,7 +53,7 @@ func (tool *TrackingNumberTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, REMOTE
 }
 
 func init() {

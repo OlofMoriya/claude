@@ -3,12 +3,18 @@ package tools
 import (
 	"fmt"
 	"owl/data"
+	"owl/logger"
 	"owl/models"
 	"sync"
+
+	"github.com/fatih/color"
 )
 
+var LOCAL string = "LOCAL"
+var REMOTE string = "REMOTE"
+
 type ToolModel interface {
-	GetDefinition() Tool
+	GetDefinition() (Tool, string)
 	Run(input map[string]string) (string, error)
 	GetName() string
 	SetHistory(*data.HistoryRepository, *data.Context)
@@ -59,10 +65,15 @@ func (runner *ToolRunner) ExecuteTool(ctx data.Context, name string, rawInput ma
 	return tool.Run(rawInput)
 }
 
-func GetCustomTools() []Tool {
+func GetCustomTools(mode string) []Tool {
 	tools := []Tool{}
 	for _, tool := range defaultRegistry.tools {
-		tools = append(tools, tool.GetDefinition())
+		definition, tool_mode := tool.GetDefinition()
+		logger.Screen(fmt.Sprintf("\nMode is %s, tool mode is %s", mode, tool_mode), color.RGB(150, 150, 150))
+		if mode != REMOTE || tool_mode == REMOTE {
+			logger.Screen(fmt.Sprintf("\t adding tool %s", tool.GetName()), color.RGB(150, 150, 150))
+			tools = append(tools, definition)
+		}
 	}
 	return tools
 }

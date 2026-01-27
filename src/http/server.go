@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	openai_base "owl/models/open-ai-base"
 	"owl/services"
 	tools "owl/tools"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -143,6 +145,11 @@ func parseLoginRequest(r *http.Request) (loginRequest, error) {
 		return req, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
+	if req.Password == "" || req.Username == "" {
+		logger.Screen("No username or password", color.RGB(250, 150, 150))
+		return req, fmt.Errorf("Password and username cannot be empty")
+	}
+
 	return req, nil
 }
 
@@ -208,7 +215,16 @@ func (server_data *server_data) handleLogin(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Bad input", http.StatusBadRequest)
 		return
 	}
-	token, err := CreateToken(req.Username)
+
+	hash := sha256.New()
+
+	// Write data to it (can be done in chunks)
+	hash.Write([]byte(req.Password))
+
+	// Get the final hash sum (slice of bytes)
+	hashedPassword := hash.Sum(nil)
+
+	token, err := CreateToken(fmt.Sprintf("%s-%s", req.Username, hashedPassword))
 	if err != nil {
 		http.Error(w, "Could not generate token", http.StatusInternalServerError)
 		return
@@ -408,6 +424,7 @@ func (server_data *server_data) handleContext(w http.ResponseWriter, r *http.Req
 		}
 
 		history, err := repository.GetHistoryByContextId(intId, 1000)
+		slices.Reverse(history)
 		if err != nil {
 			logger.Debug.Printf("error when fetching context %v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -448,7 +465,7 @@ func authenticate(r *http.Request) (string, error) {
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, ngrok-skip-browser-warning")
 }
 
 // getModelForQuery returns the appropriate model based on context preferences
@@ -485,6 +502,8 @@ func getModelForQuery(
 			ResponseHandler:   responseHandler,
 			HistoryRepository: historyRepository,
 		}
+	case "ollama":
+		model = ollama_model.NewOllamaModel(responseHandler, "")
 	case "qwen3":
 		model = ollama_model.NewOllamaModel(responseHandler, "")
 	case "opus":

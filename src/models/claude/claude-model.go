@@ -8,6 +8,7 @@ import (
 	"os"
 	data "owl/data"
 	"owl/logger"
+	"owl/mode"
 	models "owl/models"
 	"owl/services"
 	"owl/tools"
@@ -241,8 +242,9 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		logger.Debug.Println(err)
 	}
 
-	logger.Debug.Println("response")
-	logger.Debug.Printf("%v", apiResponse)
+	logger.Debug.Println("response:")
+	logger.Debug.Printf("%v", string(bytes))
+	// logger.Debug.Printf("%v", apiResponse)
 
 	textIndex := 0
 	for i, content := range apiResponse.Content {
@@ -280,7 +282,8 @@ func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]models
 			}
 			toolResponses = append(toolResponses, response)
 		}
-		logger.Debug.Printf("i: %d, content: %s", i, content)
+		json, _ := json.Marshal(content)
+		logger.Debug.Printf("i: %d, content: %v", i, string(json))
 	}
 
 	// Marshal tool results
@@ -404,7 +407,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	if modifiers.Web {
 		payload.Tools = []ToolModel{{Value: getWebSearchTool()}}
 	} else {
-		list, err := json.Marshal(tools.GetCustomTools())
+		list, err := json.Marshal(tools.GetCustomTools(mode.Mode))
 		if err != nil {
 			panic("failed to marshal json from tools definitions")
 		}

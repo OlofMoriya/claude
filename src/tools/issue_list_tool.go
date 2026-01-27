@@ -19,7 +19,7 @@ type IssueListLookupInput struct {
 func (tool *IssueListTool) SetHistory(repo *data.HistoryRepository, context *data.Context) {
 }
 
-func (tool *IssueListTool) GetDefinition() Tool {
+func (tool *IssueListTool) GetDefinition() (Tool, string) {
 
 	return Tool{
 		Name:        tool.GetName(),
@@ -34,7 +34,7 @@ func (tool *IssueListTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 func (tool *IssueListTool) GetName() string {

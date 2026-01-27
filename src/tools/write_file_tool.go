@@ -76,7 +76,7 @@ func (tool *FileWriterTool) GetName() string {
 	return "write_file"
 }
 
-func (tool *FileWriterTool) GetDefinition() Tool {
+func (tool *FileWriterTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Writes content to one or more files. Can create new files or overwrite existing ones. Path is relative to the current working directory. Parent directory references (..) are not allowed for security.",
@@ -94,7 +94,7 @@ func (tool *FileWriterTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 
 }
 

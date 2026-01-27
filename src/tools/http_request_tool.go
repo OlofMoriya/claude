@@ -102,7 +102,7 @@ func (tool *HTTPRequestTool) GetName() string {
 	return "http_request"
 }
 
-func (tool *HTTPRequestTool) GetDefinition() Tool {
+func (tool *HTTPRequestTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Makes HTTP requests to external APIs or services. Supports GET, POST, PUT, DELETE, and PATCH methods. Can include custom headers and request body. Useful for fetching data from APIs, webhooks, or integrating with external services.",
@@ -128,7 +128,7 @@ func (tool *HTTPRequestTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, REMOTE
 }
 
 func init() {

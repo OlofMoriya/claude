@@ -390,7 +390,7 @@ func (tool *FileUpdateTool) GetName() string {
 	return "update_file"
 }
 
-func (tool *FileUpdateTool) GetDefinition() Tool {
+func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Updates specific parts of an existing file. Supports three methods: 1) Git-style unified diff (recommended for AI models), 2) Line number ranges, 3) Text markers. Cannot create new files - use write_file for that. Path is relative to current working directory. Parent directory references (..) are not allowed for security.",
@@ -428,7 +428,7 @@ func (tool *FileUpdateTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 // Helper functions
