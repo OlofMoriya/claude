@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"owl/data"
 	"owl/logger"
+	"owl/mode"
 	"owl/models"
 	"owl/services"
 	"owl/tools"
@@ -343,7 +344,8 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 	}
 
 	// Add tools
-	customTools := tools.GetCustomTools()
+
+	customTools := tools.GetCustomTools(mode.Mode)
 	if len(customTools) > 0 {
 		payload.Tools = ConvertToolsToOpenAIFormat(customTools)
 		logger.Debug.Printf("Added %d tools to payload", len(payload.Tools))

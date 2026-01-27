@@ -13,6 +13,7 @@ import (
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 	embeddings_model "owl/models/open-ai-embedings"
+	"owl/tools"
 
 	"flag"
 	"fmt"
@@ -21,12 +22,11 @@ import (
 	"owl/tui"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
-	"github.com/joho/godotenv"
-)
+	mode "owl/mode"
 
-var (
-	DebugLog *log.Logger
+	"github.com/charmbracelet/glamour"
+	"github.com/fatih/color"
+	"github.com/joho/godotenv"
 )
 
 var (
@@ -95,6 +95,13 @@ func main() {
 	godotenv.Load()
 
 	flag.Parse()
+
+	if serve {
+		logger.Screen("\nsetting mode to REMOTE\n", color.RGB(150, 150, 150))
+		mode.Mode = tools.REMOTE
+	} else {
+		mode.Mode = tools.LOCAL
+	}
 
 	if tui_mode {
 		launchTUI()

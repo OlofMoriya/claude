@@ -62,7 +62,7 @@ func (tool *GitStatusTool) GetName() string {
 	return "git_info"
 }
 
-func (tool *GitStatusTool) GetDefinition() Tool {
+func (tool *GitStatusTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Executes git commands to get repository information. Can show status, current branch, recent commits, and diffs. Useful for understanding the state of the codebase and recent changes.",
@@ -80,7 +80,7 @@ func (tool *GitStatusTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 func init() {

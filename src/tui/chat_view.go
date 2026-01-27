@@ -164,19 +164,19 @@ func getModelForQuery(
 	responseHandler models.ResponseHandler,
 	historyRepository data.HistoryRepository,
 ) (models.Model, string) {
-	
+
 	modelToUse := requestedModel
-	
+
 	if modelToUse == "" && context != nil && context.PreferredModel != "" {
 		modelToUse = context.PreferredModel
 	}
-	
+
 	if modelToUse == "" {
 		modelToUse = "claude"
 	}
-	
+
 	var model models.Model
-	
+
 	switch modelToUse {
 	case "grok":
 		model = &grok_model.GrokModel{
@@ -235,7 +235,7 @@ func getModelForQuery(
 		}
 		modelToUse = "claude"
 	}
-	
+
 	return model, modelToUse
 }
 
@@ -252,7 +252,7 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 		}
 
 		modelName := m.availableModels[m.selectedModelIdx]
-		
+
 		model, actualModelName := getModelForQuery(
 			modelName,
 			m.shared.selectedCtx,
@@ -291,10 +291,9 @@ func waitForChatActivity(responseChan chan string, doneChan chan struct{},
 	logger.Debug.Println("waitForChatActivity started")
 
 	return func() tea.Msg {
-		logger.Debug.Println("inside the function")
 		select {
 		case text, ok := <-responseChan:
-			logger.Debug.Printf("responseChan: %v: %s", ok, text)
+			// logger.Debug.Printf("responseChan: %v: %s", ok, text)
 			if !ok {
 				return chatCompleteMsg{prompt: prompt}
 			}
@@ -653,13 +652,10 @@ func (m *chatViewModel) updateViewportContent() {
 	if !m.historyLoaded {
 		return
 	}
-	logger.Debug.Printf("passed guard")
 
 	var b strings.Builder
 
-	logger.Debug.Printf("history count %d", len(m.history))
-	for i, h := range m.history {
-		logger.Debug.Printf("add history %d", i)
+	for _, h := range m.history {
 		b.WriteString(userPromptStyle.Render(fmt.Sprintf("You: %s", h.Prompt)))
 		b.WriteString("\n\n")
 

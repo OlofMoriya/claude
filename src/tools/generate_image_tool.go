@@ -53,7 +53,7 @@ func (tool *GenerateImageTool) GetName() string {
 	return "image_generator"
 }
 
-func (tool *GenerateImageTool) GetDefinition() Tool {
+func (tool *GenerateImageTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
 		Description: "Generates images from a prompt. This call takes time so don't generate more than two at the time. Can take a subject and a style and creates a image which it returns as base64 and saves it to disc as png",
@@ -67,7 +67,7 @@ func (tool *GenerateImageTool) GetDefinition() Tool {
 				},
 			},
 		},
-	}
+	}, LOCAL
 }
 
 func init() {
