@@ -6,8 +6,6 @@ import (
 	"owl/logger"
 	"owl/models"
 	"sync"
-
-	"github.com/fatih/color"
 )
 
 var LOCAL string = "LOCAL"
@@ -69,9 +67,9 @@ func GetCustomTools(mode string) []Tool {
 	tools := []Tool{}
 	for _, tool := range defaultRegistry.tools {
 		definition, tool_mode := tool.GetDefinition()
-		logger.Screen(fmt.Sprintf("\nMode is %s, tool mode is %s", mode, tool_mode), color.RGB(150, 150, 150))
+		logger.Debug.Printf("\nMode is %s, tool mode is %s", mode, tool_mode)
 		if mode != REMOTE || tool_mode == REMOTE {
-			logger.Screen(fmt.Sprintf("\t adding tool %s", tool.GetName()), color.RGB(150, 150, 150))
+			logger.Debug.Printf("\t adding tool %s", tool.GetName())
 			tools = append(tools, definition)
 		}
 	}
