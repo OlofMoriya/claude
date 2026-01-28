@@ -227,7 +227,7 @@ func (model *ClaudeModel) handleMessageDelta(data string) {
 		// Tool use detected - execute the tool
 		model.StreamedToolUses = append(model.StreamedToolUses, *model.CurrentToolUse)
 
-		logger.Debug.Printf("new streaming tool use completed and appended", model.CurrentToolUse)
+		logger.Debug.Printf("new streaming tool use completed and appended %s", model.CurrentToolUse)
 		model.CurrentToolUse = nil
 	}
 
@@ -246,10 +246,10 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	logger.Debug.Printf("%v", string(bytes))
 	// logger.Debug.Printf("%v", apiResponse)
 
-	textIndex := 0
-	for i, content := range apiResponse.Content {
+	responseText := ""
+	for _, content := range apiResponse.Content {
 		if content.Type == "text" {
-			textIndex = i
+			responseText += fmt.Sprintf("\n%s", content.Text)
 		}
 	}
 
@@ -261,7 +261,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		logger.Debug.Printf("Error marshalling json content from response: %s", err)
 	}
 
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, apiResponse.Content[textIndex].Text, string(contentJson), toolResultsJson, model.ModelVersion)
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, responseText, string(contentJson), toolResultsJson, model.ModelVersion)
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
@@ -404,24 +404,24 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		Stream:    streamed,
 	}
 
+	list, err := json.Marshal(tools.GetCustomTools(mode.Mode))
+	if err != nil {
+		panic("failed to marshal json from tools definitions")
+	}
+
+	var t []Tool
+	err = json.Unmarshal(list, &t)
+	if err != nil {
+		panic("failed to unmarshal json to tools definitions")
+	}
+
+	payload.Tools = make([]ToolModel, len(t))
+	for i := range t {
+		payload.Tools[i] = ToolModel{Value: t[i]}
+	}
+
 	if modifiers.Web {
-		payload.Tools = []ToolModel{{Value: getWebSearchTool()}}
-	} else {
-		list, err := json.Marshal(tools.GetCustomTools(mode.Mode))
-		if err != nil {
-			panic("failed to marshal json from tools definitions")
-		}
-
-		var t []Tool
-		err = json.Unmarshal(list, &t)
-		if err != nil {
-			panic("failed to unmarshal json to tools definitions")
-		}
-
-		payload.Tools = make([]ToolModel, len(t))
-		for i := range t {
-			payload.Tools[i] = ToolModel{Value: t[i]}
-		}
+		payload.Tools = append(payload.Tools, ToolModel{Value: getWebSearchTool()})
 	}
 
 	if context != nil && context.SystemPrompt != "" {
