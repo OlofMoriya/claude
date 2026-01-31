@@ -12,6 +12,7 @@ import (
 	models "owl/models"
 	"owl/services"
 	"owl/tools"
+	"sort"
 	"strings"
 )
 
@@ -50,12 +51,6 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 
 	var model_version string
 	switch model.ModelVersion {
-	case "3.5-sonnet":
-		model_version = "claude-3-5-sonnet-20240620"
-	case "3.7-sonnet":
-		model_version = "claude-3-7-sonnet-20250219 "
-	case "4-sonnet":
-		model_version = "claude-sonnet-4-20250514"
 	case "opus":
 		model_version = "claude-opus-4-5-20251101"
 	case "sonnet":
@@ -316,10 +311,23 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse,
 	return models.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("No response or err from tool: %s, err: %s", content.Name, err.Error())
 }
 
+func getCacheControl() *CacheControl {
+	return &CacheControl{Type: "ephemeral"}
+}
+
 func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
 	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolResponses), len(history))
 
 	messages := []Message{}
+
+	lastToolResponseIndex := -1
+	nextLastToolResponseIndex := -1
+	for i := range history {
+		if history[i].ToolResults != "" {
+			nextLastToolResponseIndex = lastToolResponseIndex
+			lastToolResponseIndex = i
+		}
+	}
 
 	// Process history and handle tool results
 	for i, h := range history {
@@ -329,7 +337,22 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		}
 		logger.Debug.Printf("added history: %s", j)
 
-		messages = append(messages, TextMessage{Role: "user", Content: h.Prompt})
+		// Create user message with potential caching
+
+		textContent := TextContent{
+			Type: "text",
+			Text: h.Prompt,
+		}
+
+		if i == 3 {
+			textContent.CacheControl = getCacheControl()
+		}
+
+		messages = append(messages, RequestMessage{
+			Role:    "user",
+			Content: []Content{textContent},
+		})
+
 		if h.ResponseContent != "" {
 			var content []ResponseMessage
 			err := json.Unmarshal([]byte(h.ResponseContent), &content)
@@ -337,6 +360,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				fmt.Printf(h.ResponseContent)
 				panic(err)
 			}
+
 			messages = append(messages, HistoricMessage{Role: "assistant", Content: content})
 
 			// Check if this response contains tool_use blocks
@@ -348,26 +372,37 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				}
 			}
 
-			if hasToolUse && i+1 < len(history) {
+			if hasToolUse && h.ToolResults != "" {
 				toolResultContent := []Content{}
-				if h.ToolResults != "" {
-					var toolResults []models.ToolResponse
-					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
-					if err == nil {
-						for _, tr := range toolResults {
-							toolResultContent = append(toolResultContent, ToolResponseContent{
-								Type:    "tool_result",
-								Content: tr.Response,
-								IsError: false,
-								Id:      tr.Id,
-							})
+				var toolResults []models.ToolResponse
+				err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
+				if err == nil {
+					for _, tr := range toolResults {
+						content := ToolResponseContent{
+							Type:    "tool_result",
+							Content: tr.Response,
+							IsError: false,
+							Id:      tr.Id,
 						}
-						messages = append(messages, RequestMessage{Role: "user", Content: toolResultContent})
+						if i == lastToolResponseIndex || i == nextLastToolResponseIndex {
+							content.CacheControl = getCacheControl()
+						}
+
+						toolResultContent = append(toolResultContent, content)
 					}
+					messages = append(messages, RequestMessage{Role: "user", Content: toolResultContent})
 				}
+
 			}
 		} else {
-			messages = append(messages, TextMessage{Role: "assistant", Content: h.Response})
+			content := TextContent{
+				Type: "text",
+				Text: h.Response,
+			}
+			if i == 0 {
+				content.CacheControl = getCacheControl()
+			}
+			messages = append(messages, RequestMessage{Role: "assistant", Content: []Content{content}})
 		}
 	}
 
@@ -378,24 +413,19 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		imageMessage := createPdfMessage(prompt, *modifiers)
 		messages = append(messages, imageMessage)
 	} else {
-		content := []Content{}
-
-		if len(modifiers.ToolResponses) > 0 {
-			for _, response := range modifiers.ToolResponses {
-				content = append(content, ToolResponseContent{
-					Type:    "tool_result",
-					Content: response.Response,
-					IsError: false,
-					Id:      response.Id,
-				})
-			}
-		}
 		if prompt != "" {
-			content = append(content, TextContent{Type: "text", Text: prompt})
+			userContent := TextContent{
+				Type: "text",
+				Text: prompt,
+			}
+			messages = append(messages, RequestMessage{
+				Role:    "user",
+				Content: []Content{userContent},
+			})
 		}
-
-		messages = append(messages, RequestMessage{Role: "user", Content: content})
 	}
+
+	logger.Debug.Printf("Messages length: %d", len(messages))
 
 	payload := MessageBody{
 		Model:     model,
@@ -404,28 +434,29 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		Stream:    streamed,
 	}
 
-	list, err := json.Marshal(tools.GetCustomTools(mode.Mode))
-	if err != nil {
-		panic("failed to marshal json from tools definitions")
-	}
+	toolsList := tools.GetCustomTools(mode.Mode)
+	sort.Slice(toolsList, func(i, j int) bool {
+		return toolsList[i].Name < toolsList[j].Name
+	})
 
-	var t []Tool
-	err = json.Unmarshal(list, &t)
-	if err != nil {
-		panic("failed to unmarshal json to tools definitions")
-	}
-
-	payload.Tools = make([]ToolModel, len(t))
-	for i := range t {
-		payload.Tools[i] = ToolModel{Value: t[i]}
+	payload.Tools = make([]ToolModel, len(toolsList))
+	for i := range toolsList {
+		payload.Tools[i] = ToolModel{Value: toolsList[i]}
 	}
 
 	if modifiers.Web {
 		payload.Tools = append(payload.Tools, ToolModel{Value: getWebSearchTool()})
 	}
 
+	// Handle system prompt with caching - ALWAYS cache it
 	if context != nil && context.SystemPrompt != "" {
-		payload.System = context.SystemPrompt
+		systemContent := SystemContent{
+			Type:         "text",
+			Text:         context.SystemPrompt,
+			CacheControl: getCacheControl(), // Always cache system prompt
+		}
+		payload.System = []SystemContent{systemContent}
+		logger.Debug.Printf("Applying cache control to system prompt")
 	}
 
 	if useThinking {
@@ -436,8 +467,8 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		payload.Temp = 1
 	}
 
-	logger.Debug.Println("FULL PAYLOAD:")
-	logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
+	// logger.Debug.Println("FULL PAYLOAD:")
+	// logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
 	return payload
 }
 
@@ -509,6 +540,7 @@ func createClaudeRequest(payload MessageBody) *http.Request {
 	req.Header.Set("x-api-key", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("anthropic-version", "2023-06-01")
+	req.Header.Set("anthropic-beta", "prompt-caching-2024-07-31")
 
 	return req
 }

@@ -1,7 +1,7 @@
 package tools
 
 type Tool struct {
-	Type        string      `json:"Type,omitempty"`
+	Type        string      `json:"type,omitempty"`
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"input_schema,omitempty"`
@@ -17,6 +17,6 @@ type InputSchema struct {
 type Property struct {
 	Type        string              `json:"type"`
 	Description string              `json:"description,omitempty"`
-	Properties  map[string]Property `json:"properties"`
-	Items       *Property           `json:"items"`
+	Properties  map[string]Property `json:"properties,omitempty"`
+	Items       *Property           `json:"items,omitempty"`
 }
