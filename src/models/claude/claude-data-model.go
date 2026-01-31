@@ -3,14 +3,19 @@ package claude_model
 import "encoding/json"
 
 type MessageBody struct {
-	Model     string         `json:"model"`
-	Messages  Message        `json:"messages"`
-	MaxTokens int            `json:"max_tokens"`
-	System    string         `json:"system"`
-	Stream    bool           `json:"stream"`
-	Thinking  *ThinkingBlock `json:"thinking,omitempty"`
-	Temp      float32        `json:"temperature"`
-	Tools     []ToolModel    `json:"tools"`
+	Model     string          `json:"model"`
+	Messages  Message         `json:"messages"`
+	MaxTokens int             `json:"max_tokens"`
+	System    []SystemContent `json:"system,omitempty"`
+	Stream    bool            `json:"stream"`
+	Thinking  *ThinkingBlock  `json:"thinking,omitempty"`
+	Temp      float32         `json:"temperature"`
+	Tools     []ToolModel     `json:"tools"`
+}
+
+// CacheControl enables prompt caching for content blocks
+type CacheControl struct {
+	Type string `json:"type"` // "ephemeral"
 }
 
 type Property struct {
@@ -50,6 +55,13 @@ type InputSchema struct {
 type ThinkingBlock struct {
 	Type         string `json:"type"`
 	BudgetTokens int    `json:"budget_tokens"`
+}
+
+// SystemContent represents system prompt content with optional caching
+type SystemContent struct {
+	Type         string        `json:"type"`
+	Text         string        `json:"text"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type Message interface {
@@ -98,15 +110,17 @@ type SourceContent struct {
 }
 
 type ToolResponseContent struct {
-	Type    string `json:"type"`
-	Id      string `json:"tool_use_id"`
-	Content string `json:"content"`
-	IsError bool   `json:"is_error"`
+	Type         string        `json:"type"`
+	Id           string        `json:"tool_use_id"`
+	Content      string        `json:"content"`
+	IsError      bool          `json:"is_error"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type TextContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type         string        `json:"type"`
+	Text         string        `json:"text"`
+	CacheControl *CacheControl `json:"cache_control,omitempty"`
 }
 
 type TextMessage struct {

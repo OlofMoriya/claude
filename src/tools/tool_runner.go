@@ -67,9 +67,8 @@ func GetCustomTools(mode string) []Tool {
 	tools := []Tool{}
 	for _, tool := range defaultRegistry.tools {
 		definition, tool_mode := tool.GetDefinition()
-		logger.Debug.Printf("\nMode is %s, tool mode is %s", mode, tool_mode)
+		logger.Debug.Printf("\ntool: %s, Mode is %s, tool mode is %s", tool.GetName(), mode, tool_mode)
 		if mode != REMOTE || tool_mode == REMOTE {
-			logger.Debug.Printf("\t adding tool %s", tool.GetName())
 			tools = append(tools, definition)
 		}
 	}
