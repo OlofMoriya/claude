@@ -344,7 +344,6 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 	}
 
 	// Add tools
-
 	customTools := tools.GetCustomTools(mode.Mode)
 	if len(customTools) > 0 {
 		payload.Tools = ConvertToolsToOpenAIFormat(customTools)
@@ -399,4 +398,145 @@ func ConvertProperties(props map[string]tools.Property) map[string]interface{} {
 	}
 
 	return result
+}
+
+// HandleWebSearchResponse processes responses from the /v1/responses endpoint
+func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callback_model models.Model) {
+	var webSearchResponse ResponseAPIResponse
+	if err := json.Unmarshal(bytes, &webSearchResponse); err != nil {
+		logger.Debug.Printf("Error unmarshalling web search response: %v\n", err)
+		// Fall back to regular response handling
+		model.HandleBodyBytes(bytes, callback_model)
+		return
+	}
+
+	logger.Debug.Printf("Web search response status: %s, output items: %d", webSearchResponse.Status, len(webSearchResponse.Output))
+
+	// Parse the output array to find the message
+	var responseText string
+	allAnnotations := []Annotation{}
+	webSearchId := ""
+	messageId := ""
+
+	// Process the output array (Grok uses 'output', not 'items')
+	for _, outputItem := range webSearchResponse.Output {
+		// Each item needs to be parsed as a ResponseItem
+		itemBytes, err := json.Marshal(outputItem)
+		if err != nil {
+			logger.Debug.Printf("Error marshalling output item: %v", err)
+			continue
+		}
+
+		var item ResponseItem
+		if err := json.Unmarshal(itemBytes, &item); err != nil {
+			logger.Debug.Printf("Error unmarshalling output item: %v", err)
+			continue
+		}
+
+		logger.Debug.Printf("Processing output item - Type: %s, ID: %s", item.Type, item.ID)
+
+		switch item.Type {
+		case "web_search_call":
+			if webSearchId == "" {
+				webSearchId = item.ID
+			}
+			logger.Debug.Printf("Web search call ID: %s, Status: %s", item.ID, item.Status)
+
+		case "message":
+			if item.Role == "assistant" {
+				messageId = item.ID
+				logger.Debug.Printf("Found assistant message with %d content items", len(item.Content))
+				
+				for _, content := range item.Content {
+					if content.Type == "output_text" {
+						responseText = content.Text
+						logger.Debug.Printf("Extracted response text: %d chars", len(responseText))
+						
+						if len(content.Annotations) > 0 {
+							allAnnotations = append(allAnnotations, content.Annotations...)
+							logger.Debug.Printf("Found %d annotations", len(content.Annotations))
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if responseText == "" {
+		logger.Debug.Println("Warning: No response text found in web search response")
+		responseText = "No response text available from web search"
+	}
+
+	// Create a structured response content for storage
+	// This is key to avoiding the history issues seen in Claude
+	storedContent := WebSearchResponseContent{
+		Type:        "web_search_response",
+		OutputText:  responseText,
+		WebSearchId: webSearchId,
+		MessageId:   messageId,
+		Annotations: allAnnotations,
+	}
+
+	contentJson, err := json.Marshal(storedContent)
+	if err != nil {
+		logger.Debug.Printf("Error marshalling web search response content: %s", err)
+	}
+
+	logger.Debug.Printf("Storing web search response with %d annotations", len(allAnnotations))
+
+	// Display the response text first
+	model.ResponseHandler.RecievedText(responseText, nil)
+
+	// Display citations if present
+	if len(allAnnotations) > 0 {
+		citationText := "\n\nSources:\n"
+		for i, ann := range allAnnotations {
+			citationText += fmt.Sprintf("[%d] %s - %s\n", i+1, ann.Title, ann.URL)
+		}
+		model.ResponseHandler.RecievedText(citationText, nil)
+	}
+
+	// Save to history - using empty tool results since web search is handled by the API
+	model.ResponseHandler.FinalText(
+		model.ContextId,
+		model.Prompt,
+		responseText,
+		string(contentJson),
+		"", // No tool results - web search is transparent to us
+		model.ModelName,
+	)
+}
+
+// CreateWebSearchPayload builds a payload for the /v1/responses endpoint with web search
+func CreateWebSearchPayload(prompt string, history []data.History, model string, context *data.Context) ResponseRequest {
+	logger.Debug.Printf("\nMODEL USE: creating web search payload for: %s", model)
+
+	// Build input messages array
+	messages := []InputMessage{}
+
+	// Add history as context (limit to recent history to avoid token limits)
+	startIdx := len(history) - 5 // Last 5 exchanges
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	for i := startIdx; i < len(history); i++ {
+		h := history[i]
+		messages = append(messages, InputMessage{Role: "user", Content: h.Prompt})
+		
+		// For web search responses, use the output text
+		responseText := h.Response
+		if h.ResponseContent != "" {
+			var webContent WebSearchResponseContent
+			if err := json.Unmarshal([]byte(h.ResponseContent), &webContent); err == nil && webContent.Type == "web_search_response" {
+				responseText = webContent.OutputText
+			}
+		}
+		messages = append(messages, InputMessage{Role: "assistant", Content: responseText})
+	}
+
+	// Add current prompt
+	messages = append(messages, InputMessage{Role: "user", Content: prompt})
+
+	// Note: Stream is set to false for web search as it may not be supported
+	return ResponseRequest{Model: model, Input: messages, Tools: []interface{}{WebSearchTool{Type: "web_search"}}, Stream: false}
 }

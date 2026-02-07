@@ -377,14 +377,14 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				var toolResults []models.ToolResponse
 				err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
 				if err == nil {
-					for _, tr := range toolResults {
+					for tr_i, tr := range toolResults {
 						content := ToolResponseContent{
 							Type:    "tool_result",
 							Content: tr.Response,
 							IsError: false,
 							Id:      tr.Id,
 						}
-						if i == lastToolResponseIndex || i == nextLastToolResponseIndex {
+						if (i == lastToolResponseIndex || i == nextLastToolResponseIndex) && tr_i == len(toolResults)-1 {
 							content.CacheControl = getCacheControl()
 						}
 
