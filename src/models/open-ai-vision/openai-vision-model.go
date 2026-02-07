@@ -18,6 +18,10 @@ type OpenAiModel struct {
 	contextId         int64
 }
 
+func (model *OpenAiModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+}
+
 func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt
@@ -45,7 +49,7 @@ func (model *OpenAiModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", "vision")
 			}
 		}
 	}
@@ -58,7 +62,7 @@ func (model *OpenAiModel) HandleBodyBytes(bytes []byte) {
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
 
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content)
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "", "vision")
 }
 
 func createOpenaiPayload(prompt string, streamed bool, history []data.History) Payload {

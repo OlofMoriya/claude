@@ -3,6 +3,7 @@ CREATE TABLE history (
   context_id INT NOT NULL,
   prompt VARCHAR(10000) NOT NULL,
   response VARCHAR(10000),
+  responseContent VARCHAR(10000),
   abbreviation VARCHAR(1000), 
   token_count INT,
   user_id INT,
