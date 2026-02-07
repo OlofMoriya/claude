@@ -43,7 +43,7 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 
 	logger.Screen("\nAsked to list files", color.RGB(150, 150, 150))
 
-	out, err := exec.Command("/bin/ls", "-R").Output()
+	out, err := exec.Command("find", ".", "-not", "(", "-path", "./.git", "-prune", ")", "-not", "(", "-path", "./node_modules", "-prune", ")").Output()
 	if err != nil {
 		logger.Debug.Printf("error while fetching history for context", err)
 	}

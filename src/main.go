@@ -13,6 +13,7 @@ import (
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 	embeddings_model "owl/models/open-ai-embedings"
+	open_ai_gpt_model "owl/models/open-ai-gpt"
 	"owl/tools"
 
 	"flag"
@@ -213,6 +214,13 @@ func getModelForQuery(
 		model = &openai_4o_model.OpenAi4oModel{
 			ResponseHandler:   responseHandler,
 			HistoryRepository: historyRepository,
+		}
+	case "gpt":
+		model = &open_ai_gpt_model.OpenAIGPTModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
 		}
 	case "qwen3":
 		model = ollama_model.NewOllamaModel(responseHandler, "")

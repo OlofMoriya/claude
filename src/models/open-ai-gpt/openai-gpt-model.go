@@ -1,4 +1,4 @@
-package grok_model
+package openai_gpt_model
 
 import (
 	"bytes"
@@ -12,46 +12,45 @@ import (
 	"owl/models/open-ai-base"
 )
 
-type GrokModel struct {
+type OpenAIGPTModel struct {
 	openai_base.OpenAICompatibleModel
 }
 
-func (model *GrokModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAIGPTModel) SetResponseHandler(responseHandler models.ResponseHandler) {
 	model.ResponseHandler = responseHandler
-
 }
 
-func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	// Initialize the base model fields
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.ContextId = context.Id
 	model.Context = context
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
-	model.ModelName = "grok"
+	model.ModelName = "gpt-5.2"
 
 	// Check if web search is enabled - use different API endpoint
 	if modifiers.Web {
-		logger.Debug.Println("Web search enabled for Grok, using /v1/responses endpoint")
-		payload := openai_base.CreateWebSearchPayload(prompt, history, "grok-4-1-fast-reasoning", context)
-		return createGrokRequest(payload, true)
+		logger.Debug.Println("Web search enabled, using /v1/responses endpoint")
+		payload := openai_base.CreateWebSearchPayload(prompt, history, "gpt-5", context)
+		return createOpenAIGPTRequest(payload, true)
 	}
 
 	// Standard chat completions request
-	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "grok-4-1-fast-reasoning", 8000, context)
-	return createGrokRequest(payload, false)
+	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "gpt-5.2", 16000, context)
+	return createOpenAIGPTRequest(payload, false)
 }
 
-func (model *GrokModel) HandleStreamedLine(line []byte) {
+func (model *OpenAIGPTModel) HandleStreamedLine(line []byte) {
 	// Delegate to base implementation
 	model.OpenAICompatibleModel.HandleStreamedLine(line, model)
 }
 
-func (model *GrokModel) HandleBodyBytes(bytes []byte) {
+func (model *OpenAIGPTModel) HandleBodyBytes(bytes []byte) {
 	// Try to detect if this is a web search response
 	var webSearchResponse openai_base.ResponseAPIResponse
 	if err := json.Unmarshal(bytes, &webSearchResponse); err == nil && len(webSearchResponse.Output) > 0 {
-		logger.Debug.Println("Detected Grok web search response format (output array present)")
+		logger.Debug.Println("Detected OpenAI web search response format (output array present)")
 		model.OpenAICompatibleModel.HandleWebSearchResponse(bytes, model)
 		return
 	}
@@ -60,10 +59,10 @@ func (model *GrokModel) HandleBodyBytes(bytes []byte) {
 	model.OpenAICompatibleModel.HandleBodyBytes(bytes, model)
 }
 
-func createGrokRequest(payload interface{}, isWebSearch bool) *http.Request {
-	apiKey, ok := os.LookupEnv("XAI_API_KEY")
+func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request {
+	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
 	if !ok {
-		panic(fmt.Errorf("Could not fetch XAI_API_KEY"))
+		panic(fmt.Errorf("Could not fetch OPENAI_API_KEY"))
 	}
 
 	jsonpayload, err := json.Marshal(payload)
@@ -71,13 +70,13 @@ func createGrokRequest(payload interface{}, isWebSearch bool) *http.Request {
 		panic("failed to marshal payload")
 	}
 
-	logger.Debug.Printf("Grok Request Payload:\n%s", string(jsonpayload))
+	logger.Debug.Printf("OpenAI GPT-5.2 Request Payload:\n%s", string(jsonpayload))
 
 	// Use different endpoint for web search
-	url := "https://api.x.ai/v1/chat/completions"
+	url := "https://api.openai.com/v1/chat/completions"
 	if isWebSearch {
-		url = "https://api.x.ai/v1/responses"
-		logger.Debug.Println("Using Grok web search endpoint: /v1/responses")
+		url = "https://api.openai.com/v1/responses"
+		logger.Debug.Println("Using OpenAI web search endpoint: /v1/responses")
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonpayload))
