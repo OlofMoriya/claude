@@ -52,7 +52,8 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	var model_version string
 	switch model.ModelVersion {
 	case "opus":
-		model_version = "claude-opus-4-5-20251101"
+		// model_version = "claude-opus-4-5-20251101"
+		model_version = "claude-opus-4-6"
 	case "sonnet":
 		model_version = "claude-sonnet-4-5-20250929"
 	case "haiku":
@@ -65,7 +66,6 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	model.AccumulatedAnswer = ""
 	model.Context = context
 
-	// fmt.Printf("\nmodel: \n %v", request)
 	request := createClaudeRequest(payload)
 
 	return request
@@ -73,8 +73,6 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 
 func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 	responseLine := string(line)
-
-	// logger.Debug.Println(responseLine)
 
 	// Capture event type
 	if strings.HasPrefix(responseLine, "event: ") {

@@ -128,7 +128,7 @@ func (tool *HTTPRequestTool) GetDefinition() (Tool, string) {
 				},
 			},
 		},
-	}, REMOTE
+	}, LOCAL
 }
 
 func init() {

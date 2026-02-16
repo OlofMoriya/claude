@@ -14,6 +14,7 @@ import (
 
 type OpenAIGPTModel struct {
 	openai_base.OpenAICompatibleModel
+	ModelVersion string
 }
 
 func (model *OpenAIGPTModel) SetResponseHandler(responseHandler models.ResponseHandler) {
@@ -27,7 +28,17 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 	model.ContextId = context.Id
 	model.Context = context
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
-	model.ModelName = "gpt-5.2"
+
+	var model_version string
+	switch model.ModelVersion {
+	case "codex":
+		model_version = "gpt-5.3-codex"
+	case "gpt":
+		model_version = "gpt-5.3"
+	default:
+		model_version = "gpt-5.3"
+	}
+	model.ModelName = model_version
 
 	// Check if web search is enabled - use different API endpoint
 	if modifiers.Web {

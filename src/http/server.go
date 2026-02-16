@@ -15,6 +15,7 @@ import (
 	ollama_model "owl/models/ollama"
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
+	open_ai_gpt_model "owl/models/open-ai-gpt"
 	"owl/services"
 	tools "owl/tools"
 	"slices"
@@ -65,8 +66,15 @@ func Run(secure bool, port int, responseHandler *HttpResponseHandler, model mode
 }
 
 type promptRequest struct {
-	Prompt      string `json:"prompt"`
-	ContextName string `json:"contextName"`
+	Prompt       string  `json:"prompt"`
+	Model        *string `json:"model"`
+	ContextName  string  `json:"contextName"`
+	Web          bool    `json:"web"`
+	HistoryCount int     `json:"historyCount"`
+}
+
+type PromptModifiers struct {
+	Web bool
 }
 
 type loginRequest struct {
@@ -154,7 +162,7 @@ func parseLoginRequest(r *http.Request) (loginRequest, error) {
 }
 
 func parsePromptRequest(r *http.Request) (promptRequest, error) {
-	logger.Screen("Recieved prompt through http", color.RGB(150, 150, 150))
+	logger.Screen(fmt.Sprintf("\nRecieved prompt through http, %s\n", r.Body), color.RGB(150, 150, 150))
 	var req promptRequest
 
 	if r.Header.Get("Content-Type") != "application/json" {
@@ -180,6 +188,9 @@ func parsePromptRequest(r *http.Request) (promptRequest, error) {
 		return req, fmt.Errorf("no prompt in request body")
 	}
 
+	if req.HistoryCount == 0 {
+		return req, fmt.Errorf("history needs to be a non 0 integer")
+	}
 	return req, nil
 }
 
@@ -476,7 +487,7 @@ func getModelForQuery(
 	historyRepository data.HistoryRepository,
 	streamMode bool,
 ) (models.Model, string) {
-
+	logger.Screen(fmt.Sprintf("Getting model for request. Requested model: %s", requestedModel), color.RGB(150, 150, 150))
 	modelToUse := requestedModel
 
 	if modelToUse == "" && context != nil && context.PreferredModel != "" {
@@ -501,6 +512,22 @@ func getModelForQuery(
 		model = &openai_4o_model.OpenAi4oModel{
 			ResponseHandler:   responseHandler,
 			HistoryRepository: historyRepository,
+		}
+	case "gpt":
+		model = &open_ai_gpt_model.OpenAIGPTModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+			ModelVersion: "gpt",
+		}
+	case "codex":
+		model = &open_ai_gpt_model.OpenAIGPTModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+			ModelVersion: "codex",
 		}
 	case "ollama":
 		model = ollama_model.NewOllamaModel(responseHandler, "")
@@ -538,7 +565,32 @@ func getModelForQuery(
 		modelToUse = "claude"
 	}
 
+	logger.Screen(fmt.Sprintf("selected model %s for request. Requested model: %s", modelToUse, requestedModel), color.RGB(150, 150, 150))
+
 	return model, modelToUse
+}
+
+func (server_data *server_data) name_new_context(user_prompt string, repository *data.MultiUserContext) string {
+	logger.Screen("Naming context...", color.RGB(150, 150, 150))
+	logger.Debug.Println("Sending Haiku request to name context")
+	toolHandler := tools.ToolResponseHandler{}
+	toolHandler.Init()
+
+	model := &claude_model.ClaudeModel{ResponseHandler: &toolHandler, ModelVersion: "Haiku"}
+
+	prompt := fmt.Sprintf("Create a short name for this prompt so that I can store it with a name in a database. Maximum 100 characters but try to keep it short. ONLY EVER answer with the name and nothing else!!!! here's the prompt to name the context for: %s", user_prompt)
+	services.AwaitedQuery(prompt, model, repository, 0, &data.Context{
+		Name:    "Create name for context",
+		Id:      9999,
+		History: []data.History{},
+	}, &models.PayloadModifiers{}, "haiku")
+
+	response := <-toolHandler.ResponseChannel
+
+	logger.Debug.Printf("naming reponse: %s", response)
+	logger.Screen(fmt.Sprintf("naming reponse: %s", response), color.RGB(150, 150, 150))
+
+	return response
 }
 
 func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Request) {
@@ -569,26 +621,7 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 	logger.Screen(fmt.Sprintf("\nCurrent user in repository %v\n", repository.User), color.RGB(150, 150, 150))
 
 	if req.ContextName == "" {
-		logger.Screen("Naming context...", color.RGB(150, 150, 150))
-		logger.Debug.Println("Sending Haiku request to name context")
-		toolHandler := tools.ToolResponseHandler{}
-		toolHandler.Init()
-
-		model := &claude_model.ClaudeModel{ResponseHandler: &toolHandler, ModelVersion: "Haiku"}
-
-		prompt := fmt.Sprintf("Create a short name for this prompt so that I can store it with a name in a database. Maximum 100 characters but try to keep it short. ONLY EVER answer with the name and nothing else!!!! here's the prompt to name the context for: %s", req.Prompt)
-
-		services.AwaitedQuery(prompt, model, repository, 0, &data.Context{
-			Name:    "Create name for context",
-			Id:      999,
-			History: []data.History{},
-		}, &models.PayloadModifiers{}, "haiku")
-
-		response := <-toolHandler.ResponseChannel
-
-		logger.Debug.Printf("naming reponse: %s", response)
-		logger.Screen(fmt.Sprintf("naming reponse: %s", response), color.RGB(150, 150, 150))
-		req.ContextName = response
+		req.ContextName = server_data.name_new_context(req.Prompt, repository)
 	}
 
 	context, _ := repository.GetContextByName(req.ContextName)
@@ -609,12 +642,22 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 
 	server_data.responseHandler.SetResponseWriter(w)
 
-	selectedModel, modelName := getModelForQuery("", context, server_data.responseHandler, repository, server_data.streaming)
+	modelToUse := ""
+	if req.Model != nil {
+		modelToUse = *req.Model
+	}
+	selectedModel, modelName := getModelForQuery(modelToUse, context, server_data.responseHandler, repository, server_data.streaming)
+
+	modifiers := &models.PayloadModifiers{}
+	if req.Web {
+		logger.Screen("Adding web to modifiers", color.RGB(150, 150, 150))
+		modifiers.Web = true
+	}
 
 	if server_data.streaming {
-		services.StreamedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{}, modelName)
+		services.StreamedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, req.HistoryCount, context, modifiers, modelName)
 	} else {
-		services.AwaitedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, 5, context, &models.PayloadModifiers{}, modelName)
+		services.AwaitedQuery(req.Prompt, selectedModel, server_data.responseHandler.Repository, req.HistoryCount, context, modifiers, modelName)
 	}
 }
 
@@ -635,6 +678,8 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
 	repository, ok := httpResponseHandler.Repository.(*data.MultiUserContext)
 
+	logger.Screen(fmt.Sprintf("final text: %s", response), color.RGB(150, 150, 150))
+
 	if !ok {
 		log.Panic("This needs to be called with a repository that supplies user")
 	}
@@ -647,6 +692,7 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 		TokenCount:      0,
 		UserId:          int64(repository.User.Id),
 		ResponseContent: responseContent,
+		ToolResults:     toolResults,
 		Model:           modelName,
 	}
 

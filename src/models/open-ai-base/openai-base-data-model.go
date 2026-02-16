@@ -19,7 +19,7 @@ type ChatCompletionRequest struct {
 	Messages  []interface{}  `json:"messages"`
 	Tools     []FunctionTool `json:"tools,omitempty"`
 	Stream    bool           `json:"stream"`
-	MaxTokens int            `json:"max_tokens"`
+	MaxTokens int            `json:"max_completion_tokens"`
 }
 
 // Tool calling structures (OpenAI format)
@@ -116,7 +116,7 @@ type ResponseRequest struct {
 
 // Response structures for web search responses
 type ResponseItem struct {
-	Type    string          `json:"type"`              // "web_search_call" or "message"
+	Type    string          `json:"type"` // "web_search_call" or "message"
 	ID      string          `json:"id"`
 	Status  string          `json:"status,omitempty"`  // For web_search_call
 	Action  interface{}     `json:"action,omitempty"`  // For web_search_call action details
@@ -140,13 +140,13 @@ type Annotation struct {
 
 // Response structure from /v1/responses API
 type ResponseAPIResponse struct {
-	ID         string         `json:"id"`
-	Object     string         `json:"object"`
-	CreatedAt  int64          `json:"created_at"`
-	Model      string         `json:"model"`
-	OutputText string         `json:"output_text,omitempty"` // Some APIs may use this
-	Output     []interface{}  `json:"output,omitempty"`      // Grok uses this - array of items
-	Status     string         `json:"status,omitempty"`
+	ID         string        `json:"id"`
+	Object     string        `json:"object"`
+	CreatedAt  int64         `json:"created_at"`
+	Model      string        `json:"model"`
+	OutputText string        `json:"output_text,omitempty"` // Some APIs may use this
+	Output     []interface{} `json:"output,omitempty"`      // Grok uses this - array of items
+	Status     string        `json:"status,omitempty"`
 }
 
 // Stored response content for history (to avoid issues like in Claude)
