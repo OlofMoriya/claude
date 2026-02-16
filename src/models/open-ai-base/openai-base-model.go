@@ -68,6 +68,8 @@ func (model *OpenAICompatibleModel) HandleStreamedLine(line []byte, callback_mod
 				model.ResponseHandler.RecievedText(choice.Delta.Content, nil)
 			}
 		}
+	} else {
+		logger.Debug.Printf("streamed response without data: prefix:  %s\n", responseLine)
 	}
 }
 
@@ -446,12 +448,12 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 			if item.Role == "assistant" {
 				messageId = item.ID
 				logger.Debug.Printf("Found assistant message with %d content items", len(item.Content))
-				
+
 				for _, content := range item.Content {
 					if content.Type == "output_text" {
 						responseText = content.Text
 						logger.Debug.Printf("Extracted response text: %d chars", len(responseText))
-						
+
 						if len(content.Annotations) > 0 {
 							allAnnotations = append(allAnnotations, content.Annotations...)
 							logger.Debug.Printf("Found %d annotations", len(content.Annotations))
@@ -522,7 +524,7 @@ func CreateWebSearchPayload(prompt string, history []data.History, model string,
 	for i := startIdx; i < len(history); i++ {
 		h := history[i]
 		messages = append(messages, InputMessage{Role: "user", Content: h.Prompt})
-		
+
 		// For web search responses, use the output text
 		responseText := h.Response
 		if h.ResponseContent != "" {

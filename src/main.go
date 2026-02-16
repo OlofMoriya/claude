@@ -221,6 +221,15 @@ func getModelForQuery(
 				ResponseHandler:   responseHandler,
 				HistoryRepository: historyRepository,
 			},
+			ModelVersion: "gpt",
+		}
+	case "codex":
+		model = &open_ai_gpt_model.OpenAIGPTModel{
+			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
+				ResponseHandler:   responseHandler,
+				HistoryRepository: historyRepository,
+			},
+			ModelVersion: "codex",
 		}
 	case "qwen3":
 		model = ollama_model.NewOllamaModel(responseHandler, "")

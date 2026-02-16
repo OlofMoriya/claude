@@ -116,6 +116,7 @@ func StreamedQuery(prompt string, model models.Model, historyRepository data.His
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			logger.Debug.Println("failed to read bytes from stream response")
+			logger.Debug.Printf("\n%s", err)
 			finished = true
 			continue
 		}
