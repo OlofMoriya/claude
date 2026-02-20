@@ -1,19 +1,56 @@
 package openai_4o_model
 
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content,omitempty"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`
+	ToolCallId string     `json:"tool_call_id,omitempty"`
 }
+
 type RequestMessage struct {
-	Role    string           `json:"role"`
-	Content []RequestContent `json:"content"`
+	Role       string           `json:"role"`
+	Content    []RequestContent `json:"content,omitempty"`
+	ToolCalls  []ToolCall       `json:"tool_calls,omitempty"`
+	ToolCallId string           `json:"tool_call_id,omitempty"`
 }
 
 type ChatCompletionRequest struct {
 	Model     string           `json:"model"`
-	Messages  []RequestMessage `json:"messages"`
+	Messages  []interface{}    `json:"messages"`
+	Tools     []FunctionTool   `json:"tools,omitempty"`
 	Stream    bool             `json:"stream"`
 	MaxTokens int              `json:"max_tokens"`
+}
+
+// Tool calling structures (OpenAI format)
+type FunctionTool struct {
+	Type     string             `json:"type"`
+	Function FunctionDefinition `json:"function"`
+}
+
+type FunctionDefinition struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Parameters  map[string]interface{} `json:"parameters"`
+}
+
+type ToolCall struct {
+	Index    int          `json:"index,omitempty"`
+	Id       string       `json:"id"`
+	Type     string       `json:"type"`
+	Function FunctionCall `json:"function"`
+}
+
+type FunctionCall struct {
+	Name      string `json:"name"`
+	Arguments string `json:"arguments"`
+}
+
+type Tool interface {
+}
+
+type SimpleTool struct {
+	Type string `json:"type"`
 }
 
 type Choice struct {
@@ -40,8 +77,9 @@ type ChatCompletion struct {
 }
 
 type Delta struct {
-	Role    string `json:"role,omitempty"`
-	Content string `json:"content,omitempty"`
+	Role      string     `json:"role,omitempty"`
+	Content   string     `json:"content,omitempty"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 }
 
 type RequestContent struct {

@@ -15,6 +15,10 @@ type OpenAiEmbeddingsModel struct {
 	prompt          string
 }
 
+func (model *OpenAiEmbeddingsModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+}
+
 func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createPayload(prompt, streaming, history)
 	model.prompt = prompt
@@ -76,5 +80,5 @@ func (model *OpenAiEmbeddingsModel) HandleBodyBytes(bytes []byte) {
 		println(err)
 	}
 
-	model.ResponseHandler.FinalText(0, model.prompt, string(embeddingsArray))
+	model.ResponseHandler.FinalText(0, model.prompt, string(embeddingsArray), "", "", "EmbeddingsModel")
 }

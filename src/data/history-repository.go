@@ -10,4 +10,6 @@ type HistoryRepository interface {
 	DeleteContext(contextId int64) (int64, error)
 	DeleteHistory(historyId int64) (int64, error)
 	UpdateSystemPrompt(contextId int64, systemPrompt string) error
+	UpdatePreferredModel(contextId int64, model string) error
 }
+

@@ -18,6 +18,10 @@ type ClaudeModel struct {
 	contextId         int64
 }
 
+func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+	model.ResponseHandler = responseHandler
+}
+
 func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
 	payload := createClaudePayload(prompt, streaming, history)
 	model.prompt = prompt
@@ -40,7 +44,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 			model.accumulatedAnswer = model.accumulatedAnswer + apiResponse.Delta.Text
 			model.ResponseHandler.RecievedText(apiResponse.Delta.Text, nil)
 		} else if apiResponse.Type == message_stop {
-			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer)
+			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", "claude")
 		}
 		//TODO: catch the token count response
 	} else {
@@ -55,7 +59,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		fmt.Printf("Error unmarshalling response body: %v\n", err)
 	}
 
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Content[0].Text)
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Content[0].Text, "", "", "cluade")
 }
 
 func createClaudePayload(prompt string, streamed bool, history []data.History) VertexMessageBody {
