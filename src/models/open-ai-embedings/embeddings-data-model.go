@@ -4,7 +4,7 @@ type Payload struct {
 	Input          string `json:"input"`
 	Model          string `json:"model"`
 	EncodingFormat string `json:"encoding_format"`
-	// Dimensions     int    `json:"dimensions"`
+	Dimensions     int    `json:"dimensions"`
 }
 
 type Response struct {

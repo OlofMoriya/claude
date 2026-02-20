@@ -27,10 +27,10 @@ func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt 
 
 func createPayload(prompt string, streamed bool, history []data.History) Payload {
 	payload := Payload{
-		Model:          "text-embedding-ada-002",
+		Model:          "text-embedding-3-small",
 		Input:          prompt,
 		EncodingFormat: "float",
-		// Dimensions:     69,
+		Dimensions:     20,
 	}
 
 	return payload
