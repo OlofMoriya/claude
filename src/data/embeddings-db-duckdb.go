@@ -87,7 +87,7 @@ func (edb *DuckDbEmbeddingsDatabase) FindMatches(embedding string) ([]EmbeddingM
 
 	selectQuery := `
 		WITH needle AS (
-			SELECT CAST(? AS FLOAT[20]) AS search_vec
+			SELECT CAST(? AS FLOAT[1536]) AS search_vec
 		),
 		matches AS (
 			SELECT unnest(res.matches) AS match
@@ -96,7 +96,7 @@ func (edb *DuckDbEmbeddingsDatabase) FindMatches(embedding string) ([]EmbeddingM
 		SELECT (match).row.id, (match).row.text_id, t.content, (match).score, t.reference
 		FROM matches
 		JOIN texts t ON (match).row.text_id = t.id
-		ORDER BY (match).score ASC
+		ORDER BY (match).score 
 		LIMIT 3;`
 
 	rows, err := db.Query(selectQuery, embedding)
@@ -124,27 +124,20 @@ func (edb *DuckDbEmbeddingsDatabase) InsertEmbedding(text string, embedding stri
 
 	logger.Debug.Println("inserting embedding (duckdb)")
 
-	insertTextQuery := "INSERT INTO texts (content, reference) VALUES (?, ?)"
-	textResult, err := db.Exec(insertTextQuery, text, reference)
+	insertTextQuery := "INSERT INTO texts (content, reference) VALUES (?, ?) RETURNING id"
+	var textId int64
+	err := db.QueryRow(insertTextQuery, text, reference).Scan(&textId)
 	if err != nil {
 		return 0, err
 	}
 
-	textId, err := textResult.LastInsertId()
+	insertQuery := "INSERT INTO embeddings (text_id, embedding) VALUES (?, CAST(? AS FLOAT[1536])) RETURNING id"
+	var id int64
+	err = db.QueryRow(insertQuery, textId, embedding).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 
-	insertQuery := "INSERT INTO embeddings (text_id, embedding) VALUES (?, CAST(? AS FLOAT[20]))"
-	result, err := db.Exec(insertQuery, textId, embedding)
-	if err != nil {
-		return 0, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
 	return id, nil
 }
 
@@ -173,7 +166,7 @@ func createDuckDbEmbeddingsTable(db *sql.DB) {
 	CREATE TABLE IF NOT EXISTS embeddings (
 		id        BIGINT PRIMARY KEY DEFAULT NEXTVAL('embeddings_id_seq'),
 		text_id   BIGINT,
-		embedding FLOAT[20]
+		embedding FLOAT[1536]
 	);
 `
 	_, err := db.Exec(createTableQuery)

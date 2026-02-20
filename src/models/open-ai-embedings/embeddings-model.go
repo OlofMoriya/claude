@@ -30,7 +30,7 @@ func createPayload(prompt string, streamed bool, history []data.History) Payload
 		Model:          "text-embedding-3-small",
 		Input:          prompt,
 		EncodingFormat: "float",
-		Dimensions:     20,
+		Dimensions:     1536,
 	}
 
 	return payload

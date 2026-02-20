@@ -227,7 +227,7 @@ func main() {
 		user := data.User{Name: &db}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 
-		services.AwaitedQuery(prompt, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
+		services.AwaitedQuery(search, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
 		response := <-embeddingsResponseHandler.ResponseChannel
 
 		matches, err := database.FindMatches(response)
@@ -237,8 +237,8 @@ func main() {
 		}
 
 		for i, match := range matches {
-			logger.Screen(fmt.Sprintf("index of match: %i, distance: %i", i, match.Distance), color.RGB(250, 250, 150))
-			logger.Screen(fmt.Sprintf("\nDistance: %s\nReference: %s\nText: %s", match.Distance, "", match.Text), color.RGB(150, 150, 150))
+			logger.Screen(fmt.Sprintf("\n\nindex of match: %i, distance: %i", i, match.Distance), color.RGB(250, 250, 150))
+			logger.Screen(fmt.Sprintf("\nDistance: %s\nReference: %s\nText: %s\n", match.Distance, match.Reference, match.Text), color.RGB(150, 150, 150))
 		}
 		return
 	}
