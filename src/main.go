@@ -2,10 +2,16 @@ package main
 
 import (
 	"bufio"
+	"flag"
+	"fmt"
 	"log"
+	"os"
+	"strings"
+
 	data "owl/data"
 	server "owl/http"
 	"owl/logger"
+	mode "owl/mode"
 	"owl/models"
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
@@ -14,16 +20,9 @@ import (
 	openai_base "owl/models/open-ai-base"
 	embeddings_model "owl/models/open-ai-embedings"
 	open_ai_gpt_model "owl/models/open-ai-gpt"
-	"owl/tools"
-
-	"flag"
-	"fmt"
-	"os"
 	services "owl/services"
+	"owl/tools"
 	"owl/tui"
-	"strings"
-
-	mode "owl/mode"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/fatih/color"
@@ -49,6 +48,11 @@ var (
 	pdf              string
 	web              bool
 	tui_mode         bool
+	search           string
+	chunk            string
+
+	// Embeddings backend selection: sqlite (default) or duckdb
+	embeddingsBackend string
 )
 
 func init() {
@@ -56,29 +60,15 @@ func init() {
 		log.Fatal("Failed to initialize logger:", err)
 	}
 
-	flag.StringVar(
-		&prompt,
-		"prompt",
-		"",
-		"The prompt to use for the conversation",
-	)
-	flag.StringVar(
-		&context_name,
-		"context_name",
-		"misc",
-		"The context to provide for the conversation",
-	)
-	flag.IntVar(
-		&history_count,
-		"history",
-		1,
-		"The number of previous messages to include in the context",
-	)
+	flag.StringVar(&prompt, "prompt", "", "The prompt to use for the conversation")
+	flag.StringVar(&context_name, "context_name", "misc", "The context to provide for the conversation")
+	flag.IntVar(&history_count, "history", 1, "The number of previous messages to include in the context")
 	flag.BoolVar(&serve, "serve", false, "Enable server mode")
 	flag.IntVar(&port, "port", 3000, "Port to listen on")
 	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
+	flag.StringVar(&embeddingsBackend, "embeddings_backend", "sqlite", "embeddings backend: sqlite or duckdb")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
 	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
@@ -90,11 +80,12 @@ func init() {
 	flag.BoolVar(&web, "web", false, "web search enabled")
 	flag.StringVar(&pdf, "pdf", "", "path to pdf")
 	flag.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
+	flag.StringVar(&search, "search", "", "search for phrase in embedding")
+	flag.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
 }
 
 func main() {
 	godotenv.Load()
-
 	flag.Parse()
 
 	if serve {
@@ -125,7 +116,7 @@ func main() {
 		return
 	}
 
-	if prompt == "" && !serve && !view {
+	if prompt == "" && !serve && !view && search == "" && chunk == "" {
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("Prompt:")
 		prompt, _ = reader.ReadString('\n')
@@ -140,41 +131,141 @@ func main() {
 		model := &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: httpResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "haiku"}
 
 		server.Run(secure, port, httpResponseHandler, model, stream)
-	} else if embeddings {
+		return
+	}
+
+	if embeddings {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
 			db = "owl"
 		}
 
+		embeddings_db := os.Getenv("OWL_LOCAL_EMBEDDINGS_DATABASE")
+		if embeddings_db == "" {
+			embeddings_db = "owl_embeddings"
+		}
+
+		var embeddingsStore data.EmbeddingsStore
+		switch embeddingsBackend {
+		case "sqlite":
+			embeddingsStore = &data.EmbeddingsDatabase{Name: embeddings_db}
+		case "duckdb":
+			fallthrough
+		default:
+			embeddingsStore = &data.DuckDbEmbeddingsDatabase{Name: embeddings_db}
+		}
+
+		embeddingsResponseHandler := EmbeddingsResponseHandler{Db: embeddingsStore, Store: true}
+
 		user := data.User{Name: &db}
-		embeddingsResponseHandler := EmbeddingsResponseHandler{}
+		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
+
+		if chunk != "" {
+			bytes, err := os.ReadFile(chunk)
+			if err != nil {
+				panic(fmt.Sprintf("could not read file: %s", err))
+			}
+
+			contents := string(bytes)
+
+			lines := strings.Split(contents, "\n")
+			var chunks []string
+			var currentChunk strings.Builder
+
+			for _, line := range lines {
+				if strings.HasPrefix(line, "## ") {
+					if currentChunk.Len() > 0 {
+						chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+						currentChunk.Reset()
+					}
+					currentChunk.WriteString(line)
+					currentChunk.WriteString("\n")
+				} else {
+					currentChunk.WriteString(line)
+					currentChunk.WriteString("\n")
+				}
+			}
+
+			if currentChunk.Len() > 0 {
+				chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
+			}
+
+			embeddingsResponseHandler.Reference = chunk
+			for _, chunk_string := range chunks {
+				services.AwaitedQuery(chunk_string, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
+			}
+		} else {
+			services.AwaitedQuery(prompt, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
+		}
+		return
+	}
+
+	if search != "" {
+		db := os.Getenv("OWL_LOCAL_DATABASE")
+		if db == "" {
+			db = "owl"
+		}
+
+		embeddings_db := os.Getenv("OWL_LOCAL_EMBEDDINGS_DATABASE")
+		if embeddings_db == "" {
+			embeddings_db = "owl_embeddings"
+		}
+
+		var database data.EmbeddingsStore
+		switch embeddingsBackend {
+		case "sqlite":
+			database = &data.EmbeddingsDatabase{Name: embeddings_db}
+		case "duckdb":
+			fallthrough
+		default:
+			database = &data.DuckDbEmbeddingsDatabase{Name: embeddings_db}
+		}
+
+		embeddingsResponseHandler := EmbeddingsResponseHandler{Db: database, Store: false}
+		embeddingsResponseHandler.Init()
+
+		user := data.User{Name: &db}
 		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
 
 		services.AwaitedQuery(prompt, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
-	} else if view {
+		response := <-embeddingsResponseHandler.ResponseChannel
+
+		matches, err := database.FindMatches(response)
+		if err != nil {
+			logger.Debug.Printf("error searching for embedding %s", err)
+			return
+		}
+
+		for i, match := range matches {
+			logger.Screen(fmt.Sprintf("index of match: %i, distance: %i", i, match.Distance), color.RGB(250, 250, 150))
+			logger.Screen(fmt.Sprintf("\nDistance: %s\nReference: %s\nText: %s", match.Distance, "", match.Text), color.RGB(150, 150, 150))
+		}
+		return
+	}
+
+	if view {
 		view_history()
+		return
+	}
+
+	db := os.Getenv("OWL_LOCAL_DATABASE")
+	if db == "" {
+		db = "owl"
+	}
+
+	user := data.User{Name: &db}
+	cliResponseHandler := CliResponseHandler{Repository: user}
+	context := getContext(user, &system_prompt)
+
+	model, modelName := getModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+
+	if stream {
+		services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 	} else {
-		db := os.Getenv("OWL_LOCAL_DATABASE")
-		if db == "" {
-			db = "owl"
-		}
-
-		user := data.User{Name: &db}
-		cliResponseHandler := CliResponseHandler{Repository: user}
-		context := getContext(user, &system_prompt)
-
-		// Use model selector to get the appropriate model and model name
-		model, modelName := getModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
-
-		if stream {
-			services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
-		} else {
-			services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
-		}
+		services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 	}
 }
 
-// getModelForQuery returns the appropriate model based on the request and context preferences
 func getModelForQuery(
 	requestedModel string,
 	context *data.Context,
@@ -186,43 +277,23 @@ func getModelForQuery(
 	outputThinkingMode bool,
 ) (models.Model, string) {
 
-	// Determine which model to use
 	modelToUse := requestedModel
-
-	// If no model was explicitly requested, check context preferences
 	if modelToUse == "" && context != nil && context.PreferredModel != "" {
 		modelToUse = context.PreferredModel
 	}
-
-	// Default to claude if still not set
 	if modelToUse == "" {
 		modelToUse = "claude"
 	}
 
-	// Create and return the appropriate model
 	var model models.Model
 
 	switch modelToUse {
 	case "grok":
-		model = &grok_model.GrokModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-		}
+		model = &grok_model.GrokModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}}
 	case "4o":
-		model = &openai_4o_model.OpenAi4oModel{
-			ResponseHandler:   responseHandler,
-			HistoryRepository: historyRepository,
-		}
+		model = &openai_4o_model.OpenAi4oModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}
 	case "gpt":
-		model = &open_ai_gpt_model.OpenAIGPTModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-			ModelVersion: "gpt",
-		}
+		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt"}
 	case "codex":
 		model = &open_ai_gpt_model.OpenAIGPTModel{
 			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
@@ -236,46 +307,15 @@ func getModelForQuery(
 	case "qwen3":
 		model = ollama_model.NewOllamaModel(responseHandler, "")
 	case "opus":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       thinkingMode,
-			StreamThought:     streamThinkingMode,
-			OutputThought:     outputThinkingMode,
-			ModelVersion:      "opus",
-		}
+		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "opus"}
 	case "sonnet":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       thinkingMode,
-			StreamThought:     streamThinkingMode,
-			OutputThought:     outputThinkingMode,
-			ModelVersion:      "sonnet",
-		}
+		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "sonnet"}
 	case "haiku":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       thinkingMode,
-			StreamThought:     streamThinkingMode,
-			OutputThought:     outputThinkingMode,
-			ModelVersion:      "haiku",
-		}
+		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "haiku"}
 	case "claude":
 		fallthrough
 	default:
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       thinkingMode,
-			StreamThought:     streamThinkingMode,
-			OutputThought:     outputThinkingMode,
-		}
+		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode}
 		modelToUse = "claude"
 	}
 
@@ -333,19 +373,9 @@ func launchTUI() {
 	user := data.User{Name: &db}
 
 	cliResponseHandler := CliResponseHandler{Repository: user}
-	model := &claude_model.ClaudeModel{
-		ResponseHandler:   cliResponseHandler,
-		HistoryRepository: user,
-		UseThinking:       true,
-		StreamThought:     false,
-		OutputThought:     false,
-	}
+	model := &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, HistoryRepository: user, UseThinking: true, StreamThought: false, OutputThought: false}
 
-	config := tui.TUIConfig{
-		Repository:   user,
-		Model:        model,
-		HistoryCount: 10,
-	}
+	config := tui.TUIConfig{Repository: user, Model: model, HistoryCount: 10}
 
 	if err := tui.Run(config); err != nil {
 		log.Fatal(err)
