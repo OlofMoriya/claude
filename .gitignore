@@ -5,3 +5,5 @@ src/debug.log
 input-data
 .env
 src/.termdbms/.2809150002748694505
+src/worklog.txt
+src/inspect_embeddings
