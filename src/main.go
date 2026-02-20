@@ -231,6 +231,8 @@ func getModelForQuery(
 			},
 			ModelVersion: "codex",
 		}
+	case "ollama":
+		model = ollama_model.NewOllamaModel(responseHandler, "")
 	case "qwen3":
 		model = ollama_model.NewOllamaModel(responseHandler, "")
 	case "opus":
