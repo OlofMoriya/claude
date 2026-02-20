@@ -162,36 +162,19 @@ func main() {
 
 		if chunk != "" {
 			bytes, err := os.ReadFile(chunk)
+			contents := string(bytes)
 			if err != nil {
 				panic(fmt.Sprintf("could not read file: %s", err))
 			}
+			// Use the new chunking service with size limits
+			chunks := services.ChunkMarkdown(contents)
 
-			contents := string(bytes)
-
-			lines := strings.Split(contents, "\n")
-			var chunks []string
-			var currentChunk strings.Builder
-
-			for _, line := range lines {
-				if strings.HasPrefix(line, "## ") {
-					if currentChunk.Len() > 0 {
-						chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
-						currentChunk.Reset()
-					}
-					currentChunk.WriteString(line)
-					currentChunk.WriteString("\n")
-				} else {
-					currentChunk.WriteString(line)
-					currentChunk.WriteString("\n")
-				}
-			}
-
-			if currentChunk.Len() > 0 {
-				chunks = append(chunks, strings.TrimSpace(currentChunk.String()))
-			}
+			logger.Screen(fmt.Sprintf("Chunked document into %d pieces", len(chunks)), color.RGB(150, 250, 150))
 
 			embeddingsResponseHandler.Reference = chunk
-			for _, chunk_string := range chunks {
+			for i, chunk_string := range chunks {
+				logger.Screen(fmt.Sprintf("Processing chunk %d/%d (size: %d chars)", i+1, len(chunks), len(chunk_string)), color.RGB(150, 150, 250))
+
 				services.AwaitedQuery(chunk_string, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
 			}
 		} else {
