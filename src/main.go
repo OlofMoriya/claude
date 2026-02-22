@@ -8,20 +8,15 @@ import (
 	"os"
 	"strings"
 
+	commontypes "owl/common_types"
 	data "owl/data"
 	"owl/embeddings"
 	server "owl/http"
 	"owl/logger"
 	mode "owl/mode"
-	"owl/models"
 	claude_model "owl/models/claude"
-	grok_model "owl/models/grok"
-	ollama_model "owl/models/ollama"
-	openai_4o_model "owl/models/open-ai-4o"
-	openai_base "owl/models/open-ai-base"
-	embeddings_model "owl/models/open-ai-embedings"
-	open_ai_gpt_model "owl/models/open-ai-gpt"
-	services "owl/services"
+	picker "owl/picker"
+	"owl/services"
 	"owl/tools"
 	"owl/tui"
 
@@ -51,7 +46,6 @@ var (
 	tui_mode         bool
 	search           string
 	chunk            string
-
 )
 
 func init() {
@@ -187,68 +181,13 @@ func main() {
 	cliResponseHandler := CliResponseHandler{Repository: user}
 	context := getContext(user, &system_prompt)
 
+	model, modelName := picker.GetModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 	if stream {
-		services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		services.StreamedQuery(prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 	} else {
-		services.AwaitedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		services.AwaitedQuery(prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 	}
-}
-
-func getModelForQuery(
-	requestedModel string,
-	context *data.Context,
-	responseHandler models.ResponseHandler,
-	historyRepository data.HistoryRepository,
-	streamMode bool,
-	thinkingMode bool,
-	streamThinkingMode bool,
-	outputThinkingMode bool,
-) (models.Model, string) {
-
-	modelToUse := requestedModel
-	if modelToUse == "" && context != nil && context.PreferredModel != "" {
-		modelToUse = context.PreferredModel
-	}
-	if modelToUse == "" {
-		modelToUse = "claude"
-	}
-
-	var model models.Model
-
-	switch modelToUse {
-	case "grok":
-		model = &grok_model.GrokModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}}
-	case "4o":
-		model = &openai_4o_model.OpenAi4oModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}
-	case "gpt":
-		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt"}
-	case "codex":
-		model = &open_ai_gpt_model.OpenAIGPTModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-			ModelVersion: "codex",
-		}
-	case "ollama":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
-	case "qwen3":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
-	case "opus":
-		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "opus"}
-	case "sonnet":
-		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "sonnet"}
-	case "haiku":
-		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "haiku"}
-	case "claude":
-		fallthrough
-	default:
-		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode}
-		modelToUse = "claude"
-	}
-
-	return model, modelToUse
 }
 
 func view_history() {

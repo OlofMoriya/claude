@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models"
@@ -21,7 +22,7 @@ func (model *OpenAIGPTModel) SetResponseHandler(responseHandler models.ResponseH
 	model.ResponseHandler = responseHandler
 }
 
-func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	// Initialize the base model fields
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""

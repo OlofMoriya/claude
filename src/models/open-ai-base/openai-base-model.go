@@ -3,6 +3,7 @@ package openai_base
 import (
 	"encoding/json"
 	"fmt"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/mode"
@@ -138,7 +139,7 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model models.Model)
 
 		// Continue with results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
+			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.ModelName)
 		}
@@ -185,7 +186,7 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
+			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.ModelName)
 		}
@@ -196,8 +197,8 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 }
 
 // HandleToolCalls executes the requested tools and returns their results
-func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.ToolResponse, string) {
-	toolResponses := []models.ToolResponse{}
+func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commontypes.ToolResponse, string) {
+	toolResponses := []commontypes.ToolResponse{}
 
 	for _, toolCall := range message.ToolCalls {
 		logger.Debug.Printf("Executing tool: %s with args: %s", toolCall.Function.Name, toolCall.Function.Arguments)
@@ -208,7 +209,7 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.T
 		if err != nil {
 			logger.Debug.Printf("Error parsing tool arguments: %s", err)
 			// Try to handle partial JSON or error gracefully
-			toolResponses = append(toolResponses, models.ToolResponse{
+			toolResponses = append(toolResponses, commontypes.ToolResponse{
 				Id:       toolCall.Id,
 				Response: fmt.Sprintf("Error parsing arguments: %s", err),
 			})
@@ -230,7 +231,7 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.T
 
 		logger.Debug.Printf("Tool result: %s", result)
 
-		toolResponses = append(toolResponses, models.ToolResponse{
+		toolResponses = append(toolResponses, commontypes.ToolResponse{
 			Id:       toolCall.Id,
 			Response: result,
 		})
@@ -251,7 +252,7 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]models.T
 }
 
 // CreatePayload builds the request payload with history and tool definitions
-func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers, model string, maxTokens int, context *data.Context) ChatCompletionRequest {
+func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *commontypes.PayloadModifiers, model string, maxTokens int, context *data.Context) ChatCompletionRequest {
 	logger.Debug.Printf("\nMODEL USE: creating grok payload: %s", "PLACEHOLDER FROM GROK")
 
 	messages := []interface{}{}
@@ -279,7 +280,7 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 
 				// Add tool results if available
 				if h.ToolResults != "" && i+1 < len(history) {
-					var toolResults []models.ToolResponse
+					var toolResults []commontypes.ToolResponse
 					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
 					if err == nil {
 						for _, tr := range toolResults {

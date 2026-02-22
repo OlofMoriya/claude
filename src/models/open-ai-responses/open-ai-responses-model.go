@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models"
@@ -26,7 +27,7 @@ type OpenAiResponseModel struct {
 	contextId         int64
 }
 
-func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := createResponsePayload(prompt, streaming, history, modifiers.Image)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""

@@ -2,6 +2,7 @@ package tools
 
 import (
 	"fmt"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models"
@@ -43,7 +44,7 @@ func (tool *GenerateImageTool) Run(i map[string]string) (string, error) {
 
 	model := &open_ai_responses.OpenAiResponseModel{ResponseHandler: &toolHandler}
 
-	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 0, tool.Context, &models.PayloadModifiers{}, MODELNAME)
+	services.AwaitedQuery(prompt, model, *tool.HistoryRepository, 0, tool.Context, &commontypes.PayloadModifiers{}, MODELNAME)
 	//I need to await the answer on the channel toolHandler.ResponseChannel and then return with that value.
 	response := <-toolHandler.ResponseChannel
 	return response, nil

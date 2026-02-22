@@ -2,24 +2,18 @@ package tui
 
 import (
 	"fmt"
-	"owl/data"
-	"owl/logger"
-	"owl/models"
-	"owl/services"
-	"strings"
-	"time"
-
-	claude_model "owl/models/claude"
-	grok_model "owl/models/grok"
-	ollama_model "owl/models/ollama"
-	openai_4o_model "owl/models/open-ai-4o"
-	openai_base "owl/models/open-ai-base"
-
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	commontypes "owl/common_types"
+	"owl/data"
+	"owl/logger"
+	picker "owl/picker"
+	"owl/services"
+	"strings"
+	"time"
 )
 
 type chatMode int
@@ -94,11 +88,14 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 	vp.YPosition = 0
 
 	availableModels := []string{
-		"claude",
-		"grok",
-		"4o",
-		"opus",
 		"sonnet",
+		"codex",
+		"grok",
+		"opus",
+		"gpt",
+		"haiku",
+		"ollama",
+		"claude",
 	}
 
 	return &chatViewModel{
@@ -157,88 +154,6 @@ func (m *chatViewModel) loadHistory() tea.Cmd {
 	}
 }
 
-// getModelForQuery returns the appropriate model based on context preferences
-func getModelForQuery(
-	requestedModel string,
-	context *data.Context,
-	responseHandler models.ResponseHandler,
-	historyRepository data.HistoryRepository,
-) (models.Model, string) {
-
-	modelToUse := requestedModel
-
-	if modelToUse == "" && context != nil && context.PreferredModel != "" {
-		modelToUse = context.PreferredModel
-	}
-
-	if modelToUse == "" {
-		modelToUse = "claude"
-	}
-
-	var model models.Model
-
-	switch modelToUse {
-	case "grok":
-		model = &grok_model.GrokModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-		}
-	case "4o":
-		model = &openai_4o_model.OpenAi4oModel{
-			ResponseHandler:   responseHandler,
-			HistoryRepository: historyRepository,
-		}
-	case "qwen3":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
-	case "opus":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      true,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       true,
-			StreamThought:     true,
-			OutputThought:     false,
-			ModelVersion:      "opus",
-		}
-	case "sonnet":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      true,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       true,
-			StreamThought:     true,
-			OutputThought:     false,
-			ModelVersion:      "sonnet",
-		}
-	case "haiku":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      true,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       true,
-			StreamThought:     true,
-			OutputThought:     false,
-			ModelVersion:      "haiku",
-		}
-	case "claude":
-		fallthrough
-	default:
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      true,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			UseThinking:       true,
-			StreamThought:     true,
-			OutputThought:     false,
-		}
-		modelToUse = "claude"
-	}
-
-	return model, modelToUse
-}
-
 func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 	return func() tea.Msg {
 		responseChan := make(chan string, 100)
@@ -253,11 +168,15 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 
 		modelName := m.availableModels[m.selectedModelIdx]
 
-		model, actualModelName := getModelForQuery(
+		model, actualModelName := picker.GetModelForQuery(
 			modelName,
 			m.shared.selectedCtx,
 			handler,
 			m.shared.config.Repository,
+			true,
+			true,
+			false,
+			false,
 		)
 
 		m.shared.config.Model = model
@@ -271,7 +190,7 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 				m.shared.config.Repository,
 				m.historyCount,
 				m.shared.selectedCtx,
-				&models.PayloadModifiers{
+				&commontypes.PayloadModifiers{
 					Pdf:   "",
 					Web:   false,
 					Image: false,

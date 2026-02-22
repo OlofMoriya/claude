@@ -131,6 +131,6 @@ func (tool *HTTPRequestTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
-func init() {
-	Register(&HTTPRequestTool{})
-}
+// func init() {
+// 	Register(&HTTPRequestTool{})
+// }

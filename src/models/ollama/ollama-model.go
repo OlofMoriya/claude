@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models"
@@ -45,7 +46,7 @@ func (model *OllamaModel) SetResponseHandler(responseHandler models.ResponseHand
 	model.ResponseHandler = responseHandler
 }
 
-func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := model.createOllamaPayload(prompt, streaming, history, modifiers.Image, context)
 	logger.Debug.Printf("created ollama payload: %s", payload)
 	model.prompt = prompt

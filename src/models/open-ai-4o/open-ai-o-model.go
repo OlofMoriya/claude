@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/mode"
@@ -39,7 +40,7 @@ func (model *OpenAi4oModel) SetResponseHandler(responseHandler models.ResponseHa
 	model.ResponseHandler = responseHandler
 }
 
-func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history, modifiers)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
@@ -151,7 +152,7 @@ func (model *OpenAi4oModel) finishStreaming() {
 
 		// Continue with results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &models.PayloadModifiers{
+			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.modelName)
 		}
@@ -197,7 +198,7 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &models.PayloadModifiers{
+			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.modelName)
 		}
@@ -207,8 +208,8 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 	}
 }
 
-func (model *OpenAi4oModel) handleToolCalls(message Message) ([]models.ToolResponse, string) {
-	toolResponses := []models.ToolResponse{}
+func (model *OpenAi4oModel) handleToolCalls(message Message) ([]commontypes.ToolResponse, string) {
+	toolResponses := []commontypes.ToolResponse{}
 
 	for _, toolCall := range message.ToolCalls {
 		logger.Debug.Printf("Executing tool: %s with args: %s", toolCall.Function.Name, toolCall.Function.Arguments)
@@ -219,7 +220,7 @@ func (model *OpenAi4oModel) handleToolCalls(message Message) ([]models.ToolRespo
 		if err != nil {
 			logger.Debug.Printf("Error parsing tool arguments: %s", err)
 			// Try to handle partial JSON or error gracefully
-			toolResponses = append(toolResponses, models.ToolResponse{
+			toolResponses = append(toolResponses, commontypes.ToolResponse{
 				Id:       toolCall.Id,
 				Response: fmt.Sprintf("Error parsing arguments: %s", err),
 			})
@@ -241,7 +242,7 @@ func (model *OpenAi4oModel) handleToolCalls(message Message) ([]models.ToolRespo
 
 		logger.Debug.Printf("Tool result: %s", result)
 
-		toolResponses = append(toolResponses, models.ToolResponse{
+		toolResponses = append(toolResponses, commontypes.ToolResponse{
 			Id:       toolCall.Id,
 			Response: result,
 		})
@@ -261,7 +262,7 @@ func (model *OpenAi4oModel) handleToolCalls(message Message) ([]models.ToolRespo
 	return toolResponses, toolResultsJson
 }
 
-func createOpenaiPayload(prompt string, streamed bool, history []data.History, modifiers *models.PayloadModifiers) ChatCompletionRequest {
+func createOpenaiPayload(prompt string, streamed bool, history []data.History, modifiers *commontypes.PayloadModifiers) ChatCompletionRequest {
 	logger.Debug.Printf("\nMODEL USE: creating openai payload: %s", "PLACEHOLDER FROM OPENAI_API")
 	messages := []interface{}{}
 
@@ -281,7 +282,7 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History, m
 
 				// Add tool results if available
 				if h.ToolResults != "" && i+1 < len(history) {
-					var toolResults []models.ToolResponse
+					var toolResults []commontypes.ToolResponse
 					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
 					if err == nil {
 						for _, tr := range toolResults {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	models "owl/models"
 )
@@ -19,7 +20,7 @@ func (model *OpenAiEmbeddingsModel) SetResponseHandler(responseHandler models.Re
 	model.ResponseHandler = responseHandler
 }
 
-func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAiEmbeddingsModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := createPayload(prompt, streaming, history)
 	model.prompt = prompt
 	return createRequest(payload, history, modifiers.Image)

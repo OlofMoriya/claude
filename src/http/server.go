@@ -7,15 +7,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	commontypes "owl/common_types"
 	data "owl/data"
 	"owl/logger"
 	models "owl/models"
 	claude_model "owl/models/claude"
-	grok_model "owl/models/grok"
-	ollama_model "owl/models/ollama"
-	openai_4o_model "owl/models/open-ai-4o"
-	openai_base "owl/models/open-ai-base"
-	open_ai_gpt_model "owl/models/open-ai-gpt"
+	picker "owl/picker"
 	"owl/services"
 	tools "owl/tools"
 	"slices"
@@ -479,97 +476,6 @@ func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, ngrok-skip-browser-warning")
 }
 
-// getModelForQuery returns the appropriate model based on context preferences
-func getModelForQuery(
-	requestedModel string,
-	context *data.Context,
-	responseHandler models.ResponseHandler,
-	historyRepository data.HistoryRepository,
-	streamMode bool,
-) (models.Model, string) {
-	logger.Screen(fmt.Sprintf("Getting model for request. Requested model: %s", requestedModel), color.RGB(150, 150, 150))
-	modelToUse := requestedModel
-
-	if modelToUse == "" && context != nil && context.PreferredModel != "" {
-		modelToUse = context.PreferredModel
-	}
-
-	if modelToUse == "" {
-		modelToUse = "claude"
-	}
-
-	var model models.Model
-
-	switch modelToUse {
-	case "grok":
-		model = &grok_model.GrokModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-		}
-	case "4o":
-		model = &openai_4o_model.OpenAi4oModel{
-			ResponseHandler:   responseHandler,
-			HistoryRepository: historyRepository,
-		}
-	case "gpt":
-		model = &open_ai_gpt_model.OpenAIGPTModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-			ModelVersion: "gpt",
-		}
-	case "codex":
-		model = &open_ai_gpt_model.OpenAIGPTModel{
-			OpenAICompatibleModel: openai_base.OpenAICompatibleModel{
-				ResponseHandler:   responseHandler,
-				HistoryRepository: historyRepository,
-			},
-			ModelVersion: "codex",
-		}
-	case "ollama":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
-	case "qwen3":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
-	case "opus":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			ModelVersion:      "opus",
-		}
-	case "sonnet":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			ModelVersion:      "sonnet",
-		}
-	case "haiku":
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-			ModelVersion:      "haiku",
-		}
-	case "claude":
-		fallthrough
-	default:
-		model = &claude_model.ClaudeModel{
-			UseStreaming:      streamMode,
-			HistoryRepository: historyRepository,
-			ResponseHandler:   responseHandler,
-		}
-		modelToUse = "claude"
-	}
-
-	logger.Screen(fmt.Sprintf("selected model %s for request. Requested model: %s", modelToUse, requestedModel), color.RGB(150, 150, 150))
-
-	return model, modelToUse
-}
-
 func (server_data *server_data) name_new_context(user_prompt string, repository *data.MultiUserContext) string {
 	logger.Screen("Naming context...", color.RGB(150, 150, 150))
 	logger.Debug.Println("Sending Haiku request to name context")
@@ -583,7 +489,7 @@ func (server_data *server_data) name_new_context(user_prompt string, repository 
 		Name:    "Create name for context",
 		Id:      9999,
 		History: []data.History{},
-	}, &models.PayloadModifiers{}, "haiku")
+	}, &commontypes.PayloadModifiers{}, "haiku")
 
 	response := <-toolHandler.ResponseChannel
 
@@ -646,9 +552,18 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 	if req.Model != nil {
 		modelToUse = *req.Model
 	}
-	selectedModel, modelName := getModelForQuery(modelToUse, context, server_data.responseHandler, repository, server_data.streaming)
+	selectedModel, modelName := picker.GetModelForQuery(
+		modelToUse,
+		context,
+		server_data.responseHandler,
+		repository,
+		server_data.streaming,
+		true,
+		false,
+		false,
+	)
 
-	modifiers := &models.PayloadModifiers{}
+	modifiers := &commontypes.PayloadModifiers{}
 	if req.Web {
 		logger.Screen("Adding web to modifiers", color.RGB(150, 150, 150))
 		modifiers.Web = true

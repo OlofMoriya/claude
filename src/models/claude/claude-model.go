@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	data "owl/data"
 	"owl/logger"
 	"owl/mode"
@@ -45,7 +46,7 @@ func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHand
 
 }
 
-func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 
 	logger.Debug.Printf("\nMODEL USE: creating claude payload: %s", model.ModelVersion)
 
@@ -136,7 +137,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 			if len(tool_responses) > 0 {
 				// Continue conversation with tool results
-				services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
+				services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
 					ToolResponses: tool_responses,
 				}, model.ModelVersion)
 			}
@@ -258,14 +259,14 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
-		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &models.PayloadModifiers{
+		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
 			ToolResponses: toolResponses,
 		}, model.ModelVersion)
 	}
 }
 
-func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]models.ToolResponse, string) {
-	toolResponses := []models.ToolResponse{}
+func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]commontypes.ToolResponse, string) {
+	toolResponses := []commontypes.ToolResponse{}
 	for i, content := range apiResponse.Content {
 		//possible handle web search results too... But I don't know what we should do with it here
 		if content.Type == "tool_use" {
@@ -293,27 +294,27 @@ func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]models
 	return toolResponses, toolResultsJson
 }
 
-func (model *ClaudeModel) useTool(content ResponseMessage) (models.ToolResponse, error) {
+func (model *ClaudeModel) useTool(content ResponseMessage) (commontypes.ToolResponse, error) {
 
 	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository, Context: model.Context}
 	result, err := runner.ExecuteTool(*model.Context, content.Name, content.Input)
 
 	if result != "" && err == nil {
-		return models.ToolResponse{
+		return commontypes.ToolResponse{
 			Response:        result,
 			Id:              content.Id,
 			ResponseMessage: content,
 		}, nil
 	}
 
-	return models.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("No response or err from tool: %s, err: %s", content.Name, err.Error())
+	return commontypes.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("No response or err from tool: %s, err: %s", content.Name, err.Error())
 }
 
 func getCacheControl() *CacheControl {
 	return &CacheControl{Type: "ephemeral"}
 }
 
-func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *models.PayloadModifiers) MessageBody {
+func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *commontypes.PayloadModifiers) MessageBody {
 	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolResponses), len(history))
 
 	messages := []Message{}
@@ -372,7 +373,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 
 			if hasToolUse && h.ToolResults != "" {
 				toolResultContent := []Content{}
-				var toolResults []models.ToolResponse
+				var toolResults []commontypes.ToolResponse
 				err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
 				if err == nil {
 					for tr_i, tr := range toolResults {
@@ -491,7 +492,7 @@ func createImageMessage(prompt string) RequestMessage {
 	return imageMessage
 }
 
-func createPdfMessage(prompt string, modifiers models.PayloadModifiers) RequestMessage {
+func createPdfMessage(prompt string, modifiers commontypes.PayloadModifiers) RequestMessage {
 	base64, err := services.ReadPDFAsBase64(modifiers.Pdf)
 	if err != nil {
 		panic(fmt.Sprintf("could not get base64 from pdf, %v", err))

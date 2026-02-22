@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models"
@@ -21,7 +22,7 @@ func (model *GrokModel) SetResponseHandler(responseHandler models.ResponseHandle
 
 }
 
-func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *GrokModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	// Initialize the base model fields
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
