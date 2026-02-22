@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	data "owl/data"
+	"owl/embeddings"
 	server "owl/http"
 	"owl/logger"
 	mode "owl/mode"
@@ -37,7 +38,7 @@ var (
 	port             int
 	secure           bool
 	stream           bool
-	embeddings       bool
+	store            bool
 	view             bool
 	llm_model        string
 	thinking         bool
@@ -67,8 +68,8 @@ func init() {
 	flag.IntVar(&port, "port", 3000, "Port to listen on")
 	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
-	flag.BoolVar(&embeddings, "embeddings", false, "Enable embeddings generation (no streaming)")
-	flag.StringVar(&embeddingsBackend, "embeddings_backend", "sqlite", "embeddings backend: sqlite or duckdb")
+	flag.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
+	flag.StringVar(&embeddingsBackend, "store_backend", "duckdb", "embeddings backend: sqlite or duckdb")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
 	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
@@ -134,95 +135,46 @@ func main() {
 		return
 	}
 
-	if embeddings {
-		db := os.Getenv("OWL_LOCAL_DATABASE")
-		if db == "" {
-			db = "owl"
-		}
-
-		embeddings_db := os.Getenv("OWL_LOCAL_EMBEDDINGS_DATABASE")
-		if embeddings_db == "" {
-			embeddings_db = "owl_embeddings"
-		}
-
-		var embeddingsStore data.EmbeddingsStore
-		switch embeddingsBackend {
-		case "sqlite":
-			embeddingsStore = &data.EmbeddingsDatabase{Name: embeddings_db}
-		case "duckdb":
-			fallthrough
-		default:
-			embeddingsStore = &data.DuckDbEmbeddingsDatabase{Name: embeddings_db}
-		}
-
-		embeddingsResponseHandler := EmbeddingsResponseHandler{Db: embeddingsStore, Store: true}
-
-		user := data.User{Name: &db}
-		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
-
-		if chunk != "" {
-			bytes, err := os.ReadFile(chunk)
-			contents := string(bytes)
-			if err != nil {
-				panic(fmt.Sprintf("could not read file: %s", err))
-			}
-			// Use the new chunking service with size limits
-			chunks := services.ChunkMarkdown(contents)
-
-			logger.Screen(fmt.Sprintf("Chunked document into %d pieces", len(chunks)), color.RGB(150, 250, 150))
-
-			embeddingsResponseHandler.Reference = chunk
-			for i, chunk_string := range chunks {
-				logger.Screen(fmt.Sprintf("Processing chunk %d/%d (size: %d chars)", i+1, len(chunks), len(chunk_string)), color.RGB(150, 150, 250))
-
-				services.AwaitedQuery(chunk_string, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
-			}
-		} else {
-			services.AwaitedQuery(prompt, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
+	if store {
+		if _, err := embeddings.Run(embeddings.Config{
+			Backend:   embeddingsBackend,
+			Store:     true,
+			ChunkPath: chunk,
+			Prompt:    prompt,
+		}); err != nil {
+			panic(err)
 		}
 		return
 	}
 
 	if search != "" {
+		matches, err := embeddings.Run(embeddings.Config{
+			Backend:     embeddingsBackend,
+			Store:       false,
+			SearchQuery: search,
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		rag_string := ""
+		for i, match := range matches {
+			if i == 0 || match.Distance < 1 {
+				rag_string = fmt.Sprintf("%s\n----\n%s\n%s", rag_string, match.Text, match.Reference)
+			}
+		}
+
+		search_prompt := fmt.Sprintf("Q: %s\nMatches from RAG: %s", search, rag_string)
+
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
 			db = "owl"
 		}
-
-		embeddings_db := os.Getenv("OWL_LOCAL_EMBEDDINGS_DATABASE")
-		if embeddings_db == "" {
-			embeddings_db = "owl_embeddings"
-		}
-
-		var database data.EmbeddingsStore
-		switch embeddingsBackend {
-		case "sqlite":
-			database = &data.EmbeddingsDatabase{Name: embeddings_db}
-		case "duckdb":
-			fallthrough
-		default:
-			database = &data.DuckDbEmbeddingsDatabase{Name: embeddings_db}
-		}
-
-		embeddingsResponseHandler := EmbeddingsResponseHandler{Db: database, Store: false}
-		embeddingsResponseHandler.Init()
-
 		user := data.User{Name: &db}
-		model := embeddings_model.OpenAiEmbeddingsModel{ResponseHandler: &embeddingsResponseHandler}
-
-		services.AwaitedQuery(search, &model, user, 0, nil, &models.PayloadModifiers{}, "embeddings")
-		response := <-embeddingsResponseHandler.ResponseChannel
-
-		matches, err := database.FindMatches(response)
-		if err != nil {
-			logger.Debug.Printf("error searching for embedding %s", err)
-			return
-		}
-
-		for i, match := range matches {
-			logger.Screen(fmt.Sprintf("\n\nindex of match: %i, distance: %i", i, match.Distance), color.RGB(250, 250, 150))
-			logger.Screen(fmt.Sprintf("\nDistance: %s\nReference: %s\nText: %s\n", match.Distance, match.Reference, match.Text), color.RGB(150, 150, 150))
-		}
+		cliResponseHandler := CliResponseHandler{Repository: user}
+		context := getContext(user, &system_prompt)
+		model, modelName := picker.GetModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+		services.AwaitedQuery(search_prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 		return
 	}
 
@@ -240,7 +192,6 @@ func main() {
 	cliResponseHandler := CliResponseHandler{Repository: user}
 	context := getContext(user, &system_prompt)
 
-	model, modelName := getModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 	if stream {
 		services.StreamedQuery(prompt, model, user, history_count, context, &models.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
