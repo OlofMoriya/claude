@@ -25,7 +25,6 @@ import (
 // NOTE: only one of (ChunkPath, SearchQuery, Prompt) should be used at a time.
 
 type Config struct {
-	Backend          string
 	DBName           string
 	EmbeddingsDBName string
 	Store            bool
@@ -53,8 +52,8 @@ func defaultedEmbeddingsDBName() string {
 
 func storeForBackend(backend, embeddingsDB string) data.EmbeddingsStore {
 	switch backend {
-	case "sqlite":
-		return &data.EmbeddingsDatabase{Name: embeddingsDB}
+	// case "sqlite":
+	// 	return &data.EmbeddingsDatabase{Name: embeddingsDB}
 	case "duckdb":
 		fallthrough
 	default:
@@ -70,11 +69,8 @@ func Run(cfg Config) ([]data.EmbeddingMatch, error) {
 	if cfg.EmbeddingsDBName == "" {
 		cfg.EmbeddingsDBName = defaultedEmbeddingsDBName()
 	}
-	if cfg.Backend == "" {
-		cfg.Backend = "sqlite"
-	}
 
-	store := storeForBackend(cfg.Backend, cfg.EmbeddingsDBName)
+	store := storeForBackend("duckdb", cfg.EmbeddingsDBName)
 
 	rh := &ResponseHandler{Db: store, Store: cfg.Store, Reference: cfg.Reference}
 	// Only needed for search (we need the embedding back)
