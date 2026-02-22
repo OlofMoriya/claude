@@ -52,8 +52,6 @@ var (
 	search           string
 	chunk            string
 
-	// Embeddings backend selection: sqlite (default) or duckdb
-	embeddingsBackend string
 )
 
 func init() {
@@ -69,7 +67,6 @@ func init() {
 	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
 	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
 	flag.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
-	flag.StringVar(&embeddingsBackend, "store_backend", "duckdb", "embeddings backend: sqlite or duckdb")
 	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
 	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
@@ -137,7 +134,6 @@ func main() {
 
 	if store {
 		if _, err := embeddings.Run(embeddings.Config{
-			Backend:   embeddingsBackend,
 			Store:     true,
 			ChunkPath: chunk,
 			Prompt:    prompt,
@@ -149,7 +145,6 @@ func main() {
 
 	if search != "" {
 		matches, err := embeddings.Run(embeddings.Config{
-			Backend:     embeddingsBackend,
 			Store:       false,
 			SearchQuery: search,
 		})
