@@ -14,6 +14,7 @@ import (
 	server "owl/http"
 	"owl/logger"
 	mode "owl/mode"
+	"owl/models"
 	claude_model "owl/models/claude"
 	picker "owl/picker"
 	"owl/services"
@@ -46,6 +47,8 @@ var (
 	tui_mode         bool
 	search           string
 	chunk            string
+	create_context   bool
+	mardown_path     string
 )
 
 func init() {
@@ -74,6 +77,8 @@ func init() {
 	flag.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
 	flag.StringVar(&search, "search", "", "search for phrase in embedding")
 	flag.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
+	flag.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
+	flag.StringVar(&mardown_path, "path", "", "mardown path")
 }
 
 func main() {
@@ -113,6 +118,41 @@ func main() {
 		fmt.Print("Prompt:")
 		prompt, _ = reader.ReadString('\n')
 		prompt = strings.TrimSpace(prompt)
+	}
+
+	if create_context && prompt != "" {
+
+		db := os.Getenv("OWL_LOCAL_DATABASE")
+		if db == "" {
+			db = "owl"
+		}
+		user := data.User{Name: &db}
+		cliResponseHandler := CliResponseHandler{Repository: user}
+		toolResponseHandler := tools.ToolResponseHandler{ResponseHandler: cliResponseHandler}
+
+		context_name := models.Name_new_context(prompt, user)
+		new_context := data.Context{Name: context_name}
+		id, err := user.InsertContext(new_context)
+		if err != nil {
+			log.Println(fmt.Sprintf("Could not create a new context with name %s for user %s, %s", context_name, *user.Name, err))
+		}
+
+		context := &new_context
+		context.Id = id
+		context.SystemPrompt = system_prompt
+
+		model, modelName := picker.GetModelForQuery("haiku", context, &toolResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+
+		// send with proper instructions and catch the answer
+		services.AwaitedQuery("", model, user, history_count, context, &commontypes.PayloadModifiers{}, modelName)
+
+		response := <-toolResponseHandler.ResponseChannel
+
+		//context_name?
+		//create context and store the systemsprompt
+		getContext(user, &response)
+
+		return
 	}
 
 	if serve {

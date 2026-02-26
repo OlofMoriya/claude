@@ -8,15 +8,14 @@ import (
 	"os"
 	commontypes "owl/common_types"
 	"owl/data"
-	models "owl/models"
 )
 
 type OpenAiEmbeddingsModel struct {
-	ResponseHandler models.ResponseHandler
+	ResponseHandler commontypes.ResponseHandler
 	prompt          string
 }
 
-func (model *OpenAiEmbeddingsModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAiEmbeddingsModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 

@@ -7,7 +7,6 @@ import (
 	"owl/data"
 	"owl/logger"
 	"owl/mode"
-	"owl/models"
 	"owl/services"
 	"owl/tools"
 	"strings"
@@ -23,7 +22,7 @@ type StreamingToolCall struct {
 
 // OpenAICompatibleModel provides shared functionality for OpenAI-compatible APIs
 type OpenAICompatibleModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	HistoryRepository data.HistoryRepository
 	Prompt            string
 	AccumulatedAnswer string
@@ -34,7 +33,7 @@ type OpenAICompatibleModel struct {
 }
 
 // HandleStreamedLine processes a single line from a streaming response
-func (model *OpenAICompatibleModel) HandleStreamedLine(line []byte, callback_model models.Model) {
+func (model *OpenAICompatibleModel) HandleStreamedLine(line []byte, callback_model commontypes.Model) {
 	responseLine := string(line)
 
 	if strings.HasPrefix(responseLine, "data: ") {
@@ -99,7 +98,7 @@ func (model *OpenAICompatibleModel) HandleStreamedToolCalls(deltaToolCalls []Too
 }
 
 // FinishStreaming completes the streaming response and executes any tool calls
-func (model *OpenAICompatibleModel) FinishStreaming(callback_model models.Model) {
+func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.Model) {
 	logger.Debug.Printf("Finishing streaming with %d tool calls", len(model.StreamedToolCalls))
 
 	// Check if we have tool calls
@@ -154,7 +153,7 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model models.Model)
 }
 
 // HandleBodyBytes processes a complete (non-streaming) response
-func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model models.Model) {
+func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model commontypes.Model) {
 	var apiResponse ChatCompletion
 	if err := json.Unmarshal(bytes, &apiResponse); err != nil {
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
@@ -404,7 +403,7 @@ func ConvertProperties(props map[string]tools.Property) map[string]interface{} {
 }
 
 // HandleWebSearchResponse processes responses from the /v1/responses endpoint
-func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callback_model models.Model) {
+func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callback_model commontypes.Model) {
 	var webSearchResponse ResponseAPIResponse
 	if err := json.Unmarshal(bytes, &webSearchResponse); err != nil {
 		logger.Debug.Printf("Error unmarshalling web search response: %v\n", err)

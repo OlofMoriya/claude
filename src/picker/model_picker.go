@@ -2,9 +2,9 @@ package models
 
 import (
 	"fmt"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	claude_model "owl/models/claude"
 	grok_model "owl/models/grok"
 	ollama_model "owl/models/ollama"
@@ -18,10 +18,10 @@ import (
 func getModelForQuery(
 	requestedModel string,
 	context *data.Context,
-	responseHandler models.ResponseHandler,
+	responseHandler commontypes.ResponseHandler,
 	historyRepository data.HistoryRepository,
 	streamMode bool,
-) (models.Model, string) {
+) (commontypes.Model, string) {
 	logger.Screen(fmt.Sprintf("Getting model for request. Requested model: %s", requestedModel), color.RGB(150, 150, 150))
 	modelToUse := requestedModel
 
@@ -33,7 +33,7 @@ func getModelForQuery(
 		modelToUse = "claude"
 	}
 
-	var model models.Model
+	var model commontypes.Model
 
 	switch modelToUse {
 	case "grok":
@@ -108,13 +108,13 @@ func getModelForQuery(
 func GetModelForQuery(
 	requestedModel string,
 	context *data.Context,
-	responseHandler models.ResponseHandler,
+	responseHandler commontypes.ResponseHandler,
 	historyRepository data.HistoryRepository,
 	streamMode bool,
 	thinkingMode bool,
 	streamThinkingMode bool,
 	outputThinkingMode bool,
-) (models.Model, string) {
+) (commontypes.Model, string) {
 
 	modelToUse := requestedModel
 	if modelToUse == "" && context != nil && context.PreferredModel != "" {
@@ -124,7 +124,7 @@ func GetModelForQuery(
 		modelToUse = "claude"
 	}
 
-	var model models.Model
+	var model commontypes.Model
 
 	switch modelToUse {
 	case "grok":

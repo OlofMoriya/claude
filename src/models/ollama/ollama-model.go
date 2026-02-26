@@ -9,13 +9,12 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	services "owl/services"
 	"strings"
 )
 
 type OllamaModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
@@ -23,7 +22,7 @@ type OllamaModel struct {
 	ollamaURL         string
 }
 
-func NewOllamaModel(responseHandler models.ResponseHandler, modelName string) *OllamaModel {
+func NewOllamaModel(responseHandler commontypes.ResponseHandler, modelName string) *OllamaModel {
 	// Get model name from env or use default
 	if modelName == "" {
 		modelName = "qwen3" // default model
@@ -42,7 +41,7 @@ func NewOllamaModel(responseHandler models.ResponseHandler, modelName string) *O
 	}
 }
 
-func (model *OllamaModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OllamaModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 

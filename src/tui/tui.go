@@ -1,16 +1,16 @@
 package tui
 
 import (
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type TUIConfig struct {
 	Repository   data.HistoryRepository
-	Model        models.Model
+	Model        commontypes.Model
 	HistoryCount int
 }
 

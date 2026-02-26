@@ -10,14 +10,13 @@ import (
 	"owl/data"
 	"owl/logger"
 	"owl/mode"
-	"owl/models"
 	"owl/services"
 	"owl/tools"
 	"strings"
 )
 
 type OpenAi4oModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
@@ -36,7 +35,7 @@ type StreamingToolCall struct {
 	ArgumentsBuffer string
 }
 
-func (model *OpenAi4oModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAi4oModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 

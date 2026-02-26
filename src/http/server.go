@@ -11,10 +11,8 @@ import (
 	data "owl/data"
 	"owl/logger"
 	models "owl/models"
-	claude_model "owl/models/claude"
 	picker "owl/picker"
 	"owl/services"
-	tools "owl/tools"
 	"slices"
 	"strconv"
 	"strings"
@@ -25,13 +23,13 @@ import (
 )
 
 type server_data struct {
-	model               models.Model
+	model               commontypes.Model
 	responseHandler     *HttpResponseHandler
 	streaming           bool
 	db_connectionString string
 }
 
-func Run(secure bool, port int, responseHandler *HttpResponseHandler, model models.Model, streaming bool) {
+func Run(secure bool, port int, responseHandler *HttpResponseHandler, model commontypes.Model, streaming bool) {
 
 	server_data := server_data{
 		model:           model,
@@ -476,29 +474,6 @@ func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With, ngrok-skip-browser-warning")
 }
 
-func (server_data *server_data) name_new_context(user_prompt string, repository *data.MultiUserContext) string {
-	logger.Screen("Naming context...", color.RGB(150, 150, 150))
-	logger.Debug.Println("Sending Haiku request to name context")
-	toolHandler := tools.ToolResponseHandler{}
-	toolHandler.Init()
-
-	model := &claude_model.ClaudeModel{ResponseHandler: &toolHandler, ModelVersion: "Haiku"}
-
-	prompt := fmt.Sprintf("Create a short name for this prompt so that I can store it with a name in a database. Maximum 100 characters but try to keep it short. ONLY EVER answer with the name and nothing else!!!! here's the prompt to name the context for: %s", user_prompt)
-	services.AwaitedQuery(prompt, model, repository, 0, &data.Context{
-		Name:    "Create name for context",
-		Id:      9999,
-		History: []data.History{},
-	}, &commontypes.PayloadModifiers{}, "haiku")
-
-	response := <-toolHandler.ResponseChannel
-
-	logger.Debug.Printf("naming reponse: %s", response)
-	logger.Screen(fmt.Sprintf("naming reponse: %s", response), color.RGB(150, 150, 150))
-
-	return response
-}
-
 func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Request) {
 	enableCors(w)
 	if r.Method == "OPTIONS" {
@@ -527,7 +502,7 @@ func (server_data *server_data) handlePrompt(w http.ResponseWriter, r *http.Requ
 	logger.Screen(fmt.Sprintf("\nCurrent user in repository %v\n", repository.User), color.RGB(150, 150, 150))
 
 	if req.ContextName == "" {
-		req.ContextName = server_data.name_new_context(req.Prompt, repository)
+		req.ContextName = models.Name_new_context(req.Prompt, repository)
 	}
 
 	context, _ := repository.GetContextByName(req.ContextName)

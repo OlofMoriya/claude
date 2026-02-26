@@ -11,7 +11,6 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	"strings"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 var MODELNAME = "open_ai_responses"
 
 type OpenAiResponseModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
@@ -153,6 +152,6 @@ func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
 	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "", "", MODELNAME)
 }
 
-func (model *OpenAiResponseModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAiResponseModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }

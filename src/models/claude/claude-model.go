@@ -10,7 +10,6 @@ import (
 	data "owl/data"
 	"owl/logger"
 	"owl/mode"
-	models "owl/models"
 	"owl/services"
 	"owl/tools"
 	"sort"
@@ -19,7 +18,7 @@ import (
 
 type ClaudeModel struct {
 	HistoryRepository data.HistoryRepository
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	Prompt            string
 	AccumulatedAnswer string
 	Context           *data.Context
@@ -41,7 +40,7 @@ type StreamedToolUse struct {
 	Input string
 }
 
-func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *ClaudeModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 
 }
@@ -295,7 +294,6 @@ func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]common
 }
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (commontypes.ToolResponse, error) {
-
 	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository, Context: model.Context}
 	result, err := runner.ExecuteTool(*model.Context, content.Name, content.Input)
 

@@ -5,7 +5,6 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	open_ai_responses "owl/models/open-ai-responses"
 	"owl/services"
 
@@ -15,7 +14,7 @@ import (
 var MODELNAME = "generate_image_tool"
 
 type GenerateImageTool struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	HistoryRepository *data.HistoryRepository
 	Context           *data.Context
 }

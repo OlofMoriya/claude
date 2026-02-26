@@ -1,9 +1,9 @@
 package tools
 
-import "owl/models"
+import commontypes "owl/common_types"
 
 type ToolResponseHandler struct {
-	ResponseHandler models.ResponseHandler
+	ResponseHandler commontypes.ResponseHandler
 	ResponseChannel chan string
 }
 

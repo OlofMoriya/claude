@@ -9,7 +9,6 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	"owl/models/open-ai-base"
 )
 
@@ -18,7 +17,7 @@ type OpenAIGPTModel struct {
 	ModelVersion string
 }
 
-func (model *OpenAIGPTModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAIGPTModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 

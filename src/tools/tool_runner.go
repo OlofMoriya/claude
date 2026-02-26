@@ -2,9 +2,9 @@ package tools
 
 import (
 	"fmt"
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	"sync"
 )
 
@@ -19,7 +19,7 @@ type ToolModel interface {
 }
 
 type ToolRunner struct {
-	ResponseHandler   *models.ResponseHandler
+	ResponseHandler   *commontypes.ResponseHandler
 	HistoryRepository *data.HistoryRepository
 	Context           *data.Context
 }

@@ -9,13 +9,12 @@ import (
 	"owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	"strings"
 
 	"github.com/fatih/color"
 )
 
-func AwaitedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
+func AwaitedQuery(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
 
 	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
 
@@ -75,7 +74,7 @@ func AwaitedQuery(prompt string, model models.Model, historyRepository data.Hist
 	}
 }
 
-func StreamedQuery(prompt string, model models.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
+func StreamedQuery(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
 	history, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 
 	logger.Screen("sending streamed query", color.RGB(150, 150, 150))

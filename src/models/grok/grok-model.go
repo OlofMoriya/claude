@@ -9,7 +9,6 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/models"
 	"owl/models/open-ai-base"
 )
 
@@ -17,7 +16,7 @@ type GrokModel struct {
 	openai_base.OpenAICompatibleModel
 }
 
-func (model *GrokModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *GrokModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 
 }
