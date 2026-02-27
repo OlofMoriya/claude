@@ -21,32 +21,36 @@ const (
 )
 
 type chatHistoryViewModel struct {
-	shared      *sharedState
-	history     []data.History
-	viewport    viewport.Model
-	cursor      int
-	mode        historyViewMode
-	expandedIdx int // Which message is expanded (-1 = none)
-	ready       bool
-	loading     bool
-	width       int
-	height      int
-	err         error
+	shared       *sharedState
+	history      []data.History
+	viewport     viewport.Model
+	cursor       int
+	mode         historyViewMode
+	expandedIdx  int // Which message is expanded (-1 = none)
+	ready        bool
+	loading      bool
+	width        int
+	height       int
+	err          error
+	showArchived bool
 }
+
+type historyArchivedMsg struct{}
 
 func newChatHistoryViewModel(shared *sharedState) *chatHistoryViewModel {
 	vp := viewport.New(shared.width, shared.height-5)
 	vp.YPosition = 0
 
 	return &chatHistoryViewModel{
-		shared:      shared,
-		viewport:    vp,
-		cursor:      0,
-		mode:        historyCompactMode,
-		expandedIdx: -1,
-		loading:     true,
-		width:       shared.width,
-		height:      shared.height,
+		shared:       shared,
+		viewport:     vp,
+		cursor:       0,
+		mode:         historyCompactMode,
+		expandedIdx:  -1,
+		loading:      true,
+		width:        shared.width,
+		height:       shared.height,
+		showArchived: true,
 	}
 }
 
@@ -68,8 +72,18 @@ func (m *chatHistoryViewModel) loadHistory() tea.Cmd {
 	}
 }
 
+func (m *chatHistoryViewModel) toggleArchive(historyId int64, currentStatus bool) tea.Cmd {
+	return func() tea.Msg {
+		err := m.shared.config.Repository.ArchiveHistory(historyId, !currentStatus)
+		if err != nil {
+			return errorMsg{err}
+		}
+		return historyArchivedMsg{}
+	}
+}
+
 func (m *chatHistoryViewModel) scrollToSelection() {
-	if len(m.history) == 0 {
+	if len(m.getVisibleHistory()) == 0 {
 		return
 	}
 
@@ -101,8 +115,22 @@ func (m *chatHistoryViewModel) scrollToSelection() {
 	}
 }
 
+func (m *chatHistoryViewModel) getVisibleHistory() []data.History {
+	if m.showArchived {
+		return m.history
+	}
+	var visible []data.History
+	for _, h := range m.history {
+		if !h.Archived {
+			visible = append(visible, h)
+		}
+	}
+	return visible
+}
+
 func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var vpCmd tea.Cmd
+	visibleHistory := m.getVisibleHistory()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -119,8 +147,8 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "y":
 				// Copy code to clipboard
-				if m.expandedIdx >= 0 && m.expandedIdx < len(m.history) {
-					code := services.ExtractCodeBlocks(m.history[m.expandedIdx].Response)
+				if m.expandedIdx >= 0 && m.expandedIdx < len(visibleHistory) {
+					code := services.ExtractCodeBlocks(visibleHistory[m.expandedIdx].Response)
 					allCode := strings.Join(code, "\n\n")
 					clipboard.WriteAll(allCode)
 				}
@@ -142,17 +170,23 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "c":
 				// View code
-				if m.expandedIdx >= 0 && m.expandedIdx < len(m.history) {
+				if m.expandedIdx >= 0 && m.expandedIdx < len(visibleHistory) {
 					m.mode = historyCodeViewMode
 					m.updateContent()
 				}
 				return m, nil
 			case "y":
 				// Copy full response
-				if m.expandedIdx >= 0 && m.expandedIdx < len(m.history) {
-					clipboard.WriteAll(m.history[m.expandedIdx].Response)
+				if m.expandedIdx >= 0 && m.expandedIdx < len(visibleHistory) {
+					clipboard.WriteAll(visibleHistory[m.expandedIdx].Response)
 				}
 				return m, nil
+			case "a":
+				// Toggle archive from expanded view
+				if m.expandedIdx >= 0 && m.expandedIdx < len(visibleHistory) {
+					h := visibleHistory[m.expandedIdx]
+					return m, m.toggleArchive(h.Id, h.Archived)
+				}
 			}
 			// Allow scrolling in expanded view
 			m.viewport, vpCmd = m.viewport.Update(msg)
@@ -181,40 +215,42 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 				m.updateContent()
-				m.scrollToSelection() // ← Add this
+				m.scrollToSelection()
 			}
 
 		case "down", "j":
-			if m.cursor < len(m.history)-1 {
+			if m.cursor < len(visibleHistory)-1 {
 				m.cursor++
 				m.updateContent()
-				m.scrollToSelection() // ← Add this
+				m.scrollToSelection()
 			}
 
 		case "g":
 			// Go to top
 			m.cursor = 0
 			m.updateContent()
-			m.scrollToSelection() // ← Add this
+			m.scrollToSelection()
 
 		case "G":
 			// Go to bottom
-			if len(m.history) > 0 {
-				m.cursor = len(m.history) - 1
+			if len(visibleHistory) > 0 {
+				m.cursor = len(visibleHistory) - 1
 			}
 			m.updateContent()
-			m.scrollToSelection() // ← Add this
+			m.scrollToSelection()
 
 		case "enter", "e":
 			// Expand selected message
-			m.expandedIdx = m.cursor
-			m.mode = historyExpandedMode
-			m.updateContent()
+			if m.cursor < len(visibleHistory) {
+				m.expandedIdx = m.cursor
+				m.mode = historyExpandedMode
+				m.updateContent()
+			}
 
 		case "c":
 			// View code for selected message
-			if m.cursor < len(m.history) {
-				code := services.ExtractCodeBlocks(m.history[m.cursor].Response)
+			if m.cursor < len(visibleHistory) {
+				code := services.ExtractCodeBlocks(visibleHistory[m.cursor].Response)
 				if len(code) > 0 {
 					m.expandedIdx = m.cursor
 					m.mode = historyCodeViewMode
@@ -224,9 +260,25 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "y":
 			// Copy response of selected message
-			if m.cursor < len(m.history) {
-				clipboard.WriteAll(m.history[m.cursor].Response)
+			if m.cursor < len(visibleHistory) {
+				clipboard.WriteAll(visibleHistory[m.cursor].Response)
 			}
+
+		case "a":
+			// Toggle archive
+			if m.cursor < len(visibleHistory) {
+				h := visibleHistory[m.cursor]
+				return m, m.toggleArchive(h.Id, h.Archived)
+			}
+
+		case "H":
+			// Toggle visibility of archived items
+			m.showArchived = !m.showArchived
+			if m.cursor >= len(m.getVisibleHistory()) && len(m.getVisibleHistory()) > 0 {
+				m.cursor = len(m.getVisibleHistory()) - 1
+			}
+			m.updateContent()
+			m.scrollToSelection()
 
 		case "r":
 			// Refresh
@@ -239,6 +291,9 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.updateContent()
 		m.scrollToSelection()
+
+	case historyArchivedMsg:
+		return m, m.loadHistory()
 
 	case errorMsg:
 		m.err = msg.err
@@ -264,31 +319,38 @@ func (m *chatHistoryViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *chatHistoryViewModel) updateContent() {
-	if len(m.history) == 0 {
-		m.viewport.SetContent(dimStyle.Render("No history yet"))
+	visible := m.getVisibleHistory()
+	if len(visible) == 0 {
+		m.viewport.SetContent(dimStyle.Render("No history matches current filter"))
 		return
 	}
 
 	switch m.mode {
 	case historyCompactMode:
-		m.viewport.SetContent(m.renderCompactMode())
+		m.viewport.SetContent(m.renderCompactMode(visible))
 	case historyExpandedMode:
-		m.viewport.SetContent(m.renderExpandedMode())
+		m.viewport.SetContent(m.renderExpandedMode(visible))
 	case historyCodeViewMode:
-		m.viewport.SetContent(m.renderCodeViewMode())
+		m.viewport.SetContent(m.renderCodeViewMode(visible))
 	}
 }
 
-func (m *chatHistoryViewModel) renderCompactMode() string {
+func (m *chatHistoryViewModel) renderCompactMode(visible []data.History) string {
 	var b strings.Builder
 
-	for i, h := range m.history {
+	for i, h := range visible {
 		cursor := "  "
 		style := itemStyle
 
 		if i == m.cursor {
 			cursor = "▶ "
 			style = selectedItemStyle
+		}
+
+		// Archived indicator
+		archivedPrefix := ""
+		if h.Archived {
+			archivedPrefix = errorStyle.Render("[ARCHIVED] ")
 		}
 
 		// Check if message contains code
@@ -300,8 +362,8 @@ func (m *chatHistoryViewModel) renderCompactMode() string {
 
 		// Truncate prompt to 1 line
 		prompt := h.Prompt
-		if len(prompt) > m.width-10 {
-			prompt = prompt[:m.width-13] + "..."
+		if len(prompt) > m.width-20 {
+			prompt = prompt[:m.width-23] + "..."
 		}
 		prompt = strings.ReplaceAll(prompt, "\n", " ")
 
@@ -313,38 +375,49 @@ func (m *chatHistoryViewModel) renderCompactMode() string {
 		} else {
 			response = strings.ReplaceAll(response, "\n", " ")
 		}
-		if len(response) > m.width-10 {
-			response = response[:m.width-13] + "..."
+		if len(response) > m.width-20 {
+			response = response[:m.width-23] + "..."
 		}
 
-		// Format: cursor [#] prompt | response [code]
-		line := fmt.Sprintf("%s[%d]%s %s",
+		// Format: cursor [archived] [#] prompt | response [code]
+		line := fmt.Sprintf("%s%s[%d]%s %s",
 			cursor,
+			archivedPrefix,
 			i+1,
 			codeIndicator,
 			dimStyle.Render("Q:"))
-		b.WriteString(style.Render(line))
+
+		msgStyle := style
+		if h.Archived {
+			msgStyle = dimStyle
+		}
+
+		b.WriteString(msgStyle.Render(line))
 		b.WriteString(" ")
-		b.WriteString(style.Render(prompt))
+		b.WriteString(msgStyle.Render(prompt))
 		b.WriteString("\n")
 
-		b.WriteString(style.Render("    " + dimStyle.Render("A: ") + response))
+		b.WriteString(msgStyle.Render("    " + dimStyle.Render("A: ") + response))
 		b.WriteString("\n\n")
 	}
 
 	return b.String()
 }
 
-func (m *chatHistoryViewModel) renderExpandedMode() string {
-	if m.expandedIdx < 0 || m.expandedIdx >= len(m.history) {
+func (m *chatHistoryViewModel) renderExpandedMode(visible []data.History) string {
+	if m.expandedIdx < 0 || m.expandedIdx >= len(visible) {
 		return "Invalid message index"
 	}
 
-	h := m.history[m.expandedIdx]
+	h := visible[m.expandedIdx]
 	var b strings.Builder
 
 	// Header
-	b.WriteString(headerStyle.Render(fmt.Sprintf("Message %d of %d", m.expandedIdx+1, len(m.history))))
+	archivedStatus := ""
+	if h.Archived {
+		archivedStatus = errorStyle.Render(" [ARCHIVED]")
+	}
+	b.WriteString(headerStyle.Render(fmt.Sprintf("Message %d of %d%s", m.expandedIdx+1, len(visible), archivedStatus)))
 	b.WriteString("\n\n")
 
 	// Check if has code
@@ -372,12 +445,12 @@ func (m *chatHistoryViewModel) renderExpandedMode() string {
 	return b.String()
 }
 
-func (m *chatHistoryViewModel) renderCodeViewMode() string {
-	if m.expandedIdx < 0 || m.expandedIdx >= len(m.history) {
+func (m *chatHistoryViewModel) renderCodeViewMode(visible []data.History) string {
+	if m.expandedIdx < 0 || m.expandedIdx >= len(visible) {
 		return "Invalid message index"
 	}
 
-	h := m.history[m.expandedIdx]
+	h := visible[m.expandedIdx]
 	code := services.ExtractCodeBlocks(h.Response)
 
 	var b strings.Builder
@@ -409,13 +482,15 @@ func (m *chatHistoryViewModel) View() string {
 		return errorStyle.Render(fmt.Sprintf("Error: %v\n\nPress ESC to go back", m.err))
 	}
 
+	// visible := m.getVisibleHistory()
+
 	// Build help text based on mode
 	var help string
 	switch m.mode {
 	case historyCompactMode:
-		help = "↑/↓/j/k navigate • enter/e expand • c code • y copy • g top • G bottom • r refresh • esc/q back"
+		help = "↑/↓/j/k navigate • enter/e expand • a archive • H toggle archived • c code • y copy • g top • G bottom • r refresh • esc/q back"
 	case historyExpandedMode:
-		help = "c view code • y copy • esc/q back"
+		help = "a archive • c view code • y copy • esc/q back"
 	case historyCodeViewMode:
 		help = "y copy code • esc/q back"
 	}
@@ -423,7 +498,13 @@ func (m *chatHistoryViewModel) View() string {
 	modeLabel := ""
 	switch m.mode {
 	case historyCompactMode:
-		modeLabel = fmt.Sprintf("Compact (%d messages)", len(m.history))
+		archivedCount := 0
+		for _, h := range m.history {
+			if h.Archived {
+				archivedCount++
+			}
+		}
+		modeLabel = fmt.Sprintf("Compact (%d total, %d archived)", len(m.history), archivedCount)
 	case historyExpandedMode:
 		modeLabel = fmt.Sprintf("Message %d", m.expandedIdx+1)
 	case historyCodeViewMode:

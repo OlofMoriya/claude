@@ -42,6 +42,7 @@ func (user User) getUserDb() *sql.DB {
 func (user User) setupDb(db *sql.DB) {
 	createHistoryTables(db)
 	createContextTable(db)
+	user.ensureArchivedColumnsExist(db)
 }
 
 func createContextTable(db *sql.DB) {
@@ -50,7 +51,8 @@ func createContextTable(db *sql.DB) {
              id INTEGER PRIMARY KEY AUTOINCREMENT,
              name TEXT,
 			 system_prompt TEXT,
-			 preferred_model TEXT
+			 preferred_model TEXT,
+			 archived INTEGER DEFAULT 0
          )
      `
 
@@ -72,13 +74,44 @@ func createHistoryTables(db *sql.DB) {
              token_count INTEGER,
 			 created INT,
 			 tool_results TEXT,
-			 model TEXT
+			 model TEXT,
+			 archived INTEGER DEFAULT 0
          )
      `
 	_, err := db.Exec(createTableQuery)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (user User) ensureArchivedColumnsExist(db *sql.DB) {
+	// Add archived column to context if it doesn't exist
+	_, _ = db.Exec("ALTER TABLE context ADD COLUMN archived INTEGER DEFAULT 0")
+
+	// Add archived column to history if it doesn't exist
+	_, _ = db.Exec("ALTER TABLE history ADD COLUMN archived INTEGER DEFAULT 0")
+}
+
+func (user User) ArchiveContext(contextId int64, archived bool) error {
+	db := user.getUserDb()
+	defer db.Close()
+	val := 0
+	if archived {
+		val = 1
+	}
+	_, err := db.Exec("UPDATE context SET archived = ? WHERE id = ?", val, contextId)
+	return err
+}
+
+func (user User) ArchiveHistory(historyId int64, archived bool) error {
+	db := user.getUserDb()
+	defer db.Close()
+	val := 0
+	if archived {
+		val = 1
+	}
+	_, err := db.Exec("UPDATE history SET archived = ? WHERE id = ?", val, historyId)
+	return err
 }
 
 func (user User) InsertContext(context Context) (int64, error) {
@@ -109,11 +142,16 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE id = ?"
+	// When getting by ID, we unarchive it as it is being "used"
+	_, _ = db.Exec("UPDATE context SET archived = 0 WHERE id = ?", contextId)
+
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE id = ?"
 	row := db.QueryRow(selectQuery, contextId)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
+	var archived int
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
+	context.Archived = archived == 1
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// return context, fmt.Errorf("context with ID %d not found", contextId)
@@ -151,7 +189,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	defer db.Close()
 
 	logger.Debug.Printf("Fetching history for contextId: %v, maxCount: %v", contextId, maxCount)
-	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results, COALESCE(model, 'sonnet') FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
+	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results, COALESCE(model, 'sonnet'), archived FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
 	rows, err := db.Query(selectQuery, contextId, maxCount)
 	if err != nil {
 		logger.Debug.Printf("Error in sql %s", err)
@@ -161,10 +199,12 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	var histories []History
 	for rows.Next() {
 		var history History
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults, &history.Model)
+		var archived int
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults, &history.Model, &archived)
 		if err != nil {
 			return nil, err
 		}
+		history.Archived = archived == 1
 		histories = append(histories, history)
 	}
 	for i, j := 0, len(histories)-1; i < j; i, j = i+1, j-1 {
@@ -183,11 +223,16 @@ func (user User) GetContextByName(name string) (*Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context WHERE name = ?"
+	// When getting by name, we unarchive it as it is being "used"
+	_, _ = db.Exec("UPDATE context SET archived = 0 WHERE name = ?", name)
+
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE name = ?"
 	row := db.QueryRow(selectQuery, name)
 
 	var context Context
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
+	var archived int
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
+	context.Archived = archived == 1
 
 	if err != nil {
 		return nil, err
@@ -200,7 +245,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet') FROM context")
+	rows, err := db.Query("SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context")
 	if err != nil {
 		return nil, err
 	}
@@ -209,10 +254,12 @@ func (user User) GetAllContexts() ([]Context, error) {
 	var contexts []Context
 	for rows.Next() {
 		var context Context
-		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel)
+		var archived int
+		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
 		if err != nil {
 			return nil, err
 		}
+		context.Archived = archived == 1
 		contexts = append(contexts, context)
 	}
 

@@ -40,6 +40,7 @@ const (
 type contextsLoadedMsg []contextItem
 type contextCreatedMsg struct{ id int64 }
 type contextDeletedMsg struct{}
+type contextArchivedMsg struct{}
 type promptUpdatedMsg struct{}
 type errorMsg struct{ err error }
 
@@ -75,13 +76,16 @@ func (m *listViewModel) loadContexts() tea.Cmd {
 			return errorMsg{err}
 		}
 
-		items := make([]contextItem, len(contexts))
-		for i, ctx := range contexts {
+		var items []contextItem
+		for _, ctx := range contexts {
+			if ctx.Archived {
+				continue
+			}
 			history, _ := m.shared.config.Repository.GetHistoryByContextId(ctx.Id, 1000)
-			items[i] = contextItem{
+			items = append(items, contextItem{
 				context:      ctx,
 				messageCount: len(history),
-			}
+			})
 		}
 
 		return contextsLoadedMsg(items)
@@ -106,6 +110,16 @@ func (m *listViewModel) deleteContext(contextId int64) tea.Cmd {
 			return errorMsg{err}
 		}
 		return contextDeletedMsg{}
+	}
+}
+
+func (m *listViewModel) archiveContext(contextId int64) tea.Cmd {
+	return func() tea.Msg {
+		err := m.shared.config.Repository.ArchiveContext(contextId, true)
+		if err != nil {
+			return errorMsg{err}
+		}
+		return contextArchivedMsg{}
 	}
 }
 
@@ -268,6 +282,19 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.mode = showPromptMode
 			}
 
+		case "a":
+			// Archive context
+			if len(m.shared.contexts) > 0 {
+				contextId := m.shared.contexts[m.cursor].context.Id
+				if m.cursor >= len(m.shared.contexts)-1 && m.cursor > 0 {
+					m.cursor--
+				}
+				return m, tea.Sequence(
+					m.archiveContext(contextId),
+					m.loadContexts(),
+				)
+			}
+
 		case "d":
 			// Delete context (with confirmation)
 			if len(m.shared.contexts) > 0 {
@@ -289,6 +316,9 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case contextDeletedMsg:
 		// Context deleted, will be refreshed by loadContexts
+
+	case contextArchivedMsg:
+		// Context archived, will be refreshed by loadContexts
 
 	case promptUpdatedMsg:
 		// Prompt updated, will be refreshed by loadContexts
@@ -401,7 +431,7 @@ func (m *listViewModel) View() string {
 	// Footer
 	b.WriteString("\n")
 	b.WriteString(helpStyle.Render(
-		"↑/k up • ↓/j down • enter select • n new • p set prompt • s show prompt • d delete • c copy • r refresh • q quit",
+		"↑/k up • ↓/j down • enter select • n new • p set prompt • s show prompt • a archive • d delete • c copy • r refresh • q quit",
 	))
 
 	return b.String()

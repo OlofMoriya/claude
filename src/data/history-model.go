@@ -12,6 +12,7 @@ type Context struct {
 	Created        time.Time `json:"created"`
 	SystemPrompt   string    `json:"system_prompt"`
 	PreferredModel string    `json:"preferred_model"`
+	Archived       bool      `json:"archived"`
 }
 
 type History struct {
@@ -26,4 +27,5 @@ type History struct {
 	Created         string `json:"created"`
 	ToolResults     string `json:"tool_results"`
 	Model           string `json:"model"`
+	Archived        bool   `json:"archived"`
 }

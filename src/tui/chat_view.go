@@ -550,9 +550,9 @@ func (m *chatViewModel) View() string {
 
 	helpText := ""
 	if m.mode == chatNormalMode {
-		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+h: history • esc: back"
+		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • esc: back"
 	} else {
-		helpText = "ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+h: history • esc: back"
+		helpText = "ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • esc: back"
 	}
 
 	return fmt.Sprintf(
@@ -575,16 +575,26 @@ func (m *chatViewModel) updateViewportContent() {
 	var b strings.Builder
 
 	for _, h := range m.history {
-		b.WriteString(userPromptStyle.Render(fmt.Sprintf("You: %s", h.Prompt)))
+		pStyle := userPromptStyle
+		rStyle := aiResponseStyle
+		archivedPrefix := ""
+		
+		if h.Archived {
+			pStyle = dimStyle
+			rStyle = dimStyle
+			archivedPrefix = "[ARCHIVED] "
+		}
+
+		b.WriteString(pStyle.Render(fmt.Sprintf("%sYou: %s", archivedPrefix, h.Prompt)))
 		b.WriteString("\n\n")
 
 		rendered, err := glamour.Render(h.Response, "dark")
 		if err != nil {
 			rendered = h.Response
 		}
-		b.WriteString(aiResponseStyle.Render(rendered))
+		b.WriteString(rStyle.Render(rendered))
 		b.WriteString("\n")
-		b.WriteString(strings.Repeat("─", m.width))
+		b.WriteString(dimStyle.Render(strings.Repeat("─", m.width)))
 		b.WriteString("\n\n")
 	}
 

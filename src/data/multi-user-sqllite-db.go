@@ -63,3 +63,11 @@ func (mu_context *MultiUserContext) UpdateSystemPrompt(contextId int64, systemPr
 func (mu_context *MultiUserContext) UpdatePreferredModel(contextId int64, model string) error {
 	return mu_context.User.UpdatePreferredModel(contextId, model)
 }
+
+func (mu_context *MultiUserContext) ArchiveContext(contextId int64, archived bool) error {
+	return mu_context.User.ArchiveContext(contextId, archived)
+}
+
+func (mu_context *MultiUserContext) ArchiveHistory(historyId int64, archived bool) error {
+	return mu_context.User.ArchiveHistory(historyId, archived)
+}
