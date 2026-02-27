@@ -20,6 +20,7 @@ type OllamaModel struct {
 	contextId         int64
 	modelName         string
 	ollamaURL         string
+	Modifiers         *commontypes.PayloadModifiers
 }
 
 func NewOllamaModel(responseHandler commontypes.ResponseHandler, modelName string) *OllamaModel {
@@ -51,6 +52,7 @@ func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, st
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
+	model.Modifiers = modifiers
 	return model.createRequest(payload)
 }
 

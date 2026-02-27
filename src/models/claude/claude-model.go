@@ -32,6 +32,7 @@ type ClaudeModel struct {
 	CurrentEvent     string
 	CurrentToolUse   *StreamedToolUse
 	StreamedToolUses []StreamedToolUse
+	Modifiers        *commontypes.PayloadModifiers
 }
 
 type StreamedToolUse struct {
@@ -52,7 +53,6 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	var model_version string
 	switch model.ModelVersion {
 	case "opus":
-		// model_version = "claude-opus-4-5-20251101"
 		model_version = "claude-opus-4-6"
 	case "sonnet":
 		model_version = "claude-sonnet-4-5-20250929"
@@ -61,12 +61,14 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	default:
 		model_version = "claude-sonnet-4-5-20250929"
 	}
+
 	payload := createClaudePayload(prompt, streaming, history, model_version, model.UseThinking, context, modifiers)
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.Context = context
 
 	request := createClaudeRequest(payload)
+	model.Modifiers = modifiers
 
 	return request
 }
@@ -137,7 +139,8 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 			if len(tool_responses) > 0 {
 				// Continue conversation with tool results
 				services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
-					ToolResponses: tool_responses,
+					ToolResponses:    tool_responses,
+					ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 				}, model.ModelVersion)
 			}
 		}
@@ -259,7 +262,8 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
 		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
-			ToolResponses: toolResponses,
+			ToolResponses:    toolResponses,
+			ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 		}, model.ModelVersion)
 	}
 }
@@ -431,7 +435,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 		Stream:    streamed,
 	}
 
-	toolsList := tools.GetCustomTools(mode.Mode)
+	toolsList := tools.GetCustomTools(mode.Mode, modifiers.ToolGroupFilters...)
 	sort.Slice(toolsList, func(i, j int) bool {
 		return toolsList[i].Name < toolsList[j].Name
 	})

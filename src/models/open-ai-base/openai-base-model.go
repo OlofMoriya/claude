@@ -30,6 +30,7 @@ type OpenAICompatibleModel struct {
 	Context           *data.Context
 	StreamedToolCalls map[int]*StreamingToolCall
 	ModelName         string
+	Modifiers         *commontypes.PayloadModifiers
 }
 
 // HandleStreamedLine processes a single line from a streaming response
@@ -139,7 +140,8 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 		// Continue with results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
-				ToolResponses: toolResponses,
+				ToolResponses:    toolResponses,
+				ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 			}, model.ModelName)
 		}
 
@@ -346,7 +348,7 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 	}
 
 	// Add tools
-	customTools := tools.GetCustomTools(mode.Mode)
+	customTools := tools.GetCustomTools(mode.Mode, modifiers.ToolGroupFilters...)
 	if len(customTools) > 0 {
 		payload.Tools = ConvertToolsToOpenAIFormat(customTools)
 		logger.Debug.Printf("Added %d tools to payload", len(payload.Tools))

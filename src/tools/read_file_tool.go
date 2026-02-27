@@ -73,6 +73,10 @@ func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
+func (tool *ReadFileTool) GetGroups() []string {
+	return []string{"dev"}
+}
+
 func init() {
 	Register(&ReadFileTool{})
 }

@@ -29,6 +29,7 @@ func (model *GrokModel) CreateRequest(context *data.Context, prompt string, stre
 	model.Context = context
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
 	model.ModelName = "grok"
+	model.Modifiers = modifiers
 
 	// Check if web search is enabled - use different API endpoint
 	if modifiers.Web {

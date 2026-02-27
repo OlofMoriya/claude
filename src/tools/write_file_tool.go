@@ -98,6 +98,10 @@ func (tool *FileWriterTool) GetDefinition() (Tool, string) {
 
 }
 
+func (tool *FileWriterTool) GetGroups() []string {
+	return []string{"dev", "writer"}
+}
+
 func init() {
 	Register(&FileWriterTool{})
 }

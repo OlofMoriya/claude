@@ -28,6 +28,7 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 	model.ContextId = context.Id
 	model.Context = context
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
+	model.Modifiers = modifiers
 
 	var model_version string
 	switch model.ModelVersion {

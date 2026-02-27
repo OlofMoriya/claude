@@ -83,6 +83,10 @@ func (tool *GitStatusTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
+func (tool *GitStatusTool) GetGroups() []string {
+	return []string{"dev"}
+}
+
 func init() {
 	Register(&GitStatusTool{})
 }

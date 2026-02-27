@@ -49,6 +49,7 @@ var (
 	chunk            string
 	create_context   bool
 	mardown_path     string
+	tool_groups      string
 )
 
 func init() {
@@ -79,6 +80,7 @@ func init() {
 	flag.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
 	flag.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
 	flag.StringVar(&mardown_path, "path", "", "mardown path")
+	flag.StringVar(&tool_groups, "tools", "", "comma-separated list of tool groups to enable")
 }
 
 func main() {
@@ -223,10 +225,18 @@ func main() {
 
 	model, modelName := picker.GetModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
+	modifiers := &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}
+
+	var filterGroups []string
+	if tool_groups != "" {
+		filterGroups = strings.Split(tool_groups, ",")
+		modifiers.ToolGroupFilters = filterGroups
+	}
+
 	if stream {
-		services.StreamedQuery(prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		services.StreamedQuery(prompt, model, user, history_count, context, modifiers, modelName)
 	} else {
-		services.AwaitedQuery(prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		services.AwaitedQuery(prompt, model, user, history_count, context, modifiers, modelName)
 	}
 }
 

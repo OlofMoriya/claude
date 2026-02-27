@@ -28,9 +28,10 @@ func (model *GemeniModel) CreateRequest(context *data.Context, prompt string, st
 	model.Context = context
 	model.StreamedToolCalls = make(map[int]*openai_base.StreamingToolCall)
 	model.ModelName = "gemeni"
+	model.Modifiers = modifiers
 
 	// Standard chat completions request via Gemini OpenAI-compatible endpoint
-	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "gemini-2.5-flash", 16000, context)
+	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "gemini-3-flash-preview", 16000, context)
 	return createGemeniRequest(payload)
 }
 

@@ -53,6 +53,10 @@ func (toolRunner *IssueListTool) Run(i map[string]string) (string, error) {
 	return value, nil
 }
 
+func (tool *IssueListTool) GetGroups() []string {
+	return []string{"manage"}
+}
+
 func init() {
 	Register(&IssueListTool{})
 }

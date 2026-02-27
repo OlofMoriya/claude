@@ -12,10 +12,11 @@ type ToolResponse struct {
 }
 
 type PayloadModifiers struct {
-	ToolResponses []ToolResponse
-	Pdf           string
-	Web           bool
-	Image         bool
+	ToolResponses    []ToolResponse
+	Pdf              string
+	Web              bool
+	Image            bool
+	ToolGroupFilters []string
 }
 
 type ResponseHandler interface {

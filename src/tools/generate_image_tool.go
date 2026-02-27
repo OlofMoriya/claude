@@ -70,6 +70,10 @@ func (tool *GenerateImageTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
+func (tool *GenerateImageTool) GetGroups() []string {
+	return []string{"chat", "writer"}
+}
+
 func init() {
 	//todo: need the context?
 	Register(&GenerateImageTool{})

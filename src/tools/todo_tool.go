@@ -42,7 +42,7 @@ func (tool *TodoTool) Run(i map[string]string) (string, error) {
 	// Execute todo-tui command
 	cmd := exec.Command("todo-tui", args...)
 	out, err := cmd.CombinedOutput()
-	
+
 	if err != nil {
 		return "", fmt.Errorf("Failed to create todo: %s\nOutput: %s", err, string(out))
 	}
@@ -83,6 +83,10 @@ func (tool *TodoTool) GetDefinition() (Tool, string) {
 			Required: []string{"Title"},
 		},
 	}, LOCAL
+}
+
+func (tool *TodoTool) GetGroups() []string {
+	return []string{"chat", "manager", "email", "secretery"}
 }
 
 func init() {

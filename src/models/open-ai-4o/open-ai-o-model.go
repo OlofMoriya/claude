@@ -23,6 +23,7 @@ type OpenAi4oModel struct {
 	context           *data.Context
 	HistoryRepository data.HistoryRepository
 	modelName         string
+	Modifiers         *commontypes.PayloadModifiers
 
 	// Streaming tool call tracking
 	streamedToolCalls map[int]*StreamingToolCall
@@ -47,6 +48,7 @@ func (model *OpenAi4oModel) CreateRequest(context *data.Context, prompt string, 
 	model.context = context
 	model.streamedToolCalls = make(map[int]*StreamingToolCall)
 	model.modelName = "4o"
+	model.Modifiers = modifiers
 	return createRequest(payload, history)
 }
 
@@ -152,7 +154,8 @@ func (model *OpenAi4oModel) finishStreaming() {
 		// Continue with results
 		if len(toolResponses) > 0 {
 			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &commontypes.PayloadModifiers{
-				ToolResponses: toolResponses,
+				ToolResponses:    toolResponses,
+				ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 			}, model.modelName)
 		}
 

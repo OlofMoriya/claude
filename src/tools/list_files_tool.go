@@ -52,6 +52,10 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 	return value, nil
 }
 
+func (tool *ListFilesTool) GetGroups() []string {
+	return []string{"dev", "writer"}
+}
+
 func init() {
 	Register(&ListFilesTool{})
 }

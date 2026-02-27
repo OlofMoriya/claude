@@ -56,6 +56,10 @@ func (tool *TrackingNumberTool) GetDefinition() (Tool, string) {
 	}, REMOTE
 }
 
+func (tool *TrackingNumberTool) GetGroups() []string {
+	return []string{"manage", "QA"}
+}
+
 func init() {
 	Register(&TrackingNumberTool{})
 }

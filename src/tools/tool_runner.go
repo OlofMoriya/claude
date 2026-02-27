@@ -4,7 +4,7 @@ import (
 	"fmt"
 	commontypes "owl/common_types"
 	"owl/data"
-	"owl/logger"
+	"slices"
 	"sync"
 )
 
@@ -16,6 +16,7 @@ type ToolModel interface {
 	Run(input map[string]string) (string, error)
 	GetName() string
 	SetHistory(*data.HistoryRepository, *data.Context)
+	GetGroups() []string
 }
 
 type ToolRunner struct {
@@ -54,23 +55,42 @@ func GetTool(name string) (ToolModel, error) {
 
 func (runner *ToolRunner) ExecuteTool(ctx data.Context, name string, rawInput map[string]string) (string, error) {
 	tool, err := GetTool(name)
-	tool.SetHistory(runner.HistoryRepository, runner.Context)
-
 	if err != nil {
 		return "", err
 	}
+	tool.SetHistory(runner.HistoryRepository, runner.Context)
 
 	return tool.Run(rawInput)
 }
 
-func GetCustomTools(mode string) []Tool {
+func GetCustomTools(mode string, filterGroups ...string) []Tool {
 	tools := []Tool{}
 	for _, tool := range defaultRegistry.tools {
 		definition, tool_mode := tool.GetDefinition()
-		logger.Debug.Printf("\ntool: %s, Mode is %s, tool mode is %s", tool.GetName(), mode, tool_mode)
-		if mode != REMOTE || tool_mode == REMOTE {
-			tools = append(tools, definition)
+
+		// 1. Mode check
+		if mode == REMOTE && tool_mode != REMOTE {
+			continue
 		}
+
+		// 2. Group check (if filters are provided)
+		if len(filterGroups) > 0 {
+			toolGroups := tool.GetGroups()
+			match := false
+			for _, fg := range filterGroups {
+				if slices.Contains(toolGroups, fg) {
+					match = true
+				}
+				if match {
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+
+		tools = append(tools, definition)
 	}
 	return tools
 }
