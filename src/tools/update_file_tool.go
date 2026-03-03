@@ -95,6 +95,8 @@ func (tool *FileUpdateTool) requestApproval(fileName, diff string) (DiffApproval
 // applyDiff applies a unified diff patch to the file
 func (tool *FileUpdateTool) applyDiff(fileName, diff string) (string, error) {
 	// Create a temporary file for the patch
+	logger.Debug.Printf("Received diff to apply for file %s:\n%s", fileName, diff)
+
 	tmpFile, err := os.CreateTemp("", "patch-*.diff")
 	if err != nil {
 		logger.Screen(fmt.Sprintf("\nfailed to write temporary file"), color.RGB(150, 150, 150))
@@ -140,7 +142,7 @@ func (tool *FileUpdateTool) GetName() string {
 func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:        tool.GetName(),
-		Description: "Updates specific parts of an existing file using a Git-style unified diff. This is the RECOMMENDED method for AI models as it's precise and shows context. Cannot create new files - use write_file for that. Path is relative to current working directory. Parent directory references (..) are not allowed for security.",
+		Description: "Updates specific parts of an existing file using a Git-style unified diff. Cannot create new files - use write_file for that. Path is relative to current working directory. Parent directory references (..) are not allowed for security. Format NEEDS to end with a empty new line",
 
 		InputSchema: InputSchema{
 			Type: "object",
@@ -151,7 +153,7 @@ func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 				},
 				"Diff": {
 					Type:        "string",
-					Description: "A unified diff format patch to apply. Example format:\n--- a/file.txt\n+++ b/file.txt\n@@ -1,3 +1,3 @@\n line1\n-old line\n+new line\n line3\n",
+					Description: "A unified diff format patch to apply. THE FORMAT NEEDS TO ALWAYS END WITH A NEW LINE! Example format:\n--- a/file.txt\n+++ b/file.txt\n@@ -1,3 +1,3 @@\n line1\n-old line\n+new line\n line3\n",
 				},
 			},
 		},

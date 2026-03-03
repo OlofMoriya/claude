@@ -84,26 +84,35 @@ echo ""
 echo -e "  ${GREEN}[y]${NC} Approve and apply changes"
 echo -e "  ${RED}[n]${NC} Reject changes"
 echo -e "  ${YELLOW}[q]${NC} Cancel operation"
+
+while true; do
 echo ""
 echo -n "Your choice: "
 
 read -n 1 -r REPLY
 echo ""
 
-case "$REPLY" in
-    y|Y)
-        echo "approved" > "%s"
-        echo -e "\n${GREEN}✓ Changes approved!${NC}"
-        ;;
-    n|N)
-        echo "rejected" > "%s"
-        echo -e "\n${RED}✗ Changes rejected!${NC}"
-        ;;
-    *)
-        echo "cancelled" > "%s"
-        echo -e "\n${YELLOW}⚠ Operation cancelled!${NC}"
-        ;;
-esac
+	case "$REPLY" in
+		y|Y)
+			echo "approved" > "%s"
+			echo -e "\n${GREEN}✓ Changes approved!${NC}"
+			break
+			;;
+		n|N)
+			echo "rejected" > "%s"
+			echo -e "\n${RED}✗ Changes rejected!${NC}"
+            break
+			;;
+		c|C)
+			echo "cancelled" > "%s"
+			echo -e "\n${YELLOW}⚠ Operation cancelled!${NC}"
+			break
+			;;
+		*)
+		    echo "invalid choice"
+			;;
+	esac
+done
 
 sleep 1
 `, fileName, diffFile, diffFile, diffFile, diffFile, responseFile, responseFile, responseFile)
