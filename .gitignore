@@ -7,3 +7,5 @@ input-data
 src/.termdbms/.2809150002748694505
 src/worklog.txt
 src/inspect_embeddings
+src/**/*.orig
+src/**/*.rej
