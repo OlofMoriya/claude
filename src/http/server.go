@@ -565,7 +565,7 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
 
-func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
+func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
 	repository, ok := httpResponseHandler.Repository.(*data.MultiUserContext)
 
 	logger.Screen(fmt.Sprintf("final text: %s", response), color.RGB(150, 150, 150))
@@ -584,6 +584,13 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
 		Model:           modelName,
+	}
+
+	if usage != nil {
+		history.PromptTokens = usage.PromptTokens
+		history.CompletionTokens = usage.CompletionTokens
+		history.CacheReadTokens = usage.CacheReadTokens
+		history.CacheWriteTokens = usage.CacheWriteTokens
 	}
 
 	_, err := httpResponseHandler.Repository.InsertHistory(history)

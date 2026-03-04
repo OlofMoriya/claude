@@ -43,6 +43,7 @@ func TestClaudeModelToolCallbacksTriggerFinalText(t *testing.T) {
 	model.Prompt = "inspect"
 
 	response := MessageResponse{
+		Usage: Usage{InputTokens: 15, OutputTokens: 25, CacheReadInputTokens: 5, CacheCreationInputTokens: 7},
 		Content: []ResponseMessage{
 			{Type: "text", Text: "partial"},
 			{Type: "tool_use", Id: "tool-1", Name: dummyTool.GetName(), Input: map[string]string{"value": "ping"}},
@@ -66,6 +67,9 @@ func TestClaudeModelToolCallbacksTriggerFinalText(t *testing.T) {
 	}
 	if !strings.Contains(finalEvents[0].ToolResults, dummyTool.Response) {
 		t.Fatalf("expected tool results to contain dummy response, got %s", finalEvents[0].ToolResults)
+	}
+	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 15 || finalEvents[0].Usage.CompletionTokens != 25 || finalEvents[0].Usage.CacheReadTokens != 5 || finalEvents[0].Usage.CacheWriteTokens != 7 {
+		t.Fatalf("expected usage to include claude cache metrics, got %+v", finalEvents[0].Usage)
 	}
 	if awaitedCalls != 1 {
 		t.Fatalf("expected awaited query hook to run once, got %d", awaitedCalls)
@@ -129,6 +133,12 @@ func TestClaudeModelStreamingToolCallbacks(t *testing.T) {
 	streamClaudeEvent(t, model, "message_delta", map[string]interface{}{
 		"type":  "message_delta",
 		"delta": map[string]interface{}{"stop_reason": "tool_use"},
+		"usage": map[string]interface{}{
+			"input_tokens":                20,
+			"output_tokens":               40,
+			"cache_read_input_tokens":     5,
+			"cache_creation_input_tokens": 7,
+		},
 	})
 	streamClaudeEvent(t, model, "message_stop", map[string]interface{}{"type": "message_stop"})
 
@@ -145,6 +155,14 @@ func TestClaudeModelStreamingToolCallbacks(t *testing.T) {
 	}
 	if awaitedCalls != 1 {
 		t.Fatalf("expected awaited query hook to run once, got %d", awaitedCalls)
+	}
+	finalEvents := handler.CopyFinalEvents()
+	if len(finalEvents) != 1 {
+		t.Fatalf("expected final event, got %d", len(finalEvents))
+	}
+	usage := finalEvents[0].Usage
+	if usage == nil || usage.PromptTokens != 20 || usage.CompletionTokens != 40 || usage.CacheReadTokens != 5 || usage.CacheWriteTokens != 7 {
+		t.Fatalf("expected streaming usage metrics, got %+v", usage)
 	}
 }
 

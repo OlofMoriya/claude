@@ -11,6 +11,13 @@ type ToolResponse struct {
 	ResponseMessage interface{}
 }
 
+type TokenUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	CacheReadTokens  int `json:"cache_read_tokens"`
+	CacheWriteTokens int `json:"cache_write_tokens"`
+}
+
 type PayloadModifiers struct {
 	ToolResponses    []ToolResponse
 	Pdf              string
@@ -21,7 +28,7 @@ type PayloadModifiers struct {
 
 type ResponseHandler interface {
 	RecievedText(text string, color *string)
-	FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string)
+	FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *TokenUsage)
 	// func recievedImage(encoded string)
 }
 

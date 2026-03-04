@@ -99,6 +99,7 @@ type ChatCompletionChunk struct {
 	Model             string                      `json:"model"`
 	SystemFingerprint string                      `json:"system_fingerprint"`
 	Choices           []ChatCompletionChunkChoice `json:"choices"`
+	Usage             Usage                       `json:"usage"`
 }
 
 // Web search specific structures (shared by OpenAI and Grok)

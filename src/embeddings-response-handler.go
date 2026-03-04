@@ -1,6 +1,7 @@
 package main
 
 import (
+	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 )
@@ -18,7 +19,7 @@ func (rh *EmbeddingsResponseHandler) Init() {
 
 func (rh *EmbeddingsResponseHandler) RecievedText(text string, useColor *string) {}
 
-func (rh *EmbeddingsResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
+func (rh *EmbeddingsResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
 
 	logger.Debug.Printf("\nFIND ME:embedding: %s\n", response)
 

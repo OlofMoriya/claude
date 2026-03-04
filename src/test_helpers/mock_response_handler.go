@@ -1,6 +1,9 @@
 package testhelpers
 
-import "sync"
+import (
+	commontypes "owl/common_types"
+	"sync"
+)
 
 type TextEvent struct {
 	Text  string
@@ -14,6 +17,7 @@ type FinalEvent struct {
 	ResponseContent string
 	ToolResults     string
 	ModelName       string
+	Usage           *commontypes.TokenUsage
 }
 
 type MockResponseHandler struct {
@@ -32,7 +36,7 @@ func (m *MockResponseHandler) RecievedText(text string, color *string) {
 	m.TextEvents = append(m.TextEvents, TextEvent{Text: text, Color: color})
 }
 
-func (m *MockResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
+func (m *MockResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.FinalEvents = append(m.FinalEvents, FinalEvent{
@@ -42,6 +46,7 @@ func (m *MockResponseHandler) FinalText(contextId int64, prompt string, response
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
 		ModelName:       modelName,
+		Usage:           usage,
 	})
 }
 

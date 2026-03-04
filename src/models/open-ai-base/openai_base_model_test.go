@@ -38,6 +38,7 @@ func TestOpenAIModelToolCallbacksTriggerFinalText(t *testing.T) {
 	model.ModelName = "gpt"
 
 	chat := ChatCompletion{
+		Usage: Usage{PromptTokens: 12, CompletionTokens: 34},
 		Choices: []Choice{
 			{
 				Message: Message{
@@ -67,6 +68,9 @@ func TestOpenAIModelToolCallbacksTriggerFinalText(t *testing.T) {
 	}
 	if !strings.Contains(finalEvents[0].ToolResults, dummyTool.Response) {
 		t.Fatalf("expected tool results to contain dummy response, got %s", finalEvents[0].ToolResults)
+	}
+	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 12 || finalEvents[0].Usage.CompletionTokens != 34 {
+		t.Fatalf("expected token usage to be recorded, got %+v", finalEvents[0].Usage)
 	}
 	if awaitedCalls != 1 {
 		t.Fatalf("expected awaited query hook to run once, got %d", awaitedCalls)
@@ -116,6 +120,11 @@ func TestOpenAIModelStreamingToolCallbacks(t *testing.T) {
 		}},
 	}
 	streamOpenAIChunk(t, model, chunkTool)
+
+	chunkUsage := ChatCompletionChunk{
+		Usage: Usage{PromptTokens: 30, CompletionTokens: 60},
+	}
+	streamOpenAIChunk(t, model, chunkUsage)
 	model.HandleStreamedLine([]byte("data: [DONE]\n"))
 
 	textEvents := handler.CopyTextEvents()
@@ -130,6 +139,13 @@ func TestOpenAIModelStreamingToolCallbacks(t *testing.T) {
 	}
 	if awaitedCalls != 1 {
 		t.Fatalf("expected awaited query hook once, got %d", awaitedCalls)
+	}
+	finalEvents := handler.CopyFinalEvents()
+	if len(finalEvents) != 1 {
+		t.Fatalf("expected final event, got %d", len(finalEvents))
+	}
+	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 30 || finalEvents[0].Usage.CompletionTokens != 60 {
+		t.Fatalf("expected streaming usage to be recorded, got %+v", finalEvents[0].Usage)
 	}
 }
 

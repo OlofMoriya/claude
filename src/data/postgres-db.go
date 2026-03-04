@@ -47,8 +47,8 @@ func (r *PostgresHistoryRepository) GetContextById(contextId int64) (Context, er
 
 func (r *PostgresHistoryRepository) InsertHistory(history History) (int64, error) {
 	var id int64
-	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, user_id, created, response_content, model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
-		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.UserId, time.Now(), history.ResponseContent, history.Model).
+	err := r.db.QueryRow("INSERT INTO history (context_id, prompt, response, abbreviation, token_count, prompt_tokens, completion_tokens, cache_read_tokens, cache_write_tokens, user_id, created, response_content, model) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id",
+		history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.PromptTokens, history.CompletionTokens, history.CacheReadTokens, history.CacheWriteTokens, history.UserId, time.Now(), history.ResponseContent, history.Model).
 		Scan(&id)
 	if err != nil {
 		return 0, err
@@ -68,7 +68,7 @@ func (r *PostgresHistoryRepository) InsertContext(context Context) (int64, error
 }
 
 func (r *PostgresHistoryRepository) GetHistoryByContextId(contextId int64, maxCount int) ([]History, error) {
-	rows, err := r.db.Query("SELECT id, context_id, prompt, response, abbreviation, token_count, user_id, created, COALESCE(model, 'sonnet'), archived FROM history WHERE context_id = $1 AND user_id = $2 ORDER BY created DESC LIMIT $3",
+	rows, err := r.db.Query("SELECT id, context_id, prompt, response, abbreviation, token_count, prompt_tokens, completion_tokens, cache_read_tokens, cache_write_tokens, user_id, created, COALESCE(model, 'sonnet'), archived FROM history WHERE context_id = $1 AND user_id = $2 ORDER BY created DESC LIMIT $3",
 		contextId, r.User.Id, maxCount)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (r *PostgresHistoryRepository) GetHistoryByContextId(contextId int64, maxCo
 	for rows.Next() {
 		var h History
 		var archived int
-		err := rows.Scan(&h.Id, &h.ContextId, &h.Prompt, &h.Response, &h.Abbreviation, &h.TokenCount, &h.UserId, &h.Created, &h.Model, &archived)
+		err := rows.Scan(&h.Id, &h.ContextId, &h.Prompt, &h.Response, &h.Abbreviation, &h.TokenCount, &h.PromptTokens, &h.CompletionTokens, &h.CacheReadTokens, &h.CacheWriteTokens, &h.UserId, &h.Created, &h.Model, &archived)
 		if err != nil {
 			log.Println("error parsing history response", err)
 			return nil, err

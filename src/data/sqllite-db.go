@@ -43,6 +43,7 @@ func (user User) setupDb(db *sql.DB) {
 	createHistoryTables(db)
 	createContextTable(db)
 	user.ensureArchivedColumnsExist(db)
+	user.ensureTokenColumnsExist(db)
 }
 
 func createContextTable(db *sql.DB) {
@@ -72,10 +73,14 @@ func createHistoryTables(db *sql.DB) {
 			 response_content TEXT,
              abreviation TEXT,
              token_count INTEGER,
-			 created INT,
-			 tool_results TEXT,
-			 model TEXT,
-			 archived INTEGER DEFAULT 0
+		 prompt_tokens INTEGER DEFAULT 0,
+		 completion_tokens INTEGER DEFAULT 0,
+		 cache_read_tokens INTEGER DEFAULT 0,
+		 cache_write_tokens INTEGER DEFAULT 0,
+		 created INT,
+		 tool_results TEXT,
+		 model TEXT,
+		 archived INTEGER DEFAULT 0
          )
      `
 	_, err := db.Exec(createTableQuery)
@@ -90,6 +95,13 @@ func (user User) ensureArchivedColumnsExist(db *sql.DB) {
 
 	// Add archived column to history if it doesn't exist
 	_, _ = db.Exec("ALTER TABLE history ADD COLUMN archived INTEGER DEFAULT 0")
+}
+
+func (user User) ensureTokenColumnsExist(db *sql.DB) {
+	_, _ = db.Exec("ALTER TABLE history ADD COLUMN prompt_tokens INTEGER DEFAULT 0")
+	_, _ = db.Exec("ALTER TABLE history ADD COLUMN completion_tokens INTEGER DEFAULT 0")
+	_, _ = db.Exec("ALTER TABLE history ADD COLUMN cache_read_tokens INTEGER DEFAULT 0")
+	_, _ = db.Exec("ALTER TABLE history ADD COLUMN cache_write_tokens INTEGER DEFAULT 0")
 }
 
 func (user User) ArchiveContext(contextId int64, archived bool) error {
@@ -165,8 +177,8 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
 
-	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, response_content, created, tool_results, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.ResponseContent, time.Now(), history.ToolResults, history.Model)
+	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, prompt_tokens, completion_tokens, cache_read_tokens, cache_write_tokens, response_content, created, tool_results, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.PromptTokens, history.CompletionTokens, history.CacheReadTokens, history.CacheWriteTokens, history.ResponseContent, time.Now(), history.ToolResults, history.Model)
 	if err != nil {
 		println(err)
 		defer db.Close()
@@ -189,7 +201,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	defer db.Close()
 
 	logger.Debug.Printf("Fetching history for contextId: %v, maxCount: %v", contextId, maxCount)
-	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, created, tool_results, COALESCE(model, 'sonnet'), archived FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
+	selectQuery := "SELECT id, context_id, prompt, response, response_content, abreviation, token_count, prompt_tokens, completion_tokens, cache_read_tokens, cache_write_tokens, created, tool_results, COALESCE(model, 'sonnet'), archived FROM history WHERE context_id = ? ORDER BY ID DESC LIMIT ?"
 	rows, err := db.Query(selectQuery, contextId, maxCount)
 	if err != nil {
 		logger.Debug.Printf("Error in sql %s", err)
@@ -200,7 +212,7 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 	for rows.Next() {
 		var history History
 		var archived int
-		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.Created, &history.ToolResults, &history.Model, &archived)
+		err := rows.Scan(&history.Id, &history.ContextId, &history.Prompt, &history.Response, &history.ResponseContent, &history.Abbreviation, &history.TokenCount, &history.PromptTokens, &history.CompletionTokens, &history.CacheReadTokens, &history.CacheWriteTokens, &history.Created, &history.ToolResults, &history.Model, &archived)
 		if err != nil {
 			return nil, err
 		}

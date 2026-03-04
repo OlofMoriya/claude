@@ -51,7 +51,7 @@ func (model *OpenAiModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", "vision")
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", "vision", nil)
 			}
 		}
 	}
@@ -64,7 +64,7 @@ func (model *OpenAiModel) HandleBodyBytes(bytes []byte) {
 		println(fmt.Sprintf("Error unmarshalling response body: %v\n", err))
 	}
 
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "", "vision")
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, apiResponse.Choices[0].Message.Content, "", "", "vision", nil)
 }
 
 func createOpenaiPayload(prompt string, streamed bool, history []data.History) Payload {

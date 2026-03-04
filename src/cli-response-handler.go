@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	commontypes "owl/common_types"
 	data "owl/data"
 	"owl/services"
 	"strings"
@@ -24,7 +25,7 @@ func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
 }
 
 // All models should call this regardless of if they stream or not.
-func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
+func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
 	history := data.History{
 		ContextId:       contextId,
 		Prompt:          prompt,
@@ -34,6 +35,13 @@ func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
 		Model:           modelName,
+	}
+
+	if usage != nil {
+		history.PromptTokens = usage.PromptTokens
+		history.CompletionTokens = usage.CompletionTokens
+		history.CacheReadTokens = usage.CacheReadTokens
+		history.CacheWriteTokens = usage.CacheWriteTokens
 	}
 
 	_, err := cli.Repository.InsertHistory(history)

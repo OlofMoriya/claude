@@ -149,7 +149,7 @@ func (model *OpenAi4oModel) finishStreaming() {
 		}
 
 		logger.Debug.Printf("Calling Final Text with anwer: %v, \nand tool result: %v", model.accumulatedAnswer, toolResultsJson)
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, string(messageJson), toolResultsJson, model.modelName)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, string(messageJson), toolResultsJson, model.modelName, nil)
 
 		// Continue with results
 		if len(toolResponses) > 0 {
@@ -164,7 +164,7 @@ func (model *OpenAi4oModel) finishStreaming() {
 	} else {
 		// Regular finish
 		logger.Debug.Printf("Calling Final Text with anwer: %v", model.accumulatedAnswer)
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", model.modelName)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", model.modelName, nil)
 	}
 }
 
@@ -196,7 +196,8 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 			logger.Debug.Printf("Error marshalling message: %s", err)
 		}
 
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, string(messageJson), toolResultsJson, model.modelName)
+		usage := usageFrom4o(apiResponse.Usage)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, string(messageJson), toolResultsJson, model.modelName, usage)
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
@@ -206,7 +207,8 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 		}
 	} else {
 		// Regular text response
-		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, "", "", model.modelName)
+		usage := usageFrom4o(apiResponse.Usage)
+		model.ResponseHandler.FinalText(model.contextId, model.prompt, message.Content, "", "", model.modelName, usage)
 	}
 }
 
@@ -262,6 +264,16 @@ func (model *OpenAi4oModel) handleToolCalls(message Message) ([]commontypes.Tool
 	}
 
 	return toolResponses, toolResultsJson
+}
+
+func usageFrom4o(u Usage) *commontypes.TokenUsage {
+	if u.PromptTokens == 0 && u.CompletionTokens == 0 {
+		return nil
+	}
+	return &commontypes.TokenUsage{
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+	}
 }
 
 func createOpenaiPayload(prompt string, streamed bool, history []data.History, modifiers *commontypes.PayloadModifiers) ChatCompletionRequest {

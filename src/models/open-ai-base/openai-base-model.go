@@ -31,6 +31,7 @@ type OpenAICompatibleModel struct {
 	StreamedToolCalls map[int]*StreamingToolCall
 	ModelName         string
 	Modifiers         *commontypes.PayloadModifiers
+	PendingUsage      *commontypes.TokenUsage
 }
 
 func (model *OpenAICompatibleModel) sendToolStatus(message string) {
@@ -66,6 +67,9 @@ func (model *OpenAICompatibleModel) HandleStreamedLine(line []byte, callback_mod
 		}
 
 		logger.Debug.Printf("Chunk: %+v", apiResponse)
+		if usage := usageFromOpenAI(apiResponse.Usage); usage != nil {
+			model.PendingUsage = usage
+		}
 
 		if len(apiResponse.Choices) > 0 {
 			choice := apiResponse.Choices[0]
@@ -149,7 +153,9 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 		}
 
 		logger.Debug.Printf("Calling Final Text with answer: %v, \nand tool result: %v", model.AccumulatedAnswer, toolResultsJson)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, string(messageJson), toolResultsJson, model.ModelName)
+		usage := model.PendingUsage
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, string(messageJson), toolResultsJson, model.ModelName, usage)
+		model.PendingUsage = nil
 
 		// Continue with results
 		if len(toolResponses) > 0 {
@@ -164,7 +170,9 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 	} else {
 		// Regular finish
 		logger.Debug.Printf("Calling Final Text with answer: %v", model.AccumulatedAnswer)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, "", "", model.ModelName)
+		usage := model.PendingUsage
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, "", "", model.ModelName, usage)
+		model.PendingUsage = nil
 	}
 }
 
@@ -197,7 +205,9 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 			logger.Debug.Printf("Error marshalling message: %s", err)
 		}
 
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, string(messageJson), toolResultsJson, model.ModelName)
+		usage := usageFromOpenAI(apiResponse.Usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, string(messageJson), toolResultsJson, model.ModelName, usage)
+		model.PendingUsage = nil
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
@@ -207,7 +217,9 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 		}
 	} else {
 		// Regular text response
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, "", "", model.ModelName)
+		usage := usageFromOpenAI(apiResponse.Usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, "", "", model.ModelName, usage)
+		model.PendingUsage = nil
 	}
 }
 
@@ -420,6 +432,16 @@ func ConvertProperties(props map[string]tools.Property) map[string]interface{} {
 	return result
 }
 
+func usageFromOpenAI(u Usage) *commontypes.TokenUsage {
+	if u.PromptTokens == 0 && u.CompletionTokens == 0 {
+		return nil
+	}
+	return &commontypes.TokenUsage{
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+	}
+}
+
 // HandleWebSearchResponse processes responses from the /v1/responses endpoint
 func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callback_model commontypes.Model) {
 	var webSearchResponse ResponseAPIResponse
@@ -524,6 +546,7 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 		string(contentJson),
 		"", // No tool results - web search is transparent to us
 		model.ModelName,
+		nil,
 	)
 }
 

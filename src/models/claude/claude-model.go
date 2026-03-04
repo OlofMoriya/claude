@@ -33,6 +33,7 @@ type ClaudeModel struct {
 	CurrentToolUse   *StreamedToolUse
 	StreamedToolUses []StreamedToolUse
 	Modifiers        *commontypes.PayloadModifiers
+	PendingUsage     *commontypes.TokenUsage
 }
 
 type StreamedToolUse struct {
@@ -69,6 +70,7 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 
 	request := createClaudeRequest(payload)
 	model.Modifiers = modifiers
+	model.PendingUsage = nil
 
 	return request
 }
@@ -134,7 +136,9 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 				savedContent = string(contentJson)
 			}
 
-			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, savedContent, tool_result_json, model.ModelVersion)
+			usage := model.PendingUsage
+			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, savedContent, tool_result_json, model.ModelVersion, usage)
+			model.PendingUsage = nil
 
 			if len(tool_responses) > 0 {
 				// Continue conversation with tool results
@@ -212,6 +216,7 @@ func (model *ClaudeModel) handleMessageDelta(data string) {
 		Delta struct {
 			StopReason string `json:"stop_reason"`
 		} `json:"delta"`
+		Usage Usage `json:"usage"`
 	}
 
 	if err := json.Unmarshal([]byte(data), &response); err != nil {
@@ -227,6 +232,9 @@ func (model *ClaudeModel) handleMessageDelta(data string) {
 		model.CurrentToolUse = nil
 	}
 
+	if usage := claudeUsageToTokenUsage(response.Usage); usage != nil {
+		model.PendingUsage = usage
+	}
 	logger.Debug.Printf("message delta arrived with data: %v", data)
 }
 
@@ -257,7 +265,9 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		logger.Debug.Printf("Error marshalling json content from response: %s", err)
 	}
 
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, responseText, string(contentJson), toolResultsJson, model.ModelVersion)
+	usage := claudeUsageToTokenUsage(apiResponse.Usage)
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, responseText, string(contentJson), toolResultsJson, model.ModelVersion, usage)
+	model.PendingUsage = nil
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
@@ -345,9 +355,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 			Text: h.Prompt,
 		}
 
-		if i == 3 {
-			textContent.CacheControl = getCacheControl()
-		}
+		textContent.CacheControl = getCacheControl()
 
 		messages = append(messages, RequestMessage{
 			Role:    "user",
@@ -471,6 +479,20 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	// logger.Debug.Println("FULL PAYLOAD:")
 	// logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
 	return payload
+}
+
+func claudeUsageToTokenUsage(u Usage) *commontypes.TokenUsage {
+	logger.Debug.Printf("token usage captured %+v", u)
+
+	if u.InputTokens == 0 && u.OutputTokens == 0 && u.CacheReadInputTokens == 0 && u.CacheCreationInputTokens == 0 {
+		return nil
+	}
+	return &commontypes.TokenUsage{
+		PromptTokens:     u.InputTokens,
+		CompletionTokens: u.OutputTokens,
+		CacheReadTokens:  u.CacheReadInputTokens,
+		CacheWriteTokens: u.CacheCreationInputTokens,
+	}
 }
 
 func createImageMessage(prompt string) RequestMessage {
