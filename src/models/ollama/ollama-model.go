@@ -48,7 +48,7 @@ func (model *OllamaModel) SetResponseHandler(responseHandler commontypes.Respons
 
 func (model *OllamaModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := model.createOllamaPayload(prompt, streaming, history, modifiers.Image, context)
-	logger.Debug.Printf("created ollama payload: %s", payload)
+	logger.Debug.Printf("created ollama payload: %+v", payload)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
@@ -69,13 +69,13 @@ func (model *OllamaModel) HandleStreamedLine(line []byte) {
 		}
 
 		logger.Debug.Printf("json")
-		logger.Debug.Printf("%s", apiResponse)
+		logger.Debug.Printf("%+v", apiResponse)
 		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
 			logger.Debug.Printf("Error unmarshalling response: %v\n %s", err, line)
 			return
 		}
 
-		logger.Debug.Printf("%s", apiResponse)
+		logger.Debug.Printf("%+v", apiResponse)
 
 		if len(apiResponse.Choices) > 0 {
 			choice := apiResponse.Choices[0]

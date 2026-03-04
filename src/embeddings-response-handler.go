@@ -27,7 +27,7 @@ func (rh *EmbeddingsResponseHandler) FinalText(contextId int64, prompt string, r
 		if err != nil {
 			logger.Debug.Printf("error storing embedding: %s", err)
 		} else {
-			logger.Debug.Printf("res from storing embedding: %s", res)
+			logger.Debug.Printf("res from storing embedding: %d", res)
 		}
 
 	}

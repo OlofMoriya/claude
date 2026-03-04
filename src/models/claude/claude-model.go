@@ -358,7 +358,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 			var content []ResponseMessage
 			err := json.Unmarshal([]byte(h.ResponseContent), &content)
 			if err != nil {
-				fmt.Printf(h.ResponseContent)
+				fmt.Printf("%s", h.ResponseContent)
 				panic(err)
 			}
 

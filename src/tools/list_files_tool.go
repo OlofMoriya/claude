@@ -45,7 +45,7 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 
 	out, err := exec.Command("find", ".", "-not", "(", "-path", "./.git", "-prune", ")", "-not", "(", "-path", "./node_modules", "-prune", ")").Output()
 	if err != nil {
-		logger.Debug.Printf("error while fetching history for context", err)
+		logger.Debug.Printf("error while listing files: %v", err)
 	}
 
 	value := string(out)

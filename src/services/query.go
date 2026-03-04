@@ -23,10 +23,10 @@ func AwaitedQuery(prompt string, model commontypes.Model, historyRepository data
 		logger.Debug.Printf("Fetching history for HistoryRepository: >%v<, with context: >%v<", historyRepository, context)
 		h, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 		if err != nil {
-			logger.Debug.Printf("error while fetching history for context", err)
-			logger.Screen(fmt.Sprintf("error while fetching history for context", err), color.RGB(250, 100, 100))
+			logger.Debug.Printf("error while fetching history for context: %v", err)
+			logger.Screen(fmt.Sprintf("error while fetching history for context: %v", err), color.RGB(250, 100, 100))
 		}
-		
+
 		// Filter out archived history
 		for _, entry := range h {
 			if !entry.Archived {
@@ -46,19 +46,19 @@ func AwaitedQuery(prompt string, model commontypes.Model, historyRepository data
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Debug.Printf("\n\body: %v\n\n", resp.Body)
+		logger.Debug.Printf("\nbody: %v\n\n", resp.Body)
 		bytes, err := io.ReadAll(resp.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		logger.Debug.Printf("Issue from llm", string(bytes))
+		logger.Debug.Printf("Issue from llm: %s", string(bytes))
 		logger.Debug.Printf("received non-OK response status: %d", resp.StatusCode)
 		logger.Debug.Printf("\nerr: %v", err)
 		panic(fmt.Errorf("received non-OK response status: %d", resp.StatusCode))
 	}
 
-	logger.Debug.Printf("statusCode: %s", resp.StatusCode)
+	logger.Debug.Printf("statusCode: %d", resp.StatusCode)
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Debug.Println(err)

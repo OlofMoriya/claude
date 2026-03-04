@@ -590,7 +590,7 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 	if err != nil {
 		println(fmt.Sprintf("Error while trying to save history: %s", err))
 	}
-	fmt.Fprintf(httpResponseHandler.responseWriter, response)
+	fmt.Fprint(httpResponseHandler.responseWriter, response)
 }
 
 func (server_data *server_data) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -600,5 +600,5 @@ func (server_data *server_data) handleStatus(w http.ResponseWriter, r *http.Requ
 }
 
 func (server_data *server_data) handleRoot(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, fmt.Sprintf("%v", server_data.model))
+	fmt.Fprintf(w, "%v", server_data.model)
 }
