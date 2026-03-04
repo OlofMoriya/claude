@@ -33,6 +33,18 @@ type OpenAICompatibleModel struct {
 	Modifiers         *commontypes.PayloadModifiers
 }
 
+func (model *OpenAICompatibleModel) sendToolStatus(message string) {
+	if model == nil || model.ResponseHandler == nil {
+		return
+	}
+	trimmed := strings.TrimSpace(message)
+	if trimmed == "" {
+		return
+	}
+	color := "cyan"
+	model.ResponseHandler.RecievedText("\n"+trimmed+"\n", &color)
+}
+
 // HandleStreamedLine processes a single line from a streaming response
 func (model *OpenAICompatibleModel) HandleStreamedLine(line []byte, callback_model commontypes.Model) {
 	responseLine := string(line)
@@ -87,6 +99,8 @@ func (model *OpenAICompatibleModel) HandleStreamedToolCalls(deltaToolCalls []Too
 				FunctionName:    tc.Function.Name,
 				ArgumentsBuffer: "",
 			}
+
+			model.sendToolStatus(fmt.Sprintf("→ calling tool %s", tc.Function.Name))
 			logger.Debug.Printf("Started new tool call at index %d: %s", tc.Index, tc.Function.Name)
 		}
 
@@ -203,6 +217,7 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commonty
 
 	for _, toolCall := range message.ToolCalls {
 		logger.Debug.Printf("Executing tool: %s with args: %s", toolCall.Function.Name, toolCall.Function.Arguments)
+		model.sendToolStatus(fmt.Sprintf("→ running %s", toolCall.Function.Name))
 
 		// Parse arguments
 		var args map[string]string
@@ -231,6 +246,7 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commonty
 		}
 
 		logger.Debug.Printf("Tool result: %s", result)
+		model.sendToolStatus(fmt.Sprintf("%s result:\n%s", toolCall.Function.Name, result))
 
 		toolResponses = append(toolResponses, commontypes.ToolResponse{
 			Id:       toolCall.Id,
