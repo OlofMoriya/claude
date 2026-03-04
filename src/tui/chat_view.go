@@ -7,6 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
@@ -47,9 +49,20 @@ type chatViewModel struct {
 	selectedModelIdx int
 	modelCursor      int
 
-	historyCount  int
-	statusMessage string
+	historyCount     int
+	statusMessage    string
+	showUsagePanel   bool
+	usagePanelPinned bool
+	contextUsage     commontypes.TokenUsage
+	lastUsage        *commontypes.TokenUsage
 }
+
+const (
+	usagePanelMinWidth = 120
+	usagePanelWidth    = 32
+	minContentWidth    = 40
+	minTextareaWidth   = 20
+)
 
 type historyLoadedMsg []data.History
 type messageReceivedMsg string
@@ -98,7 +111,7 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		"claude",
 	}
 
-	return &chatViewModel{
+	m := &chatViewModel{
 		shared:           shared,
 		textarea:         ta,
 		viewport:         vp,
@@ -111,7 +124,10 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		mode:             chatInputMode,
 		historyCount:     shared.config.HistoryCount,
 		statusMessage:    "",
+		showUsagePanel:   shared.width >= usagePanelMinWidth,
 	}
+	m.applyLayout()
+	return m
 }
 
 func (m *chatViewModel) Init() tea.Cmd {
@@ -236,6 +252,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	shouldUpdateViewport := false
+	customViewportHandled := false
 
 	switch msg := msg.(type) {
 	case statusMsg:
@@ -307,12 +324,12 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 
 			case "d", "ctrl+d":
-				shouldUpdateViewport = true
-				m.viewport.HalfPageDown()
+				m.scrollHalfPage(true)
+				customViewportHandled = true
 
 			case "u", "ctrl+u":
-				shouldUpdateViewport = true
-				m.viewport.HalfPageUp()
+				m.scrollHalfPage(false)
+				customViewportHandled = true
 
 			case "f", "ctrl+f", "pgdown":
 				shouldUpdateViewport = true
@@ -359,6 +376,13 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd := fmt.Sprintf("owl --context_name %s --prompt \"\"",
 					m.shared.selectedCtx.Name)
 				clipboard.WriteAll(cmd)
+				return m, nil
+
+			case "ctrl+t":
+				m.usagePanelPinned = true
+				m.showUsagePanel = !m.showUsagePanel
+				m.applyLayout()
+				m.updateViewportContent()
 				return m, nil
 			}
 
@@ -436,6 +460,13 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.modelCursor = m.selectedModelIdx
 			return m, nil
 
+		case "ctrl+t":
+			m.usagePanelPinned = true
+			m.showUsagePanel = !m.showUsagePanel
+			m.applyLayout()
+			m.updateViewportContent()
+			return m, nil
+
 		case "ctrl+w":
 			if !m.sending && m.textarea.Value() != "" {
 				m.sending = true
@@ -447,12 +478,12 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "ctrl+u":
-			shouldUpdateViewport = true
-			m.viewport.HalfPageUp()
+			m.scrollHalfPage(false)
+			customViewportHandled = true
 
 		case "ctrl+d":
-			shouldUpdateViewport = true
-			m.viewport.HalfPageDown()
+			m.scrollHalfPage(true)
+			customViewportHandled = true
 
 		case "ctrl+b", "pgup":
 			shouldUpdateViewport = true
@@ -472,6 +503,7 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.history = []data.History(msg)
 		m.loading = false
 		m.historyLoaded = true
+		m.recalculateUsage()
 		m.updateViewportContent()
 
 	case messageDoneMsg:
@@ -488,21 +520,22 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 		logger.Debug.Printf("windowSizeMsg")
-		if !m.ready {
-			logger.Debug.Printf("windowSizeMsg not ready")
-			m.viewport = viewport.New(msg.Width, msg.Height-10)
-			m.viewport.YPosition = 0
-			m.ready = true
-			m.updateViewportContent()
-		} else {
-			m.viewport.Width = msg.Width
-			m.viewport.Height = msg.Height - 10
+		if !m.usagePanelPinned {
+			m.showUsagePanel = msg.Width >= usagePanelMinWidth
 		}
 
-		m.textarea.SetWidth(msg.Width - 4)
+		if !m.ready {
+			logger.Debug.Printf("windowSizeMsg not ready")
+			m.viewport = viewport.New(m.contentWidth(), msg.Height-10)
+			m.viewport.YPosition = 0
+			m.ready = true
+		}
+
+		m.applyLayout()
+		m.updateViewportContent()
 	}
 
-	if shouldUpdateViewport {
+	if shouldUpdateViewport && !customViewportHandled {
 		m.viewport, vpCmd = m.viewport.Update(msg)
 	}
 
@@ -550,12 +583,12 @@ func (m *chatViewModel) View() string {
 
 	helpText := ""
 	if m.mode == chatNormalMode {
-		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • esc: back"
+		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • ctrl+t: usage • esc: back"
 	} else {
-		helpText = "ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • esc: back"
+		helpText = "ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
 	}
 
-	return fmt.Sprintf(
+	mainContent := fmt.Sprintf(
 		"%s%s%s\n\n%s\n\n%s\n%s%s",
 		headerStyle.Render(fmt.Sprintf("💬 %s", m.shared.selectedCtx.Name)),
 		modelInfo,
@@ -565,6 +598,21 @@ func (m *chatViewModel) View() string {
 		helpStyle.Render(helpText),
 		status,
 	)
+	contentWidth := m.contentWidth()
+	mainRendered := lipgloss.NewStyle().Width(contentWidth).Render(mainContent)
+
+	if m.showUsagePanel {
+		panel := m.renderUsagePanel()
+		if panel != "" {
+			return lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				mainRendered,
+				usagePanelStyle.Width(usagePanelWidth).Render(panel),
+			)
+		}
+	}
+
+	return mainRendered
 }
 
 func (m *chatViewModel) updateViewportContent() {
@@ -578,7 +626,7 @@ func (m *chatViewModel) updateViewportContent() {
 		pStyle := userPromptStyle
 		rStyle := aiResponseStyle
 		archivedPrefix := ""
-		
+
 		if h.Archived {
 			pStyle = dimStyle
 			rStyle = dimStyle
@@ -588,10 +636,7 @@ func (m *chatViewModel) updateViewportContent() {
 		b.WriteString(pStyle.Render(fmt.Sprintf("%sYou: %s", archivedPrefix, h.Prompt)))
 		b.WriteString("\n\n")
 
-		rendered, err := glamour.Render(h.Response, "dark")
-		if err != nil {
-			rendered = h.Response
-		}
+		rendered := renderMarkdown(h.Response, m.viewport.Width-4)
 		b.WriteString(rStyle.Render(rendered))
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render(strings.Repeat("─", m.width)))
@@ -602,10 +647,7 @@ func (m *chatViewModel) updateViewportContent() {
 		b.WriteString(userPromptStyle.Render(fmt.Sprintf("You: %s", m.currentPrompt)))
 		b.WriteString("\n\n")
 
-		rendered, err := glamour.Render(m.currentResponse, "dark")
-		if err != nil {
-			rendered = m.currentResponse
-		}
+		rendered := renderMarkdown(m.currentResponse, m.viewport.Width-4)
 		b.WriteString(aiResponseStyle.Render(rendered))
 		b.WriteString("\n")
 	}
@@ -647,6 +689,131 @@ func (m *chatViewModel) renderModelSelector() string {
 	return b.String()
 }
 
+func (m *chatViewModel) recalculateUsage() {
+	var total commontypes.TokenUsage
+	var last *commontypes.TokenUsage
+	for _, h := range m.history {
+		total.PromptTokens += h.PromptTokens
+		total.CompletionTokens += h.CompletionTokens
+		total.CacheReadTokens += h.CacheReadTokens
+		total.CacheWriteTokens += h.CacheWriteTokens
+	}
+	if len(m.history) > 0 {
+		last = historyToUsage(m.history[len(m.history)-1])
+	}
+	m.contextUsage = total
+	m.lastUsage = last
+}
+
+func historyToUsage(h data.History) *commontypes.TokenUsage {
+	if h.PromptTokens == 0 && h.CompletionTokens == 0 && h.CacheReadTokens == 0 && h.CacheWriteTokens == 0 {
+		return nil
+	}
+	return &commontypes.TokenUsage{
+		PromptTokens:     h.PromptTokens,
+		CompletionTokens: h.CompletionTokens,
+		CacheReadTokens:  h.CacheReadTokens,
+		CacheWriteTokens: h.CacheWriteTokens,
+	}
+}
+
+func usageLines(u *commontypes.TokenUsage) []string {
+	if u == nil {
+		return []string{"Prompt: —", "Completion: —", "Cache read: —", "Cache write: —"}
+	}
+	return []string{
+		fmt.Sprintf("Prompt: %d", u.PromptTokens),
+		fmt.Sprintf("Completion: %d", u.CompletionTokens),
+		fmt.Sprintf("Cache read: %d", u.CacheReadTokens),
+		fmt.Sprintf("Cache write: %d", u.CacheWriteTokens),
+	}
+}
+
+func (m *chatViewModel) renderUsagePanel() string {
+	var b strings.Builder
+	b.WriteString(usagePanelTitleStyle.Render("Token Usage"))
+	b.WriteString("\n\n")
+	b.WriteString(usageMetricLabelStyle.Render("Context Total"))
+	b.WriteString("\n")
+	for _, line := range usageLines(&m.contextUsage) {
+		b.WriteString(usageMetricValueStyle.Render(line))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n")
+	b.WriteString(usageMetricLabelStyle.Render("Last Message"))
+	b.WriteString("\n")
+	for _, line := range usageLines(m.lastUsage) {
+		b.WriteString(usageMetricValueStyle.Render(line))
+		b.WriteString("\n")
+	}
+	b.WriteString("\n" + usageMetricLabelStyle.Render("Toggle: ctrl+t"))
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+func (m *chatViewModel) scrollHalfPage(down bool) {
+	amount := m.viewport.Height / 2
+	if amount < 1 {
+		amount = 1
+	}
+	yOffset := m.viewport.YOffset
+	if down {
+		yOffset += amount
+	} else {
+		yOffset -= amount
+		if yOffset < 0 {
+			yOffset = 0
+		}
+	}
+	m.viewport.SetYOffset(yOffset)
+}
+
+func (m *chatViewModel) contentWidth() int {
+	width := m.width
+	if m.showUsagePanel {
+		width -= usagePanelWidth + 2
+	}
+	if width < minContentWidth {
+		width = minContentWidth
+	}
+	return width
+}
+
+func (m *chatViewModel) applyLayout() {
+	contentWidth := m.contentWidth()
+	m.viewport.Width = contentWidth
+	viewportHeight := m.height - 10
+	if viewportHeight < 0 {
+		viewportHeight = 0
+	}
+	m.viewport.Height = viewportHeight
+	textareaWidth := contentWidth - 4
+	if textareaWidth < minTextareaWidth {
+		textareaWidth = minTextareaWidth
+	}
+	m.textarea.SetWidth(textareaWidth)
+}
+
+func renderMarkdown(content string, width int) string {
+	if width <= 0 {
+		width = 80
+	}
+	renderer, err := glamour.NewTermRenderer(
+		glamour.WithStandardStyle("dark"),
+		glamour.WithColorProfile(termenv.TrueColor),
+		glamour.WithWordWrap(width),
+	)
+	if err != nil {
+		logger.Debug.Printf("failed to create markdown renderer: %v", err)
+		return content
+	}
+	rendered, err := renderer.Render(content)
+	if err != nil {
+		logger.Debug.Printf("failed to render markdown: %v", err)
+		return content
+	}
+	return strings.TrimSuffix(rendered, "\n")
+}
+
 type tuiResponseHandler struct {
 	responseChan chan string
 	doneChan     chan struct{}
@@ -659,7 +826,7 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 	h.responseChan <- text
 }
 
-func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string) {
+func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
 	h.fullResponse = response
 
 	history := data.History{
@@ -671,6 +838,13 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 		ResponseContent: responseContent,
 		ToolResults:     toolResults,
 		Model:           modelName,
+	}
+
+	if usage != nil {
+		history.PromptTokens = usage.PromptTokens
+		history.CompletionTokens = usage.CompletionTokens
+		history.CacheReadTokens = usage.CacheReadTokens
+		history.CacheWriteTokens = usage.CacheWriteTokens
 	}
 
 	_, err := h.Repository.InsertHistory(history)

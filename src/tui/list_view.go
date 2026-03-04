@@ -15,6 +15,7 @@ type listViewModel struct {
 	cursor        int
 	loading       bool
 	viewport      int
+	listOffset    int
 	quitting      bool
 	mode          listMode
 	textInput     textinput.Model
@@ -57,11 +58,12 @@ func newListViewModel(config TUIConfig) *listViewModel {
 	ti.Width = 100
 
 	return &listViewModel{
-		shared:    shared,
-		loading:   true,
-		viewport:  0,
-		mode:      normalMode,
-		textInput: ti,
+		shared:     shared,
+		loading:    true,
+		viewport:   0,
+		listOffset: 0,
+		mode:       normalMode,
+		textInput:  ti,
 	}
 }
 
@@ -221,18 +223,25 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				m.ensureCursorVisible()
 			}
 
 		case "down", "j":
 			if m.cursor < len(m.shared.contexts)-1 {
 				m.cursor++
+				m.ensureCursorVisible()
 			}
 
 		case "g":
 			m.cursor = 0
+			m.ensureCursorVisible()
 
 		case "G":
 			m.cursor = len(m.shared.contexts) - 1
+			if m.cursor < 0 {
+				m.cursor = 0
+			}
+			m.ensureCursorVisible()
 
 		case "enter":
 			// Open chat view for selected context
@@ -310,6 +319,13 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case contextsLoadedMsg:
 		m.shared.contexts = []contextItem(msg)
 		m.loading = false
+		if m.cursor >= len(m.shared.contexts) {
+			m.cursor = len(m.shared.contexts) - 1
+			if m.cursor < 0 {
+				m.cursor = 0
+			}
+		}
+		m.ensureCursorVisible()
 
 	case contextCreatedMsg:
 		// Context created, will be loaded by loadContexts
@@ -331,6 +347,7 @@ func (m *listViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport = msg.Height
 		m.shared.width = msg.Width
 		m.shared.height = msg.Height
+		m.ensureCursorVisible()
 	}
 
 	return m, nil
@@ -400,7 +417,23 @@ func (m *listViewModel) View() string {
 	if len(m.shared.contexts) == 0 {
 		b.WriteString(dimStyle.Render("No contexts found. Press 'n' to create one."))
 	} else {
-		for i, item := range m.shared.contexts {
+		maxVisible := m.maxVisibleItems()
+		start := m.listOffset
+		if start < 0 {
+			start = 0
+		}
+		if start > len(m.shared.contexts)-1 {
+			start = len(m.shared.contexts) - 1
+		}
+		if start < 0 {
+			start = 0
+		}
+		end := start + maxVisible
+		if end > len(m.shared.contexts) {
+			end = len(m.shared.contexts)
+		}
+		for i := start; i < end; i++ {
+			item := m.shared.contexts[i]
 			cursor := " "
 			style := itemStyle
 
@@ -435,4 +468,46 @@ func (m *listViewModel) View() string {
 	))
 
 	return b.String()
+}
+
+func (m *listViewModel) maxVisibleItems() int {
+	height := m.shared.height
+	if height <= 0 {
+		height = 20
+	}
+	available := height - 10
+	if available < 1 {
+		available = 1
+	}
+	return available
+}
+
+func (m *listViewModel) ensureCursorVisible() {
+	if len(m.shared.contexts) == 0 {
+		m.listOffset = 0
+		return
+	}
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+	if m.cursor >= len(m.shared.contexts) {
+		m.cursor = len(m.shared.contexts) - 1
+	}
+	maxVisible := m.maxVisibleItems()
+	maxStart := len(m.shared.contexts) - maxVisible
+	if maxStart < 0 {
+		maxStart = 0
+	}
+	if m.listOffset > maxStart {
+		m.listOffset = maxStart
+	}
+	if m.cursor < m.listOffset {
+		m.listOffset = m.cursor
+	}
+	if m.cursor >= m.listOffset+maxVisible {
+		m.listOffset = m.cursor - maxVisible + 1
+	}
+	if m.listOffset < 0 {
+		m.listOffset = 0
+	}
 }
