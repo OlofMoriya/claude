@@ -6,28 +6,30 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	commontypes "owl/common_types"
 	"owl/data"
-	"owl/models"
 	"strings"
 )
 
 type OpenAiModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
 }
 
-func (model *OpenAiModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *OpenAiModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 
-func (model *OpenAiModel) CreateRequest(context data.Context, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *OpenAiModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := createOpenaiPayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
-	model.contextId = context.Id
-	return createRequest(payload, history)
+	if context != nil {
+		model.contextId = context.Id
+	}
+	return createRequest(payload)
 }
 
 func (model *OpenAiModel) HandleStreamedLine(line []byte) {
@@ -85,7 +87,7 @@ func createOpenaiPayload(prompt string, streamed bool, history []data.History) P
 	return payload
 }
 
-func createRequest(payload Payload, history []data.History) *http.Request {
+func createRequest(payload Payload) *http.Request {
 	//use gcloud to fetch the token
 	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
 	if !ok {

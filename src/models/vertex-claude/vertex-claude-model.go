@@ -6,27 +6,29 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	commontypes "owl/common_types"
 	data "owl/data"
-	models "owl/models"
 	"strings"
 )
 
 type ClaudeModel struct {
-	ResponseHandler   models.ResponseHandler
+	ResponseHandler   commontypes.ResponseHandler
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
 }
 
-func (model *ClaudeModel) SetResponseHandler(responseHandler models.ResponseHandler) {
+func (model *ClaudeModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
 	model.ResponseHandler = responseHandler
 }
 
-func (model *ClaudeModel) CreateRequest(contextId int64, prompt string, streaming bool, history []data.History, modifiers *models.PayloadModifiers) *http.Request {
+func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
 	payload := createClaudePayload(prompt, streaming, history)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
-	model.contextId = contextId
+	if context != nil {
+		model.contextId = context.Id
+	}
 	return createClaudeRequest(payload, history)
 }
 
