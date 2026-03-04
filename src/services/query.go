@@ -14,7 +14,24 @@ import (
 	"github.com/fatih/color"
 )
 
+type awaitedQueryFunc func(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string)
+
+var awaitedQueryHook awaitedQueryFunc = awaitedQueryImplementation
+
+// SetAwaitedQueryHook overrides the default awaited query behavior (used in tests)
+func SetAwaitedQueryHook(fn awaitedQueryFunc) {
+	if fn == nil {
+		awaitedQueryHook = awaitedQueryImplementation
+		return
+	}
+	awaitedQueryHook = fn
+}
+
 func AwaitedQuery(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
+	awaitedQueryHook(prompt, model, historyRepository, historyCount, context, modifiers, modelName)
+}
+
+func awaitedQueryImplementation(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
 
 	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
 
