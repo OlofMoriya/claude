@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	commontypes "owl/common_types"
@@ -50,42 +51,61 @@ var (
 	create_context   bool
 	mardown_path     string
 	tool_groups      string
+	skillsFlag       string
+)
+
+var (
+	runServerFunc        = server.Run
+	runEmbeddingsFunc    = embeddings.Run
+	awaitedQueryFunc     = services.AwaitedQuery
+	streamedQueryFunc    = services.StreamedQuery
+	launchTUIFunc        = launchTUI
+	viewHistoryFunc      = view_history
+	nameNewContextFunc   = models.Name_new_context
+	getContextFunc       = getContext
+	getModelForQueryFunc = picker.GetModelForQuery
 )
 
 func init() {
 	if err := logger.Init("~/.owl/debug.log"); err != nil {
 		log.Fatal("Failed to initialize logger:", err)
 	}
+	registerFlags(flag.CommandLine)
+}
 
-	flag.StringVar(&prompt, "prompt", "", "The prompt to use for the conversation")
-	flag.StringVar(&context_name, "context_name", "misc", "The context to provide for the conversation")
-	flag.IntVar(&history_count, "history", 1, "The number of previous messages to include in the context")
-	flag.BoolVar(&serve, "serve", false, "Enable server mode")
-	flag.IntVar(&port, "port", 3000, "Port to listen on")
-	flag.BoolVar(&secure, "secure", false, "Enable HTTPS")
-	flag.BoolVar(&stream, "stream", false, "Enable streaming response")
-	flag.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
-	flag.StringVar(&llm_model, "model", "claude", "set model used for the call")
+func registerFlags(fs *flag.FlagSet) {
+	fs.StringVar(&prompt, "prompt", "", "The prompt to use for the conversation")
+	fs.StringVar(&context_name, "context_name", "misc", "The context to provide for the conversation")
+	fs.IntVar(&history_count, "history", services.DefaultHistoryCount, "The number of previous messages to include in the context")
+	fs.BoolVar(&serve, "serve", false, "Enable server mode")
+	fs.IntVar(&port, "port", 3000, "Port to listen on")
+	fs.BoolVar(&secure, "secure", false, "Enable HTTPS")
+	fs.BoolVar(&stream, "stream", false, "Enable streaming response")
+	fs.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
+	fs.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
-	flag.BoolVar(&thinking, "thinking", true, "use thinking in request")
-	flag.BoolVar(&stream_thinkning, "stream_thinking", true, "stream thinking")
-	flag.BoolVar(&output_thinkning, "output_thinking", false, "output thinking")
-	flag.StringVar(&system_prompt, "system", "", "set a system promt for the context")
-	flag.BoolVar(&view, "view", false, "view")
-	flag.BoolVar(&image, "image", false, "image (used clipboard as image)")
-	flag.BoolVar(&web, "web", false, "web search enabled")
-	flag.StringVar(&pdf, "pdf", "", "path to pdf")
-	flag.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
-	flag.StringVar(&search, "search", "", "search for phrase in embedding")
-	flag.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
-	flag.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
-	flag.StringVar(&mardown_path, "path", "", "mardown path")
-	flag.StringVar(&tool_groups, "tools", "", "comma-separated list of tool groups to enable")
+	fs.BoolVar(&thinking, "thinking", true, "use thinking in request")
+	fs.BoolVar(&stream_thinkning, "stream_thinking", true, "stream thinking")
+	fs.BoolVar(&output_thinkning, "output_thinking", false, "output thinking")
+	fs.StringVar(&system_prompt, "system", "", "set a system promt for the context")
+	fs.BoolVar(&view, "view", false, "view")
+	fs.BoolVar(&image, "image", false, "image (used clipboard as image)")
+	fs.BoolVar(&web, "web", false, "web search enabled")
+	fs.StringVar(&pdf, "pdf", "", "path to pdf")
+	fs.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
+	fs.StringVar(&search, "search", "", "search for phrase in embedding")
+	fs.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
+	fs.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
+	fs.StringVar(&mardown_path, "path", "", "mardown path")
+	fs.StringVar(&tool_groups, "tools", "", "comma-separated list of tool groups to enable")
+	fs.StringVar(&skillsFlag, "skills", "", "comma-separated list of skill files located under ~/.owl/skills")
 }
 
 func main() {
 	godotenv.Load()
 	flag.Parse()
+	skillNames := parseSkillNames(skillsFlag)
+	sessionSystemPrompt := combineSystemPrompt(system_prompt, skillNames)
 
 	if serve {
 		logger.Screen("\nsetting mode to REMOTE\n", color.RGB(150, 150, 150))
@@ -95,7 +115,7 @@ func main() {
 	}
 
 	if tui_mode {
-		launchTUI()
+		launchTUIFunc()
 		return
 	}
 
@@ -106,9 +126,9 @@ func main() {
 		}
 
 		user := data.User{Name: &db}
-		context := getContext(user, &system_prompt)
+		context := getContextFunc(user, &sessionSystemPrompt)
 
-		err := user.UpdateSystemPrompt(context.Id, system_prompt)
+		err := user.UpdateSystemPrompt(context.Id, sessionSystemPrompt)
 		if err != nil {
 			println(err)
 		}
@@ -132,7 +152,7 @@ func main() {
 		cliResponseHandler := CliResponseHandler{Repository: user}
 		toolResponseHandler := tools.ToolResponseHandler{ResponseHandler: cliResponseHandler}
 
-		context_name := models.Name_new_context(prompt, user)
+		context_name := nameNewContextFunc(prompt, user)
 		new_context := data.Context{Name: context_name}
 		id, err := user.InsertContext(new_context)
 		if err != nil {
@@ -141,12 +161,12 @@ func main() {
 
 		context := &new_context
 		context.Id = id
-		context.SystemPrompt = system_prompt
+		context.SystemPrompt = sessionSystemPrompt
 
-		model, modelName := picker.GetModelForQuery("haiku", context, &toolResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+		model, modelName := getModelForQueryFunc("haiku", context, &toolResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 		// send with proper instructions and catch the answer
-		services.AwaitedQuery("", model, user, history_count, context, &commontypes.PayloadModifiers{}, modelName)
+		awaitedQueryFunc("", model, user, history_count, context, &commontypes.PayloadModifiers{}, modelName)
 
 		response := <-toolResponseHandler.ResponseChannel
 
@@ -164,12 +184,12 @@ func main() {
 
 		model := &claude_model.ClaudeModel{UseStreaming: stream, HistoryRepository: user, ResponseHandler: httpResponseHandler, UseThinking: thinking, StreamThought: stream_thinkning, OutputThought: output_thinkning, ModelVersion: "haiku"}
 
-		server.Run(secure, port, httpResponseHandler, model, stream)
+		runServerFunc(secure, port, httpResponseHandler, model, stream)
 		return
 	}
 
 	if store {
-		if _, err := embeddings.Run(embeddings.Config{
+		if _, err := runEmbeddingsFunc(embeddings.Config{
 			Store:     true,
 			ChunkPath: chunk,
 			Prompt:    prompt,
@@ -180,7 +200,7 @@ func main() {
 	}
 
 	if search != "" {
-		matches, err := embeddings.Run(embeddings.Config{
+		matches, err := runEmbeddingsFunc(embeddings.Config{
 			Store:       false,
 			SearchQuery: search,
 		})
@@ -203,14 +223,17 @@ func main() {
 		}
 		user := data.User{Name: &db}
 		cliResponseHandler := CliResponseHandler{Repository: user}
-		context := getContext(user, &system_prompt)
-		model, modelName := picker.GetModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
-		services.AwaitedQuery(search_prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		context := getContextFunc(user, &sessionSystemPrompt)
+		if strings.TrimSpace(sessionSystemPrompt) != "" {
+			context.SystemPrompt = sessionSystemPrompt
+		}
+		model, modelName := getModelForQueryFunc(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+		awaitedQueryFunc(search_prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
 		return
 	}
 
 	if view {
-		view_history()
+		viewHistoryFunc()
 		return
 	}
 
@@ -221,9 +244,12 @@ func main() {
 
 	user := data.User{Name: &db}
 	cliResponseHandler := CliResponseHandler{Repository: user}
-	context := getContext(user, &system_prompt)
+	context := getContextFunc(user, &sessionSystemPrompt)
+	if strings.TrimSpace(sessionSystemPrompt) != "" {
+		context.SystemPrompt = sessionSystemPrompt
+	}
 
-	model, modelName := picker.GetModelForQuery(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
+	model, modelName := getModelForQueryFunc(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 	modifiers := &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}
 
@@ -234,9 +260,9 @@ func main() {
 	}
 
 	if stream {
-		services.StreamedQuery(prompt, model, user, history_count, context, modifiers, modelName)
+		streamedQueryFunc(prompt, model, user, history_count, context, modifiers, modelName)
 	} else {
-		services.AwaitedQuery(prompt, model, user, history_count, context, modifiers, modelName)
+		awaitedQueryFunc(prompt, model, user, history_count, context, modifiers, modelName)
 	}
 }
 
@@ -257,7 +283,7 @@ func view_history() {
 		panic(err)
 	}
 
-	count := 100
+	count := services.DefaultHistoryCount
 	if history_count > 0 {
 		count = history_count
 	}
@@ -293,9 +319,67 @@ func launchTUI() {
 	cliResponseHandler := CliResponseHandler{Repository: user}
 	model := &claude_model.ClaudeModel{ResponseHandler: cliResponseHandler, HistoryRepository: user, UseThinking: true, StreamThought: false, OutputThought: false}
 
-	config := tui.TUIConfig{Repository: user, Model: model, HistoryCount: 10}
+	config := tui.TUIConfig{Repository: user, Model: model, HistoryCount: services.DefaultHistoryCount}
 
 	if err := tui.Run(config); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func parseSkillNames(raw string) []string {
+	parts := strings.Split(raw, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		result = append(result, trimmed)
+	}
+	return result
+}
+
+func combineSystemPrompt(base string, skillNames []string) string {
+	trimmedBase := strings.TrimSpace(base)
+	if len(skillNames) == 0 {
+		return trimmedBase
+	}
+	dir, err := skillsDirectory()
+	if err != nil {
+		logger.Screen(fmt.Sprintf("unable to load skills: %v", err), color.RGB(250, 150, 150))
+		logger.Debug.Printf("skills directory error: %v", err)
+		return trimmedBase
+	}
+	builder := strings.Builder{}
+	if trimmedBase != "" {
+		builder.WriteString(trimmedBase)
+	}
+	for _, skill := range skillNames {
+		name := strings.TrimSpace(skill)
+		if name == "" {
+			continue
+		}
+		fileName := filepath.Base(name)
+		path := filepath.Join(dir, fileName)
+		content, err := os.ReadFile(path)
+		if err != nil {
+			logger.Screen(fmt.Sprintf("skill %s missing: %v", fileName, err), color.RGB(250, 150, 150))
+			logger.Debug.Printf("skill load failure for %s: %v", path, err)
+			continue
+		}
+		if builder.Len() > 0 {
+			builder.WriteString("\n\n")
+		}
+		displayName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+		builder.WriteString(fmt.Sprintf("## Skill: %s\n%s", displayName, strings.TrimSpace(string(content))))
+	}
+	return builder.String()
+}
+
+func skillsDirectory() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".owl", "skills"), nil
 }
