@@ -159,7 +159,7 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 
 		// Continue with results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
+			services.AwaitedQuery("", callback_model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
 				ToolResponses:    toolResponses,
 				ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 			}, model.ModelName)
@@ -211,7 +211,7 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", callback_model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
+			services.AwaitedQuery("", callback_model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.ModelName)
 		}

@@ -142,7 +142,7 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 			if len(tool_responses) > 0 {
 				// Continue conversation with tool results
-				services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
+				services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
 					ToolResponses:    tool_responses,
 					ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 				}, model.ModelVersion)
@@ -271,7 +271,7 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 
 	if len(toolResponses) > 0 {
 		// Continue conversation with tool results
-		services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.Context, &commontypes.PayloadModifiers{
+		services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
 			ToolResponses:    toolResponses,
 			ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 		}, model.ModelVersion)
@@ -330,15 +330,9 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolResponses), len(history))
 
 	messages := []Message{}
-
-	lastToolResponseIndex := -1
-	nextLastToolResponseIndex := -1
-	for i := range history {
-		if history[i].ToolResults != "" {
-			nextLastToolResponseIndex = lastToolResponseIndex
-			lastToolResponseIndex = i
-		}
-	}
+	toolCacheTargets := selectToolCacheTargets(history)
+	userWithoutToolCount := 0
+	userPromptCached := false
 
 	// Process history and handle tool results
 	for i, h := range history {
@@ -354,8 +348,13 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 			Type: "text",
 			Text: h.Prompt,
 		}
-
-		textContent.CacheControl = getCacheControl()
+		if strings.TrimSpace(h.ToolResults) == "" {
+			userWithoutToolCount++
+			if !userPromptCached && userWithoutToolCount == 2 {
+				textContent.CacheControl = getCacheControl()
+				userPromptCached = true
+			}
+		}
 
 		messages = append(messages, RequestMessage{
 			Role:    "user",
@@ -386,6 +385,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 				var toolResults []commontypes.ToolResponse
 				err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
 				if err == nil {
+					cacheToolResult := toolCacheTargets[i]
 					for tr_i, tr := range toolResults {
 						content := ToolResponseContent{
 							Type:    "tool_result",
@@ -393,7 +393,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 							IsError: false,
 							Id:      tr.Id,
 						}
-						if (i == lastToolResponseIndex || i == nextLastToolResponseIndex) && tr_i == len(toolResults)-1 {
+						if cacheToolResult && tr_i == len(toolResults)-1 {
 							content.CacheControl = getCacheControl()
 						}
 
@@ -407,9 +407,6 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 			content := TextContent{
 				Type: "text",
 				Text: h.Response,
-			}
-			if i == 0 {
-				content.CacheControl = getCacheControl()
 			}
 			messages = append(messages, RequestMessage{Role: "assistant", Content: []Content{content}})
 		}
@@ -460,12 +457,10 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	// Handle system prompt with caching - ALWAYS cache it
 	if context != nil && context.SystemPrompt != "" {
 		systemContent := SystemContent{
-			Type:         "text",
-			Text:         context.SystemPrompt,
-			CacheControl: getCacheControl(), // Always cache system prompt
+			Type: "text",
+			Text: context.SystemPrompt,
 		}
 		payload.System = []SystemContent{systemContent}
-		logger.Debug.Printf("Applying cache control to system prompt")
 	}
 
 	if useThinking {
@@ -479,6 +474,20 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	// logger.Debug.Println("FULL PAYLOAD:")
 	// logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
 	return payload
+}
+
+func selectToolCacheTargets(history []data.History) map[int]bool {
+	indices := make([]int, 0, len(history))
+	for i := range history {
+		if strings.TrimSpace(history[i].ToolResults) != "" {
+			indices = append(indices, i)
+		}
+	}
+	targets := make(map[int]bool)
+	for i := len(indices) - 1; i >= 0 && len(targets) < 2; i-- {
+		targets[indices[i]] = true
+	}
+	return targets
 }
 
 func claudeUsageToTokenUsage(u Usage) *commontypes.TokenUsage {

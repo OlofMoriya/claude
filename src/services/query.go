@@ -18,6 +18,8 @@ type awaitedQueryFunc func(prompt string, model commontypes.Model, historyReposi
 
 var awaitedQueryHook awaitedQueryFunc = awaitedQueryImplementation
 
+const DefaultHistoryCount = 1000
+
 // SetAwaitedQueryHook overrides the default awaited query behavior (used in tests)
 func SetAwaitedQueryHook(fn awaitedQueryFunc) {
 	if fn == nil {
@@ -34,6 +36,17 @@ func AwaitedQuery(prompt string, model commontypes.Model, historyRepository data
 func awaitedQueryImplementation(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
 
 	logger.Screen("sending awaited query", color.RGB(150, 150, 150))
+
+	trimmedPrompt := strings.TrimSpace(prompt)
+	hasToolResponses := false
+	if modifiers != nil && len(modifiers.ToolResponses) > 0 {
+		hasToolResponses = true
+	}
+	if trimmedPrompt == "" && !hasToolResponses {
+		logger.Screen("no prompt or tool response, skipping awaited query", color.RGB(250, 150, 150))
+		logger.Debug.Printf("skipping awaited query due to empty input. modifiers=%+v", modifiers)
+		return
+	}
 
 	history := []data.History{}
 	if historyCount > 0 {

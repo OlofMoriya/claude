@@ -310,14 +310,14 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				)
 
 			case "=", "+":
-				if m.historyCount < 50 {
+				if m.historyCount < services.DefaultHistoryCount {
 					m.historyCount++
 					return m, m.loadHistory()
 				}
 				return m, nil
 
 			case "-", "_":
-				if m.historyCount > 0 {
+				if m.historyCount > 1 {
 					m.historyCount--
 					return m, m.loadHistory()
 				}

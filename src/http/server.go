@@ -183,8 +183,8 @@ func parsePromptRequest(r *http.Request) (promptRequest, error) {
 		return req, fmt.Errorf("no prompt in request body")
 	}
 
-	if req.HistoryCount == 0 {
-		return req, fmt.Errorf("history needs to be a non 0 integer")
+	if req.HistoryCount <= 0 {
+		req.HistoryCount = services.DefaultHistoryCount
 	}
 	return req, nil
 }

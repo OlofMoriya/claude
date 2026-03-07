@@ -166,6 +166,75 @@ func TestClaudeModelStreamingToolCallbacks(t *testing.T) {
 	}
 }
 
+func TestClaudePayloadCachingRules(t *testing.T) {
+	history := []data.History{
+		{Prompt: "First question", Response: "answer"},
+		{Prompt: "Second question", Response: "answer"},
+		buildToolHistory("Third question", []string{"tool-a"}),
+		buildToolHistory("Fourth question", []string{"tool-b1", "tool-b2"}),
+	}
+	context := &data.Context{Id: 1}
+	payload := createClaudePayload("latest", false, history, "claude-sonnet", false, context, &commontypes.PayloadModifiers{})
+	messageSlice, ok := payload.Messages.([]Message)
+	if !ok {
+		t.Fatalf("expected payload.Messages to be []Message")
+	}
+	cachedUsers := []string{}
+	cachedTools := []string{}
+	for _, raw := range messageSlice {
+		msg, ok := raw.(RequestMessage)
+		if !ok {
+			continue
+		}
+		for _, content := range msg.Content {
+			switch v := content.(type) {
+			case TextContent:
+				if v.CacheControl != nil {
+					cachedUsers = append(cachedUsers, v.Text)
+				}
+			case ToolResponseContent:
+				if v.CacheControl != nil {
+					cachedTools = append(cachedTools, v.Id)
+				}
+			}
+		}
+	}
+	if len(cachedUsers) != 1 || cachedUsers[0] != "Second question" {
+		t.Fatalf("expected only second question cached, got %v", cachedUsers)
+	}
+	if len(cachedTools) != 2 {
+		t.Fatalf("expected two cached tool responses, got %v", cachedTools)
+	}
+	if !(contains(cachedTools, "tool-b2") && contains(cachedTools, "tool-a")) {
+		t.Fatalf("unexpected cached tool ids: %v", cachedTools)
+	}
+}
+
+func buildToolHistory(prompt string, toolIDs []string) data.History {
+	responses := make([]ResponseMessage, len(toolIDs))
+	toolResults := make([]commontypes.ToolResponse, len(toolIDs))
+	for i, id := range toolIDs {
+		responses[i] = ResponseMessage{Type: "tool_use", Id: id, Name: fmt.Sprintf("tool-%d", i)}
+		toolResults[i] = commontypes.ToolResponse{Id: id, Response: fmt.Sprintf("result-%s", id)}
+	}
+	respJSON, _ := json.Marshal(responses)
+	toolJSON, _ := json.Marshal(toolResults)
+	return data.History{
+		Prompt:          prompt,
+		ResponseContent: string(respJSON),
+		ToolResults:     string(toolJSON),
+	}
+}
+
+func contains(list []string, target string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
 func ensureTestLogger() {
 	if logger.Debug == nil {
 		logger.Debug = log.New(io.Discard, "", 0)

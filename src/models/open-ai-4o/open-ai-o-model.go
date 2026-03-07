@@ -153,7 +153,7 @@ func (model *OpenAi4oModel) finishStreaming() {
 
 		// Continue with results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &commontypes.PayloadModifiers{
+			services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.context, &commontypes.PayloadModifiers{
 				ToolResponses:    toolResponses,
 				ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 			}, model.modelName)
@@ -201,7 +201,7 @@ func (model *OpenAi4oModel) HandleBodyBytes(bytes []byte) {
 
 		// Continue conversation with tool results
 		if len(toolResponses) > 0 {
-			services.AwaitedQuery("Responding with result", model, model.HistoryRepository, 20, model.context, &commontypes.PayloadModifiers{
+			services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.context, &commontypes.PayloadModifiers{
 				ToolResponses: toolResponses,
 			}, model.modelName)
 		}
