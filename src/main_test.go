@@ -232,7 +232,7 @@ func TestMainViewFlag(t *testing.T) {
 }
 
 func TestSkillsAppliedToContextAndAwaited(t *testing.T) {
-	defer setupTest(t, []string{"cmd", "-prompt", "hello", "--skills=poem.md"})()
+	defer setupTest(t, []string{"cmd", "-prompt", "hello", "--skills=poem"})()
 	writeSkillFile(t, "poem.md", "Use rhymes")
 	getContextFunc = func(repo data.HistoryRepository, systemPrompt *string) *data.Context {
 		if systemPrompt == nil || !strings.Contains(*systemPrompt, "Use rhymes") {

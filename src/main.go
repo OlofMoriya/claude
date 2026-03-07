@@ -359,7 +359,7 @@ func combineSystemPrompt(base string, skillNames []string) string {
 		if name == "" {
 			continue
 		}
-		fileName := filepath.Base(name)
+		fileName := filepath.Base(fmt.Sprintf("%s.md", skill))
 		path := filepath.Join(dir, fileName)
 		content, err := os.ReadFile(path)
 		if err != nil {
