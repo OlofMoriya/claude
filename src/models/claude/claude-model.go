@@ -344,22 +344,24 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 
 		// Create user message with potential caching
 
-		textContent := TextContent{
-			Type: "text",
-			Text: h.Prompt,
-		}
-		if strings.TrimSpace(h.ToolResults) == "" {
-			userWithoutToolCount++
-			if !userPromptCached && userWithoutToolCount == 2 {
-				textContent.CacheControl = getCacheControl()
-				userPromptCached = true
+		if h.Prompt != "" {
+			textContent := TextContent{
+				Type: "text",
+				Text: h.Prompt,
 			}
-		}
+			if strings.TrimSpace(h.ToolResults) == "" {
+				userWithoutToolCount++
+				if !userPromptCached && userWithoutToolCount == 2 {
+					textContent.CacheControl = getCacheControl()
+					userPromptCached = true
+				}
+			}
 
-		messages = append(messages, RequestMessage{
-			Role:    "user",
-			Content: []Content{textContent},
-		})
+			messages = append(messages, RequestMessage{
+				Role:    "user",
+				Content: []Content{textContent},
+			})
+		}
 
 		if h.ResponseContent != "" {
 			var content []ResponseMessage
