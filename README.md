@@ -1,129 +1,253 @@
 # Owl
 
-This is a cli-tool/service that prompts different llms and saves the contexts of the prompts to maintain a full conversation between a user and multiple llms.
+Owl is a Go-based AI assistant with three interfaces:
 
-To use cli 
-owl --context_name="$context" --prompt="$message" --stream --history=20
+- CLI mode for direct prompts
+- TUI mode for interactive terminal conversations
+- HTTP server mode for multi-user API access
 
-To start server 
-owl --serve
+It supports context-aware chat history, model switching, streaming responses, tool use, and embeddings-based retrieval.
 
-The response can be streamed or awaited. the streamed response is outputted without any formatting while the final text will be formatted with as markdown when using the cli. 
+## Quick Start
 
-## Run
+### Build
+
+```bash
+cd src
+go mod download
+go build -o owl
+```
+
+### Run
+
+```bash
+# Direct CLI prompt
+./owl -prompt "Explain Go interfaces"
+
+# TUI
 ./owl -tui
 
-## Database
-OWL_LOCAL_DATABASE=owl
+# HTTP server
+./owl -serve -port 3000
+```
 
-## For server mode (PostgreSQL)
-DB_CONNECTIONSTRING=postgres://user:pass@localhost/owl
+## Configuration
 
-## API Keys
+### Required API keys
+
+```bash
 ANTHROPIC_API_KEY=your_claude_key
 OPENAI_API_KEY=your_openai_key
-XAI_API_KEY=your_grok_key
+```
 
+### Optional model and storage settings
 
-## Structure
-owl/
-├── main.go                 # Entry point
-├── cli-response-handler.go # CLI output formatting
-├── get-context.go          # Context management
-├── data/                   # Database layer
-│   ├── history-*.go        # Conversation history
-│   ├── postgres-db.go      # PostgreSQL adapter
-│   └── sqllite-db.go       # SQLite adapter
-├── models/                 # LLM integrations
-│   ├── claude/
-│   ├── grok/
-│   ├── open-ai-4o/
-│   └── ...
-├── tools/                  # AI tools & capabilities
-│   ├── tool_runner.go      # Tool execution engine
-│   ├── git_tool.go
-│   ├── http_request_tool.go
-│   └── ...
-├── services/               # Business logic
-│   ├── query.go            # Query orchestration
-│   ├── clipboard.go
-│   └── pdf.go
-├── tui/                    # Terminal UI
-│   ├── chat_view.go
-│   └── list_view.go
-└── http/                   # HTTP server
-    └── server.go
+```bash
+GROK_API_KEY=your_grok_key
+OLLAMA_HOST=http://localhost:11434
+OWL_LOCAL_DATABASE=owl
+OWL_LOCAL_EMBEDDINGS_DATABASE=owl_embeddings
+```
 
+## Core Usage
 
-## Usage
-owl -tui
+```bash
+# Context-aware chat
+./owl -context_name refactoring -history 5 -prompt "Continue our last discussion"
 
-owl -prompt "Explain quantum computing"
+# Stream output
+./owl -stream -prompt "Give me a long answer"
 
-owl -model claude -prompt "Write a Go function"
-owl -model 4o -prompt "Analyze this code"
-owl -model grok -prompt "Summarize the news"
+# Attach image from clipboard
+./owl -image -prompt "Describe this image"
 
-owl -context_name myproject -history 5 -prompt "Continue our discussion"
+# Attach PDF
+./owl -pdf ./document.pdf -prompt "Summarize this PDF"
 
-owl -stream -prompt "Tell me a long story"
+# View context history
+./owl -view -context_name refactoring -history 20
+```
 
-owl -image -prompt "What's in this image?"
+## CLI Flags
 
-owl -pdf ./document.pdf -prompt "Summarize this document"
+Main flags currently wired in `src/main.go`:
 
-owl -thinking -stream_thinking -output_thinking -prompt "Solve this complex problem"
+- `-prompt` prompt text
+- `-context_name` context identifier (default: `misc`)
+- `-history` number of previous messages to include
+- `-model` model selector
+- `-stream` stream response chunks
+- `-tui` launch terminal UI
+- `-serve` run HTTP server
+- `-port` server port (default: `3000`)
+- `-secure` HTTPS mode (requires local cert/key files)
+- `-view` print saved history for a context
+- `-system` set system prompt for a context
+- `-thinking`, `-stream_thinking`, `-output_thinking` thinking controls
+- `-image` include clipboard image in prompt payload
+- `-pdf` include PDF file
+- `-web` enable web mode in supported models
+- `-embeddings` run embeddings workflow
+- `-chunk` chunk markdown and store embeddings
+- `-search` search embeddings and query with matches
+- `-create_context` generate and create a named context
+- `-tools` filter enabled tools by group
+- `-skills` load prompt skills from `~/.owl/skills`
 
-owl -view -context_name myproject -history 20
+## Architecture
 
-owl -serve -port 3000 -stream
-owl -serve -port 443 -secure  # HTTPS
+### Structure
 
-### Start a project context
-owl -context_name refactoring -prompt "I want to refactor my auth system"
+```mermaid
+flowchart TD
+    A[main.go] --> B[picker/model_picker.go]
+    A --> C[services/query.go]
+    A --> D[data/* repositories]
+    A --> E[tui/*]
+    A --> F[http/server.go]
+    A --> G[embeddings/embeddings.go]
 
-### Continue with history
-owl -context_name refactoring -history 3 -prompt "Show me the code changes"
+    B --> H[models/claude]
+    B --> I[models/open-ai-4o]
+    B --> J[models/open-ai-gpt]
+    B --> K[models/grok]
+    B --> L[models/gemeni]
+    B --> M[models/ollama]
 
-### Review the conversation
-owl -view -context_name refactoring
+    H --> N[tools/tool_runner.go]
+    N --> O[tools/* implementations]
+    C --> D
+```
 
-### Owl can read files, analyze code, and suggest improvements
-owl -prompt "Read main.go and suggest performance improvements"
+### Request and response flow
 
-owl -prompt "Generate an image of a futuristic cityscape at sunset"
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant X as CLI/TUI/HTTP
+    participant P as Model Picker
+    participant S as Query Service
+    participant M as Model
+    participant R as Response Handler
+    participant DB as History Repository
 
-### Models can make HTTP requests autonomously
-owl -prompt "Fetch the latest issues from the GitHub API for golang/go"
+    U->>X: prompt + flags
+    X->>DB: load/get context + history
+    X->>P: select model
+    P-->>X: model instance
+    X->>S: AwaitedQuery/StreamedQuery
+    S->>M: CreateRequest + send
+    M-->>R: streamed or final text
+    R->>DB: persist final response
+    R-->>U: output
+```
 
-## Features
-- [x] Cli
-- [x] Server
-- [x] Switch models with --model=
-- [x] Local db storage with sqlite (for cli mode)
-- [x] Remote db storage with postgresql (for server mode)
-- [x] Store history by user
-- [x] Store history by context
-- [x] Generate embeddings for string
-- [x] Supply system prompt for a context
-- [x] Grok
-- [x] Claude
-- [x] Open AI
-- [x] Vision (send in image)
-- [x] Pdf (send in pdf, claude only)
-- [x] Tool use
-    - [ ] Git status and logs
-    - [ ] list files
-    - [ ] Write file
-    - [ ] Read file
-- [ ] Tool use for streamed queries
-- [ ] Cache files and history in cluade
-- [ ] Split history in branches
-- [ ] File support for web server
-- [ ] Implement ollama as a model
+### Tool execution flow
 
-## Maybe
-- [ ] MCP  
-- [ ] Store texts with embeddings for RAG
-- [ ] Implement vector search with vertex ai
-- [ ] Prompt with embeddings search string
+```mermaid
+flowchart LR
+    A[Model response includes tool call] --> B[ToolRunner.ExecuteTool]
+    B --> C[Lookup tool in registry]
+    C --> D[Run tool with input schema]
+    D --> E[Tool result string]
+    E --> F[Response handler stores tool result]
+    F --> G[Model continues with tool output]
+```
+
+## What Is Implemented
+
+- Multi-mode operation: CLI, TUI, and HTTP server
+- Context-based conversation persistence with history replay
+- Model selection per request and preferred model persistence per context
+- Streaming and non-streaming query execution
+- Local data stores for conversation history (single-user and multi-user SQLite flows)
+- Embeddings pipeline with markdown chunking and vector search (DuckDB backend wiring)
+- Attachment modifiers for image, PDF, and web-enabled prompts
+- Tool framework with registration, grouping, and runtime filtering
+- System-prompt management per context
+
+## What Owl Can Do
+
+- Hold long-running conversations with named contexts
+- Continue a thread with configurable history depth
+- Switch model behavior using `-model`
+- Stream responses directly to the terminal or HTTP client
+- Read and write project files through tool-enabled model workflows
+- Generate images with a prompt via the image generation tool
+- Create and update notes and todos through integrated tools
+- Query semantic matches from embedded markdown documents
+
+## Implemented Models
+
+User-selectable models wired through `picker.GetModelForQuery`:
+
+- `claude`
+- `opus`
+- `sonnet`
+- `haiku`
+- `4o`
+- `gpt`
+- `codex`
+- `grok`
+- `gemeni`
+- `ollama`
+- `qwen3`
+
+Additional model packages in repository:
+
+- OpenAI embeddings model (`models/open-ai-embedings`)
+- OpenAI responses/image model (`models/open-ai-responses`)
+- OpenAI vision model (`models/open-ai-vision`)
+- Vertex Claude model package (`models/vertex-claude`)
+
+## Implemented Data Models
+
+Core persisted and transport model types:
+
+- `data.Context`
+- `data.History`
+- `data.User`
+- `data.EmbeddingMatch`
+- `commontypes.ToolResponse`
+- `commontypes.TokenUsage`
+- `tools.Tool`
+
+## Implemented Tools
+
+Registered tools (active):
+
+- `git_info`
+- `list_files`
+- `read_file`
+- `write_file`
+- `update_file`
+- `note`
+- `create_todo`
+- `issue_list`
+- `image_generator`
+- `early_bird_track_lookup` (remote mode)
+
+## HTTP API
+
+Current server routes in `src/http/server.go`:
+
+- `POST /api/login`
+- `POST /api/prompt`
+- `GET /api/context`
+- `GET /api/context/{id}`
+- `POST /api/context/{id}/systemprompt`
+- `POST /api/context/{id}/setmodel`
+- `GET /status`
+
+## Known Limitations
+
+- `http_request` tool is intentionally omitted because it is not working in current runtime configuration.
+- HTTPS server mode requires local `cert.pem` and `key.pem` files.
+- Some provider integrations depend on external credentials and environment setup.
+- Test coverage is currently focused on selected packages (for example chunking) rather than every package.
+
+## Roadmap Ideas
+
+- Expand automated tests across HTTP, tools, and model packages
+- Improve docs for deployment and production-grade server setup
+- Add clearer migration and backup flows for local databases
