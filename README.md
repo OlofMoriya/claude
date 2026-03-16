@@ -223,9 +223,7 @@ Registered tools (active):
 - `update_file`
 - `note`
 - `create_todo`
-- `issue_list`
 - `image_generator`
-- `early_bird_track_lookup` (remote mode)
 
 ## HTTP API
 
