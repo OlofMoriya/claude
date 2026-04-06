@@ -7,6 +7,7 @@ import (
 	"owl/data"
 	"owl/logger"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 )
@@ -55,6 +56,11 @@ func (tool *NoteTool) Run(i map[string]string) (string, error) {
 }
 
 func (tool *NoteTool) searchNotes(i map[string]string, notesDir string) (string, error) {
+	const (
+		maxMatches = 100
+		maxBytes   = 30000 // 30KB
+	)
+
 	text, ok := i["Text"]
 	if !ok || text == "" {
 		return "", fmt.Errorf("Text is required for search action")
@@ -82,6 +88,21 @@ func (tool *NoteTool) searchNotes(i map[string]string, notesDir string) (string,
 	result := strings.TrimSpace(string(out))
 	if result == "" {
 		return fmt.Sprintf("No matches found for '%s' in notes directory", text), nil
+	}
+
+	// Apply limits to prevent overflow
+	lines := strings.Split(result, "\n")
+	totalLines := len(lines)
+	if len(lines) > maxMatches {
+		lines = lines[:maxMatches]
+		result = strings.Join(lines, "\n")
+		result += fmt.Sprintf("\n\n... [Output truncated: showing first %d of %d total matches]", maxMatches, totalLines)
+	}
+
+	// Also check byte size
+	if utf8.RuneCountInString(result) > maxBytes {
+		runes := []rune(result)
+		result = string(runes[:maxBytes]) + fmt.Sprintf("\n\n... [Output truncated: showing first %d bytes]", maxBytes)
 	}
 
 	return fmt.Sprintf("Search results for '%s':\n%s", text, result), nil
@@ -169,6 +190,10 @@ func (tool *NoteTool) createNote(i map[string]string, notesDir string) (string, 
 }
 
 func (tool *NoteTool) readNote(i map[string]string, notesDir string) (string, error) {
+	const (
+		maxBytes = 100000 // 100KB limit for reading notes
+	)
+
 	name, ok := i["Name"]
 	if !ok || name == "" {
 		return "", fmt.Errorf("Name is required for read action")
@@ -193,7 +218,15 @@ func (tool *NoteTool) readNote(i map[string]string, notesDir string) (string, er
 		return "", fmt.Errorf("Failed to read note: %s", err)
 	}
 
-	return fmt.Sprintf("Content of '%s':\n\n%s", name, string(content)), nil
+	contentStr := string(content)
+
+	// Apply size limit to prevent overflow
+	if utf8.RuneCountInString(contentStr) > maxBytes {
+		runes := []rune(contentStr)
+		contentStr = string(runes[:maxBytes]) + fmt.Sprintf("\n\n... [Content truncated: showing first %d of %d bytes]", maxBytes, len(content))
+	}
+
+	return fmt.Sprintf("Content of '%s':\n\n%s", name, contentStr), nil
 }
 
 func (tool *NoteTool) GetName() string {

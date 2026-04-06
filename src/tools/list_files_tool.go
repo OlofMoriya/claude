@@ -1,9 +1,12 @@
 package tools
 
 import (
+	"fmt"
 	"os/exec"
 	"owl/data"
 	"owl/logger"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/fatih/color"
 )
@@ -40,15 +43,35 @@ func (tool *ListFilesTool) GetDefinition() (Tool, string) {
 }
 
 func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
+	const (
+		maxLines = 500
+		maxBytes = 50000 // 50KB
+	)
 
 	logger.Screen("\nAsked to list files", color.RGB(150, 150, 150))
 
 	out, err := exec.Command("find", ".", "-not", "(", "-path", "./.git", "-prune", ")", "-not", "(", "-path", "./node_modules", "-prune", ")").Output()
 	if err != nil {
 		logger.Debug.Printf("error while listing files: %v", err)
+		return "", err
 	}
 
 	value := string(out)
+	
+	// Apply limits to prevent overflow
+	lines := strings.Split(value, "\n")
+	if len(lines) > maxLines {
+		lines = lines[:maxLines]
+		value = strings.Join(lines, "\n")
+		value += fmt.Sprintf("\n\n... [Output truncated: showing first %d of %d total lines]", maxLines, len(strings.Split(string(out), "\n")))
+	}
+	
+	// Also check byte size
+	if utf8.RuneCountInString(value) > maxBytes {
+		runes := []rune(value)
+		value = string(runes[:maxBytes]) + fmt.Sprintf("\n\n... [Output truncated: showing first %d bytes]", maxBytes)
+	}
+
 	return value, nil
 }
 
