@@ -9,3 +9,4 @@ src/worklog.txt
 src/inspect_embeddings
 src/**/*.orig
 src/**/*.rej
+src/tools/internal_*.go
