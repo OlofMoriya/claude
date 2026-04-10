@@ -38,13 +38,13 @@ This file orchestrates the entire application lifecycle. It:
 - Parses command-line flags for all application modes
 - Initializes the logger
 - Routes execution to appropriate modes (CLI, TUI, Server, Embeddings, View)
-- Implements model selection logic (`getModelForQuery`)
+- Delegates model selection to `picker.GetModelForQuery`
 - Manages context creation and system prompt configuration
 - Handles history viewing with markdown rendering
 
 **Key Functions**:
 - `main()` - Entry point, routes to different modes
-- `getModelForQuery()` - Returns appropriate model instance based on user selection
+- `picker.GetModelForQuery()` - Instantiates models based on flags/context
 - `view_history()` - Displays conversation history with glamour markdown rendering
 - `launchTUI()` - Initializes and starts the TUI mode
 
@@ -342,11 +342,16 @@ Defines the `ResponseHandler` interface used by all models to output text. Imple
 
 ---
 
-## Owl architecture - models/model_selector.go
+## Owl architecture - picker/model_picker.go
 
-**Purpose**: Model selection documentation
+**Purpose**: Centralized model selection
 
-Note file indicating that model selection logic has been moved to main.go, http/server.go, and tui/chat_view.go to avoid circular dependencies.
+Contains `picker.GetModelForQuery`, the single entry point for instantiating AI models. It:
+- Applies context preferences and CLI/TUI flags to choose a provider
+- Configures provider-specific structs (Claude, OpenAI, Grok, Ollama, Gemini)
+- Ensures consistent streaming/thinking parameters across modes
+
+When adding a new provider, wire it in here so CLI, TUI, and HTTP layers all gain support automatically.
 
 ---
 
@@ -863,7 +868,7 @@ Full-featured HTTP server with:
 
 **Key Functions**:
 - `Run()` - Start HTTP server
-- `getModelForQuery()` - Model selection for server
+- `picker.GetModelForQuery()` - Model selection shared with CLI/TUI
 - `name_new_context()` - Auto-generate context names using AI
 
 **Type**: `HttpResponseHandler` - Response handler for HTTP streaming
@@ -974,7 +979,7 @@ Abstraction layers allow swapping:
 1. Create subdirectory in `models/`
 2. Implement `Model` interface
 3. Handle both streaming and non-streaming
-4. Add to model selection in main.go, http/server.go, tui/chat_view.go
+4. Register it in `picker/model_picker.go` so CLI, TUI, and HTTP all see it
 
 ## Adding a New Storage Backend
 
