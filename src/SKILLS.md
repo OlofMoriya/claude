@@ -452,6 +452,80 @@ Executes and orchestrates tool operations.
 
 ---
 
+### 11. **Internal DBAsk Tool** (`dbask_internal_tool.go`)
+Safely runs the local `dbask` CLI with strict database guardrails.
+
+**Tool Name:** `internal_dbask_tool`
+
+**Capabilities:**
+- Executes `dbask` query mode (`-q`), tracking mode (`-t`), table listing (`-at`), and table structure lookup (`-ts`)
+- Requires and enforces `-p` on every command
+- Validates port against a hardcoded allowlist
+- Blocks write queries in every environment (read-only enforcement)
+- Requires interactive approval before running `-q` queries against production ports
+- When running inside TMUX, requires interactive approval for all `-q` queries (all environments)
+- Uses a dedicated query approval popup with yes/no prompt (not the diff viewer)
+
+**Required Parameter:**
+- `Port` (string)
+
+**Optional Parameters:**
+- `Database` (required when `Query` is used)
+- `Query` (SQL query)
+- `TrackingNumber` (tracking lookup mode)
+- `AllTables` (`true/false`, uses `-at`, requires `Database`)
+- `TableStructure` (table name, uses `-ts`, requires `Database`)
+- `Json` (`true/false/1/0/yes/no`)
+
+**Approved Ports:**
+- `2001` dev services (`bird-nest-dev:europe-north1:services-db-instance`)
+- `2002` test services (`bird-nest-test:europe-north1:services-db-instance`)
+- `2003` stage services (`bird-nest-stage:europe-north1:services-db-instance`)
+- `2004` prod services (`bird-nest-prod:europe-north1:services-db-instance`)
+- `2005` prod services replica (`bird-nest-prod:europe-north1:services-db-instance-replica`)
+- `2101` dev status (`bird-nest-dev:europe-north1:status-db-instance`)
+- `2102` test status (`bird-nest-test:europe-north1:status-db-instance`)
+- `2103` stage status (`bird-nest-stage:europe-north1:status-db-instance`)
+- `2104` prod status (`bird-nest-prod:europe-north1:status-db-instance`)
+- `2201` dev sagas (`bird-nest-dev:europe-north1:sagas-db-instance`)
+- `2202` test sagas (`bird-nest-test:europe-north1:sagas-db-instance`)
+- `2203` stage sagas (`bird-nest-stage:europe-north1:sagas-db-instance`)
+- `2204` prod sagas (`bird-nest-prod:europe-north1:sagas-db-instance`)
+- `2301` dev address (`bird-nest-dev:europe-north1:address-db-instance`)
+- `2302` test address (`bird-nest-test:europe-north1:address-db-instance`)
+- `2303` stage address (`bird-nest-stage:europe-north1:address-db-instance`)
+- `2304` prod address (`bird-nest-prod:europe-north1:address-db-instance`)
+- `2305` prod address replica (`bird-nest-prod:europe-north1:address-db-instance-replica`)
+
+---
+
+### 12. **Stock Price Lookup Tool** (`stock_price_lookup_tool.go`)
+Fetches current stock/index quotes from Yahoo Finance without API keys.
+
+**Tool Name:** `stock_price_lookup`
+
+**Modes:**
+- `single` - one symbol via `Symbol`
+- `custom_list` - comma-separated symbols via `Symbols`
+- `general_market` - grouped defaults for global/swedish/american/asian
+- `my_standards` - personal default watchlist
+
+**General Market Defaults:**
+- `global`: `VT`, `ACWI`, `URTH`
+- `swedish`: `^OMXS30`, `EQT.ST`, `ATCO-A.ST`, `VOLV-B.ST`
+- `american`: `^GSPC`, `^IXIC`, `^DJI`, `^RUT`
+- `asian`: `^N225`, `^HSI`, `000001.SS`, `^KS11`
+
+**My Standards Defaults:**
+- `AAPL`, `TSLA`, `MSFT`, `MU`, `IBM`, `GOOGL`, `META`, `GME`
+
+**Parameters:**
+- `Mode` (`single`, `custom_list`, `general_market`, `my_standards`)
+- `Symbol` (required in `single` mode)
+- `Symbols` (required in `custom_list` mode)
+
+---
+
 ## Supported AI Models
 
 The application integrates with multiple AI providers:
