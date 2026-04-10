@@ -360,6 +360,11 @@ func (m *chatHistoryViewModel) renderCompactMode(visible []data.History) string 
 			codeIndicator = dimStyle.Render(" 💻")
 		}
 
+		toolSummary := formatToolCallCompactSummary(h.ToolUse)
+		if toolSummary != "" {
+			toolSummary = " " + dimStyle.Render("["+toolSummary+"]")
+		}
+
 		// Truncate prompt to 1 line
 		prompt := h.Prompt
 		if len(prompt) > m.width-20 {
@@ -380,11 +385,12 @@ func (m *chatHistoryViewModel) renderCompactMode(visible []data.History) string 
 		}
 
 		// Format: cursor [archived] [#] prompt | response [code]
-		line := fmt.Sprintf("%s%s[%d]%s %s",
+		line := fmt.Sprintf("%s%s[%d]%s%s %s",
 			cursor,
 			archivedPrefix,
 			i+1,
 			codeIndicator,
+			toolSummary,
 			dimStyle.Render("Q:"))
 
 		msgStyle := style
@@ -402,6 +408,38 @@ func (m *chatHistoryViewModel) renderCompactMode(visible []data.History) string 
 	}
 
 	return b.String()
+}
+
+func formatToolCallCompactSummary(toolUses []data.ToolUse) string {
+	total := len(toolUses)
+	if total == 0 {
+		return ""
+	}
+
+	failed := 0
+	for _, tu := range toolUses {
+		if !tu.Result.Success {
+			failed++
+		}
+	}
+	successful := total - failed
+
+	parts := []string{}
+	if successful > 0 {
+		parts = append(parts, fmt.Sprintf("%d successful tool %s", successful, pluralizeToolCall(successful)))
+	}
+	if failed > 0 {
+		parts = append(parts, fmt.Sprintf("%d failed tool %s", failed, pluralizeToolCall(failed)))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+func pluralizeToolCall(count int) string {
+	if count == 1 {
+		return "call"
+	}
+	return "calls"
 }
 
 func (m *chatHistoryViewModel) renderExpandedMode(visible []data.History) string {

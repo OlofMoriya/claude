@@ -565,7 +565,7 @@ func (httpResponseHandler *HttpResponseHandler) RecievedText(text string, useCol
 	httpResponseHandler.responseWriter.(http.Flusher).Flush()
 }
 
-func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
+func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *commontypes.TokenUsage) {
 	repository, ok := httpResponseHandler.Repository.(*data.MultiUserContext)
 
 	logger.Screen(fmt.Sprintf("final text: %s", response), color.RGB(150, 150, 150))
@@ -575,15 +575,14 @@ func (httpResponseHandler *HttpResponseHandler) FinalText(contextId int64, promp
 	}
 
 	history := data.History{
-		ContextId:       contextId,
-		Prompt:          prompt,
-		Response:        response,
-		Abbreviation:    "",
-		TokenCount:      0,
-		UserId:          int64(repository.User.Id),
-		ResponseContent: responseContent,
-		ToolResults:     toolResults,
-		Model:           modelName,
+		ContextId:    contextId,
+		Prompt:       prompt,
+		Response:     response,
+		Abbreviation: "",
+		TokenCount:   0,
+		UserId:       int64(repository.User.Id),
+		Model:        modelName,
+		ToolUse:      toolUse,
 	}
 
 	if usage != nil {

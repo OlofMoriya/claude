@@ -1,6 +1,9 @@
 package tools
 
-import commontypes "owl/common_types"
+import (
+	commontypes "owl/common_types"
+	"owl/data"
+)
 
 type ToolResponseHandler struct {
 	ResponseHandler commontypes.ResponseHandler
@@ -15,9 +18,9 @@ func (toolResponseHandler *ToolResponseHandler) RecievedText(text string, color 
 	//TODO: Implement streaming tool use
 }
 
-func (toolResponseHandler *ToolResponseHandler) FinalText(contextId int64, prompt string, response string, resposneContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
+func (toolResponseHandler *ToolResponseHandler) FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *commontypes.TokenUsage) {
 	if toolResponseHandler.ResponseHandler != nil {
-		toolResponseHandler.ResponseHandler.FinalText(contextId, prompt, response, resposneContent, toolResults, modelName, usage)
+		toolResponseHandler.ResponseHandler.FinalText(contextId, prompt, response, toolUse, modelName, usage)
 	}
 	toolResponseHandler.ResponseChannel = make(chan string, 100)
 	toolResponseHandler.ResponseChannel <- response

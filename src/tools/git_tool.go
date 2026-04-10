@@ -87,6 +87,26 @@ func (tool *GitStatusTool) GetGroups() []string {
 	return []string{"dev"}
 }
 
+func (tool *GitStatusTool) FormatToolUse(toolUse data.ToolUse) []string {
+	input := ParseToolUseInput(toolUse)
+	status := "✓"
+	if !toolUse.Result.Success {
+		status = "✗"
+	}
+
+	action := strings.TrimSpace(input["Action"])
+	if action == "" {
+		action = "status"
+	}
+
+	lines := []string{fmt.Sprintf("git_info %s", status), fmt.Sprintf("action: %s", action)}
+	if limit := strings.TrimSpace(input["Limit"]); limit != "" {
+		lines = append(lines, fmt.Sprintf("limit: %s", limit))
+	}
+
+	return lines
+}
+
 func init() {
 	Register(&GitStatusTool{})
 }

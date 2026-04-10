@@ -14,6 +14,8 @@ import (
 	"owl/tools"
 	"sort"
 	"strings"
+
+	"github.com/fatih/color"
 )
 
 type ClaudeModel struct {
@@ -29,17 +31,19 @@ type ClaudeModel struct {
 	UseStreaming      bool
 
 	//Track streamed content
-	CurrentEvent     string
-	CurrentToolUse   *StreamedToolUse
-	StreamedToolUses []StreamedToolUse
-	Modifiers        *commontypes.PayloadModifiers
-	PendingUsage     *commontypes.TokenUsage
+	CurrentEvent           string
+	CurrentToolUse         *StreamedToolUse
+	StreamedToolUses       []StreamedToolUse
+	StreamedToolResultById map[string]data.ToolResult
+	Modifiers              *commontypes.PayloadModifiers
+	PendingUsage           *commontypes.TokenUsage
 }
 
 type StreamedToolUse struct {
-	Id    string
-	Name  string
-	Input string
+	Id         string
+	Name       string
+	Input      string
+	CallerType string
 }
 
 func (model *ClaudeModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {
@@ -67,6 +71,8 @@ func (model *ClaudeModel) CreateRequest(context *data.Context, prompt string, st
 	model.Prompt = prompt
 	model.AccumulatedAnswer = ""
 	model.Context = context
+	model.StreamedToolUses = nil
+	model.StreamedToolResultById = map[string]data.ToolResult{}
 
 	request := createClaudeRequest(payload)
 	model.Modifiers = modifiers
@@ -87,96 +93,139 @@ func (model *ClaudeModel) HandleStreamedLine(line []byte) {
 
 	// Parse data based on current event
 	if strings.HasPrefix(responseLine, "data: ") {
-		data, _ := strings.CutPrefix(responseLine, "data: ")
+		payload, _ := strings.CutPrefix(responseLine, "data: ")
 
 		switch model.CurrentEvent {
 		case "content_block_start":
-			model.handleContentBlockStart(data)
+			model.handleContentBlockStart(payload)
 		case "content_block_delta":
-			model.handleContentBlockDelta(data)
+			model.handleContentBlockDelta(payload)
 		case "content_block_stop":
+			if model.CurrentToolUse != nil {
+				model.StreamedToolUses = append(model.StreamedToolUses, *model.CurrentToolUse)
+				model.CurrentToolUse = nil
+			}
 			model.ResponseHandler.RecievedText("\n", nil)
 		case "message_delta":
-			model.handleMessageDelta(data)
+			model.handleMessageDelta(payload)
 		case "message_stop":
-
-			// model.StreamedToolUses
 			fakeResponse := MessageResponse{
 				Content: []ResponseMessage{},
 			}
 
 			logger.Debug.Printf("Message stop with toolUsesSaved: %v", model.StreamedToolUses)
 
-			//create a faked messageresponse?
 			for _, toolUse := range model.StreamedToolUses {
-				var input_map map[string]string
-				err := json.Unmarshal([]byte(toolUse.Input), &input_map)
+				var inputMap map[string]interface{}
+				err := json.Unmarshal([]byte(toolUse.Input), &inputMap)
 				if err != nil {
-					panic(fmt.Sprintf("could not marshall %v to json for streamed tool use", toolUse.Input))
+					inputMap = map[string]interface{}{}
 				}
+
+				blockType := "tool_use"
+				if toolUse.CallerType == "assistant_server" {
+					blockType = "server_tool_use"
+				}
+
 				content := ResponseMessage{
 					Id:    toolUse.Id,
 					Name:  toolUse.Name,
-					Input: input_map,
-					Type:  "tool_use",
+					Input: inputMap,
+					Type:  blockType,
 				}
 				fakeResponse.Content = append(fakeResponse.Content, content)
 			}
 
-			logger.Debug.Printf("Message stop with fakedResponse.Content: %v", fakeResponse.Content)
-			tool_responses, tool_result_json := model.handleToolCalls(fakeResponse)
-			logger.Debug.Printf("Results from tool calls %v", tool_responses)
-
-			savedContent := ""
-			if len(model.StreamedToolUses) > 0 {
-				contentJson, err := json.Marshal(fakeResponse.Content)
-				if err != nil {
-					logger.Debug.Printf("Error marshalling json content from response: %s", err)
+			for toolUseId, result := range model.StreamedToolResultById {
+				var resultContent interface{}
+				if err := json.Unmarshal([]byte(result.Content), &resultContent); err != nil {
+					resultContent = result.Content
 				}
-				savedContent = string(contentJson)
+				fakeResponse.Content = append(fakeResponse.Content, ResponseMessage{
+					Type:      "web_search_tool_result",
+					ToolUseId: toolUseId,
+					Content:   resultContent,
+				})
 			}
 
+			logger.Debug.Printf("Message stop with fakedResponse.Content: %v", fakeResponse.Content)
+			toolUses, localToolUses := model.collectToolUses(fakeResponse)
+
 			usage := model.PendingUsage
-			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, savedContent, tool_result_json, model.ModelVersion, usage)
+			model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, model.AccumulatedAnswer, toolUses, model.ModelVersion, usage)
 			model.PendingUsage = nil
 
-			if len(tool_responses) > 0 {
+			if len(localToolUses) > 0 {
 				// Continue conversation with tool results
 				services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
-					ToolResponses:    tool_responses,
+					ToolUses:         localToolUses,
 					ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 				}, model.ModelVersion)
 			}
+
+			model.StreamedToolUses = nil
+			model.StreamedToolResultById = map[string]data.ToolResult{}
 		}
 	}
 }
 
-func (model *ClaudeModel) handleContentBlockStart(data string) {
+func (model *ClaudeModel) handleContentBlockStart(payload string) {
 	var response struct {
 		Type         string `json:"type"`
 		Index        int    `json:"index"`
 		ContentBlock struct {
-			Type string `json:"type"`
-			Id   string `json:"id,omitempty"`
-			Name string `json:"name,omitempty"`
+			Type      string      `json:"type"`
+			Id        string      `json:"id,omitempty"`
+			Name      string      `json:"name,omitempty"`
+			ToolUseId string      `json:"tool_use_id,omitempty"`
+			Content   interface{} `json:"content,omitempty"`
 		} `json:"content_block"`
 	}
 
-	if err := json.Unmarshal([]byte(data), &response); err != nil {
+	if err := json.Unmarshal([]byte(payload), &response); err != nil {
 		println(fmt.Sprintf("Error unmarshalling content_block_start: %v", err))
 		return
 	}
 
-	if response.ContentBlock.Type == "tool_use" {
+	if response.ContentBlock.Type == "tool_use" || response.ContentBlock.Type == "server_tool_use" {
+		callerType := "assistant"
+		if response.ContentBlock.Type == "server_tool_use" {
+			callerType = "assistant_server"
+		}
+
 		model.CurrentToolUse = &StreamedToolUse{}
 		model.CurrentToolUse.Id = response.ContentBlock.Id
 		model.CurrentToolUse.Name = response.ContentBlock.Name
 		model.CurrentToolUse.Input = ""
+		model.CurrentToolUse.CallerType = callerType
 		logger.Debug.Printf("starting streaming tool use block")
+	}
+
+	if response.ContentBlock.Type == "web_search_tool_result" {
+		normalized, ok := normalizeWebSearchToolResultContent(response.ContentBlock.Content)
+		if !ok {
+			return
+		}
+
+		bytes, err := json.Marshal(normalized)
+		if err != nil {
+			return
+		}
+
+		toolUseId := response.ContentBlock.ToolUseId
+		if toolUseId == "" {
+			return
+		}
+
+		model.StreamedToolResultById[toolUseId] = data.ToolResult{
+			ToolUseId: toolUseId,
+			Content:   string(bytes),
+			Success:   !webSearchResultHasError(bytes),
+		}
 	}
 }
 
-func (model *ClaudeModel) handleContentBlockDelta(data string) {
+func (model *ClaudeModel) handleContentBlockDelta(payload string) {
 	var response struct {
 		Type  string `json:"type"`
 		Index int    `json:"index"`
@@ -188,14 +237,16 @@ func (model *ClaudeModel) handleContentBlockDelta(data string) {
 		} `json:"delta"`
 	}
 
-	if err := json.Unmarshal([]byte(data), &response); err != nil {
+	if err := json.Unmarshal([]byte(payload), &response); err != nil {
 		println(fmt.Sprintf("Error unmarshalling content_block_delta: %v", err))
 		return
 	}
 
 	if response.Delta.Type == "input_json_delta" {
 		// Accumulate tool input
-		model.CurrentToolUse.Input += response.Delta.PartialJson
+		if model.CurrentToolUse != nil {
+			model.CurrentToolUse.Input += response.Delta.PartialJson
+		}
 	} else if response.Delta.Type == "text_delta" {
 		model.AccumulatedAnswer = model.AccumulatedAnswer + response.Delta.Text
 		model.ResponseHandler.RecievedText(response.Delta.Text, nil)
@@ -210,7 +261,7 @@ func (model *ClaudeModel) handleContentBlockDelta(data string) {
 	}
 }
 
-func (model *ClaudeModel) handleMessageDelta(data string) {
+func (model *ClaudeModel) handleMessageDelta(payload string) {
 	var response struct {
 		Type  string `json:"type"`
 		Delta struct {
@@ -219,23 +270,29 @@ func (model *ClaudeModel) handleMessageDelta(data string) {
 		Usage Usage `json:"usage"`
 	}
 
-	if err := json.Unmarshal([]byte(data), &response); err != nil {
+	if err := json.Unmarshal([]byte(payload), &response); err != nil {
 		println(fmt.Sprintf("Error unmarshalling message_delta: %v", err))
 		return
 	}
 
-	if response.Delta.StopReason == "tool_use" {
-		// Tool use detected - execute the tool
-		model.StreamedToolUses = append(model.StreamedToolUses, *model.CurrentToolUse)
-
-		logger.Debug.Printf("new streaming tool use completed and appended %s", model.CurrentToolUse)
-		model.CurrentToolUse = nil
+	if response.Delta.StopReason == "tool_use" && model.CurrentToolUse != nil {
+		alreadyTracked := false
+		for _, toolUse := range model.StreamedToolUses {
+			if toolUse.Id == model.CurrentToolUse.Id {
+				alreadyTracked = true
+				break
+			}
+		}
+		if !alreadyTracked {
+			model.StreamedToolUses = append(model.StreamedToolUses, *model.CurrentToolUse)
+		}
+		logger.Debug.Printf("message_delta reached tool_use stop reason with active tool %s", model.CurrentToolUse.Id)
 	}
 
 	if usage := claudeUsageToTokenUsage(response.Usage); usage != nil {
 		model.PendingUsage = usage
 	}
-	logger.Debug.Printf("message delta arrived with data: %v", data)
+	logger.Debug.Printf("message delta arrived with data: %v", payload)
 }
 
 func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
@@ -257,59 +314,158 @@ func (model *ClaudeModel) HandleBodyBytes(bytes []byte) {
 		}
 	}
 
-	toolResponses, toolResultsJson := model.handleToolCalls(apiResponse)
-
-	// Save the assistant response with tool results
-	contentJson, err := json.Marshal(apiResponse.Content)
-	if err != nil {
-		logger.Debug.Printf("Error marshalling json content from response: %s", err)
-	}
+	toolUses, localToolUses := model.collectToolUses(apiResponse)
 
 	usage := claudeUsageToTokenUsage(apiResponse.Usage)
-	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, responseText, string(contentJson), toolResultsJson, model.ModelVersion, usage)
+	model.ResponseHandler.FinalText(model.Context.Id, model.Prompt, responseText, toolUses, model.ModelVersion, usage)
 	model.PendingUsage = nil
 
-	if len(toolResponses) > 0 {
+	if len(localToolUses) > 0 {
 		// Continue conversation with tool results
 		services.AwaitedQuery("", model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
-			ToolResponses:    toolResponses,
+			ToolUses:         localToolUses,
 			ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 		}, model.ModelVersion)
 	}
 }
 
-func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) ([]commontypes.ToolResponse, string) {
-	toolResponses := []commontypes.ToolResponse{}
-	for i, content := range apiResponse.Content {
-		//possible handle web search results too... But I don't know what we should do with it here
-		if content.Type == "tool_use" {
-			response, err := model.useTool(content)
+func (model *ClaudeModel) collectToolUses(apiResponse MessageResponse) ([]data.ToolUse, []data.ToolUse) {
+	localToolUses := model.handleToolCalls(apiResponse)
+	assistantToolUses := model.handleAssistantSideToolCallsParsing(apiResponse)
+
+	allToolUses := make([]data.ToolUse, 0, len(localToolUses)+len(assistantToolUses))
+	allToolUses = append(allToolUses, localToolUses...)
+	allToolUses = append(allToolUses, assistantToolUses...)
+
+	return allToolUses, localToolUses
+}
+
+func (model *ClaudeModel) handleToolCalls(apiResponse MessageResponse) []data.ToolUse {
+	toolUses := []data.ToolUse{}
+
+	for _, content := range apiResponse.Content {
+		if content.Type != "tool_use" {
+			continue
+		}
+
+		bytes, err := json.Marshal(content.Input)
+		if err != nil {
+			logger.Debug.Println(err)
+			logger.Screen("error marshalling content from tool use", color.RGB(150, 150, 150))
+			continue
+		}
+
+		toolUse := data.ToolUse{
+			Id:         content.Id,
+			Name:       content.Name,
+			Input:      string(bytes),
+			CallerType: "assistant",
+		}
+		response, err := model.useTool(content)
+		toolUse.Result.Content = response.Response
+		toolUse.Result.ToolUseId = toolUse.Id
+
+		if err != nil {
+			toolUse.Result.Success = false
+			logger.Debug.Println(err)
+		} else {
+			toolUse.Result.Success = true
+		}
+
+		toolUses = append(toolUses, toolUse)
+	}
+
+	return toolUses
+}
+
+func (model *ClaudeModel) handleAssistantSideToolCallsParsing(apiResponse MessageResponse) []data.ToolUse {
+	toolUses := []data.ToolUse{}
+	toolUseById := map[string]int{}
+
+	for _, content := range apiResponse.Content {
+		switch content.Type {
+		case "server_tool_use":
+			bytes, err := json.Marshal(content.Input)
 			if err != nil {
 				logger.Debug.Println(err)
+				continue
 			}
-			toolResponses = append(toolResponses, response)
+
+			toolUse := data.ToolUse{
+				Id:         content.Id,
+				Name:       content.Name,
+				Input:      string(bytes),
+				CallerType: "assistant_server",
+				Result: data.ToolResult{
+					ToolUseId: content.Id,
+					Success:   true,
+				},
+			}
+
+			toolUseById[toolUse.Id] = len(toolUses)
+			toolUses = append(toolUses, toolUse)
+
+		case "web_search_tool_result":
+			toolUseId := content.ToolUseId
+			if toolUseId == "" {
+				continue
+			}
+
+			normalized, ok := normalizeWebSearchToolResultContent(content.Content)
+			if !ok {
+				normalized = map[string]interface{}{
+					"type":       "web_search_tool_result_error",
+					"error_code": "unavailable",
+				}
+			}
+
+			resultBytes, err := json.Marshal(normalized)
+			if err != nil {
+				logger.Debug.Printf("failed to marshal web search result: %v", err)
+				continue
+			}
+
+			result := data.ToolResult{
+				ToolUseId: toolUseId,
+				Content:   string(resultBytes),
+				Success:   !webSearchResultHasError(resultBytes),
+			}
+
+			if idx, ok := toolUseById[toolUseId]; ok {
+				toolUses[idx].Result = result
+			} else {
+				toolUses = append(toolUses, data.ToolUse{
+					Id:         toolUseId,
+					Name:       "web_search",
+					Input:      "{}",
+					CallerType: "assistant_server",
+					Result:     result,
+				})
+				toolUseById[toolUseId] = len(toolUses) - 1
+			}
 		}
-		json, _ := json.Marshal(content)
-		logger.Debug.Printf("i: %d, content: %v", i, string(json))
 	}
 
-	// Marshal tool results
-	toolResultsJson := ""
-	if len(toolResponses) > 0 {
-		toolResultsBytes, err := json.Marshal(toolResponses)
-		if err != nil {
-			logger.Debug.Printf("Error marshalling tool results: %s", err)
-		} else {
-			toolResultsJson = string(toolResultsBytes)
-		}
-	}
-
-	return toolResponses, toolResultsJson
+	return toolUses
 }
 
 func (model *ClaudeModel) useTool(content ResponseMessage) (commontypes.ToolResponse, error) {
 	runner := tools.ToolRunner{ResponseHandler: &model.ResponseHandler, HistoryRepository: &model.HistoryRepository, Context: model.Context}
-	result, err := runner.ExecuteTool(*model.Context, content.Name, content.Input)
+	args := map[string]string{}
+	for key, value := range content.Input {
+		switch v := value.(type) {
+		case string:
+			args[key] = v
+		default:
+			bytes, err := json.Marshal(v)
+			if err != nil {
+				return commontypes.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("could not marshal tool arg %s: %w", key, err)
+			}
+			args[key] = string(bytes)
+		}
+	}
+
+	result, err := runner.ExecuteTool(*model.Context, content.Name, args)
 
 	if result != "" && err == nil {
 		return commontypes.ToolResponse{
@@ -326,8 +482,66 @@ func getCacheControl() *CacheControl {
 	return &CacheControl{Type: "ephemeral"}
 }
 
+func webSearchResultHasError(resultBytes []byte) bool {
+	if len(resultBytes) == 0 {
+		return true
+	}
+
+	var arr []map[string]interface{}
+	if err := json.Unmarshal(resultBytes, &arr); err == nil {
+		for _, item := range arr {
+			if v, ok := item["type"].(string); ok && v == "web_search_tool_result_error" {
+				return true
+			}
+		}
+		return false
+	}
+
+	var obj map[string]interface{}
+	if err := json.Unmarshal(resultBytes, &obj); err == nil {
+		if v, ok := obj["type"].(string); ok && v == "web_search_tool_result_error" {
+			return true
+		}
+	}
+
+	return false
+}
+
+func normalizeWebSearchToolResultContent(raw interface{}) (interface{}, bool) {
+	if raw == nil {
+		return nil, false
+	}
+
+	switch v := raw.(type) {
+	case []interface{}:
+		return v, true
+	case map[string]interface{}:
+		return v, true
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return nil, false
+		}
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(trimmed), &parsed); err != nil {
+			return nil, false
+		}
+		return normalizeWebSearchToolResultContent(parsed)
+	default:
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return nil, false
+		}
+		var parsed interface{}
+		if err := json.Unmarshal(bytes, &parsed); err != nil {
+			return nil, false
+		}
+		return normalizeWebSearchToolResultContent(parsed)
+	}
+}
+
 func createClaudePayload(prompt string, streamed bool, history []data.History, model string, useThinking bool, context *data.Context, modifiers *commontypes.PayloadModifiers) MessageBody {
-	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolResponses), len(history))
+	logger.Debug.Printf("crateClaudePayload called with responseCount: %d and history count: %d", len(modifiers.ToolUses), len(history))
 
 	messages := []Message{}
 	toolCacheTargets := selectToolCacheTargets(history)
@@ -336,20 +550,14 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 
 	// Process history and handle tool results
 	for i, h := range history {
-		j, err := json.Marshal(h)
-		if err != nil {
-			panic("failed to marshall h")
-		}
-		logger.Debug.Printf("added history: %s", j)
 
-		// Create user message with potential caching
-
+		//user
 		if h.Prompt != "" {
 			textContent := TextContent{
 				Type: "text",
 				Text: h.Prompt,
 			}
-			if strings.TrimSpace(h.ToolResults) == "" {
+			if len(h.ToolUse) == 0 {
 				userWithoutToolCount++
 				if !userPromptCached && userWithoutToolCount == 2 {
 					textContent.CacheControl = getCacheControl()
@@ -363,54 +571,91 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 			})
 		}
 
-		if h.ResponseContent != "" {
-			var content []ResponseMessage
-			err := json.Unmarshal([]byte(h.ResponseContent), &content)
-			if err != nil {
-				fmt.Printf("%s", h.ResponseContent)
-				panic(err)
+		assistantContent := []Content{}
+		if h.Response != "" {
+			assistantContent = append(assistantContent, TextContent{Type: "text", Text: h.Response})
+		}
+		for _, tu := range h.ToolUse {
+			var parsedInput map[string]interface{}
+			if err := json.Unmarshal([]byte(tu.Input), &parsedInput); err != nil || parsedInput == nil {
+				parsedInput = map[string]interface{}{}
 			}
 
-			messages = append(messages, HistoricMessage{Role: "assistant", Content: content})
+			if tu.CallerType == "assistant_server" {
+				assistantContent = append(assistantContent, ToolUseContent{
+					Type:  "server_tool_use",
+					Id:    tu.Id,
+					Name:  tu.Name,
+					Input: parsedInput,
+				})
 
-			// Check if this response contains tool_use blocks
-			hasToolUse := false
-			for _, c := range content {
-				if c.Type == "tool_use" {
-					hasToolUse = true
-					break
+				var providerContent interface{}
+				if err := json.Unmarshal([]byte(tu.Result.Content), &providerContent); err != nil {
+					providerContent = nil
 				}
-			}
-
-			if hasToolUse && h.ToolResults != "" {
-				toolResultContent := []Content{}
-				var toolResults []commontypes.ToolResponse
-				err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
-				if err == nil {
-					cacheToolResult := toolCacheTargets[i]
-					for tr_i, tr := range toolResults {
-						content := ToolResponseContent{
-							Type:    "tool_result",
-							Content: tr.Response,
-							IsError: false,
-							Id:      tr.Id,
-						}
-						if cacheToolResult && tr_i == len(toolResults)-1 {
-							content.CacheControl = getCacheControl()
-						}
-
-						toolResultContent = append(toolResultContent, content)
+				normalizedProviderContent, ok := normalizeWebSearchToolResultContent(providerContent)
+				if !ok {
+					normalizedProviderContent = map[string]interface{}{
+						"type":       "web_search_tool_result_error",
+						"error_code": "unavailable",
 					}
-					messages = append(messages, RequestMessage{Role: "user", Content: toolResultContent})
 				}
 
+				assistantContent = append(assistantContent, ServerToolResultContent{
+					Type:      "web_search_tool_result",
+					ToolUseId: tu.Id,
+					Content:   normalizedProviderContent,
+				})
+			} else {
+				assistantContent = append(assistantContent, ToolUseContent{
+					Type:  "tool_use",
+					Id:    tu.Id,
+					Name:  tu.Name,
+					Input: parsedInput,
+				})
 			}
-		} else {
-			content := TextContent{
-				Type: "text",
-				Text: h.Response,
+		}
+
+		if len(assistantContent) > 0 {
+			messages = append(messages, RequestMessage{
+				Role:    "assistant",
+				Content: assistantContent,
+			})
+		}
+
+		//possible answers for tools
+
+		if len(h.ToolUse) > 0 {
+			toolResultContent := []Content{}
+			cacheToolResult := toolCacheTargets[i]
+			localToolCount := 0
+			for _, tr := range h.ToolUse {
+				if tr.CallerType != "assistant_server" {
+					localToolCount++
+				}
 			}
-			messages = append(messages, RequestMessage{Role: "assistant", Content: []Content{content}})
+			localIndex := 0
+
+			for _, tr := range h.ToolUse {
+				if tr.CallerType == "assistant_server" {
+					continue
+				}
+				content := ToolResponseContent{
+					Type:    "tool_result",
+					Content: tr.Result.Content,
+					IsError: !tr.Result.Success,
+					Id:      tr.Id,
+				}
+				if cacheToolResult && localToolCount > 0 && localIndex == localToolCount-1 {
+					content.CacheControl = getCacheControl()
+				}
+
+				toolResultContent = append(toolResultContent, content)
+				localIndex++
+			}
+			if len(toolResultContent) > 0 {
+				messages = append(messages, RequestMessage{Role: "user", Content: toolResultContent})
+			}
 		}
 	}
 
@@ -481,7 +726,7 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 func selectToolCacheTargets(history []data.History) map[int]bool {
 	indices := make([]int, 0, len(history))
 	for i := range history {
-		if strings.TrimSpace(history[i].ToolResults) != "" {
+		if len(history[i].ToolUse) > 0 {
 			indices = append(indices, i)
 		}
 	}

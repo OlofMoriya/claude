@@ -6,11 +6,15 @@ import (
 	"os/exec"
 	"owl/data"
 	"owl/logger"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fatih/color"
 )
+
+var unifiedDiffHunkHeader = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
 
 type FileUpdateTool struct {
 	RequireApproval bool // Set to true to require user approval before applying changes
@@ -49,6 +53,10 @@ func (tool *FileUpdateTool) Run(i map[string]string) (string, error) {
 	diff, ok := i["Diff"]
 	if !ok || diff == "" {
 		return "", fmt.Errorf("Diff parameter is required")
+	}
+
+	if err := validateUnifiedDiff(diff); err != nil {
+		return "", fmt.Errorf("Invalid unified diff: %w", err)
 	}
 
 	logger.Screen(fmt.Sprintf("\nAsked to apply diff"), color.RGB(150, 150, 150))
@@ -162,6 +170,155 @@ func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 
 func (tool *FileUpdateTool) GetGroups() []string {
 	return []string{"dev", "writer"}
+}
+
+func validateUnifiedDiff(diff string) error {
+	diff = strings.ReplaceAll(diff, "\r\n", "\n")
+	lines := strings.Split(diff, "\n")
+
+	if len(lines) == 0 {
+		return fmt.Errorf("diff is empty")
+	}
+
+	i := 0
+	foundFileSection := false
+
+	for i < len(lines) {
+		line := lines[i]
+
+		if line == "" || strings.HasPrefix(line, "diff --git ") || strings.HasPrefix(line, "index ") {
+			i++
+			continue
+		}
+
+		if !strings.HasPrefix(line, "--- ") {
+			return fmt.Errorf("line %d: expected file header '---', got %q", i+1, line)
+		}
+
+		if i+1 >= len(lines) {
+			return fmt.Errorf("line %d: missing matching '+++"+"' file header", i+1)
+		}
+
+		next := lines[i+1]
+		if !strings.HasPrefix(next, "+++ ") {
+			return fmt.Errorf("line %d: expected file header '+++', got %q", i+2, next)
+		}
+
+		foundFileSection = true
+		i += 2
+		hunksForFile := 0
+
+		for i < len(lines) {
+			line = lines[i]
+
+			if line == "" || strings.HasPrefix(line, "diff --git ") || strings.HasPrefix(line, "index ") {
+				i++
+				continue
+			}
+
+			if strings.HasPrefix(line, "--- ") {
+				break
+			}
+
+			if !strings.HasPrefix(line, "@@ ") {
+				return fmt.Errorf("line %d: expected hunk header '@@', got %q", i+1, line)
+			}
+
+			oldCount, newCount, err := parseHunkCounts(line, i+1)
+			if err != nil {
+				return err
+			}
+
+			hunksForFile++
+			i++
+
+			oldSeen := 0
+			newSeen := 0
+
+			for i < len(lines) {
+				line = lines[i]
+
+				if strings.HasPrefix(line, "@@ ") || strings.HasPrefix(line, "--- ") {
+					break
+				}
+
+				if line == "" {
+					if i == len(lines)-1 {
+						break
+					}
+					return fmt.Errorf("line %d: malformed hunk body, missing line prefix", i+1)
+				}
+
+				if strings.HasPrefix(line, "\\ No newline at end of file") {
+					i++
+					continue
+				}
+
+				switch line[0] {
+				case ' ':
+					oldSeen++
+					newSeen++
+				case '-':
+					oldSeen++
+				case '+':
+					newSeen++
+				default:
+					return fmt.Errorf("line %d: malformed hunk body, unexpected prefix %q", i+1, string(line[0]))
+				}
+
+				i++
+			}
+
+			if oldSeen != oldCount || newSeen != newCount {
+				return fmt.Errorf(
+					"line %d: hunk count mismatch, header expects -%d +%d but body has -%d +%d",
+					i,
+					oldCount,
+					newCount,
+					oldSeen,
+					newSeen,
+				)
+			}
+		}
+
+		if hunksForFile == 0 {
+			return fmt.Errorf("line %d: file section has no hunks", i+1)
+		}
+	}
+
+	if !foundFileSection {
+		return fmt.Errorf("diff has no file sections")
+	}
+
+	return nil
+}
+
+func parseHunkCounts(header string, lineNumber int) (int, int, error) {
+	matches := unifiedDiffHunkHeader.FindStringSubmatch(header)
+	if matches == nil {
+		return 0, 0, fmt.Errorf("line %d: invalid hunk header %q", lineNumber, header)
+	}
+
+	oldCount := 1
+	newCount := 1
+
+	if matches[2] != "" {
+		parsed, err := strconv.Atoi(matches[2])
+		if err != nil {
+			return 0, 0, fmt.Errorf("line %d: invalid old hunk count in %q", lineNumber, header)
+		}
+		oldCount = parsed
+	}
+
+	if matches[4] != "" {
+		parsed, err := strconv.Atoi(matches[4])
+		if err != nil {
+			return 0, 0, fmt.Errorf("line %d: invalid new hunk count in %q", lineNumber, header)
+		}
+		newCount = parsed
+	}
+
+	return oldCount, newCount, nil
 }
 
 // Helper functions

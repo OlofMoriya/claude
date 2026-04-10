@@ -15,6 +15,24 @@ type Tool struct {
 	Type string `json:"type"`
 }
 
+type WebSearchCall struct {
+	ID     string      `json:"id"`
+	Type   string      `json:"type"`
+	Status string      `json:"status,omitempty"`
+	Action interface{} `json:"action,omitempty"`
+}
+
+func (w WebSearchCall) GetType() string { return w.Type }
+
+type WebFetchCall struct {
+	ID     string      `json:"id"`
+	Type   string      `json:"type"`
+	Status string      `json:"status,omitempty"`
+	Action interface{} `json:"action,omitempty"`
+}
+
+func (w WebFetchCall) GetType() string { return w.Type }
+
 type Delta struct {
 	Role    string `json:"role,omitempty"`
 	Content string `json:"content,omitempty"`
@@ -124,6 +142,20 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 				return err
 			}
 			r.Output = append(r.Output, msg)
+
+		case "web_search_call":
+			var ws WebSearchCall
+			if err := json.Unmarshal(raw, &ws); err != nil {
+				return err
+			}
+			r.Output = append(r.Output, ws)
+
+		case "web_fetch_call":
+			var wf WebFetchCall
+			if err := json.Unmarshal(raw, &wf); err != nil {
+				return err
+			}
+			r.Output = append(r.Output, wf)
 
 		default:
 			return fmt.Errorf("unknown output type: %s", typeCheck.Type)

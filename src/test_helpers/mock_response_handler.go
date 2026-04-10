@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	commontypes "owl/common_types"
+	"owl/data"
 	"sync"
 )
 
@@ -11,13 +12,12 @@ type TextEvent struct {
 }
 
 type FinalEvent struct {
-	ContextID       int64
-	Prompt          string
-	Response        string
-	ResponseContent string
-	ToolResults     string
-	ModelName       string
-	Usage           *commontypes.TokenUsage
+	ContextID int64
+	Prompt    string
+	Response  string
+	ModelName string
+	Usage     *commontypes.TokenUsage
+	ToolUse   []data.ToolUse
 }
 
 type MockResponseHandler struct {
@@ -36,17 +36,16 @@ func (m *MockResponseHandler) RecievedText(text string, color *string) {
 	m.TextEvents = append(m.TextEvents, TextEvent{Text: text, Color: color})
 }
 
-func (m *MockResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
+func (m *MockResponseHandler) FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *commontypes.TokenUsage) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.FinalEvents = append(m.FinalEvents, FinalEvent{
-		ContextID:       contextId,
-		Prompt:          prompt,
-		Response:        response,
-		ResponseContent: responseContent,
-		ToolResults:     toolResults,
-		ModelName:       modelName,
-		Usage:           usage,
+		ContextID: contextId,
+		Prompt:    prompt,
+		Response:  response,
+		ModelName: modelName,
+		Usage:     usage,
+		ToolUse:   toolUse,
 	})
 }
 

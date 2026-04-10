@@ -143,24 +143,18 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 
 		logger.Debug.Printf("Executing %d tools", len(message.ToolCalls))
 
-		// Execute tools
-		toolResponses, toolResultsJson := model.HandleToolCalls(message)
+		toolUses, localToolUses := model.collectToolUsesFromChatCompletion(message)
 
-		// Save
-		messageJson, err := json.Marshal(message)
-		if err != nil {
-			logger.Debug.Printf("Error marshalling message: %s", err)
-		}
+		logger.Debug.Printf("Calling Final Text with answer: %v, \nand tool result: %v", model.AccumulatedAnswer, toolUses)
 
-		logger.Debug.Printf("Calling Final Text with answer: %v, \nand tool result: %v", model.AccumulatedAnswer, toolResultsJson)
 		usage := model.PendingUsage
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, string(messageJson), toolResultsJson, model.ModelName, usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, toolUses, model.ModelName, usage)
 		model.PendingUsage = nil
 
 		// Continue with results
-		if len(toolResponses) > 0 {
+		if len(localToolUses) > 0 {
 			services.AwaitedQuery("", callback_model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
-				ToolResponses:    toolResponses,
+				ToolUses:         localToolUses,
 				ToolGroupFilters: model.Modifiers.ToolGroupFilters,
 			}, model.ModelName)
 		}
@@ -171,7 +165,7 @@ func (model *OpenAICompatibleModel) FinishStreaming(callback_model commontypes.M
 		// Regular finish
 		logger.Debug.Printf("Calling Final Text with answer: %v", model.AccumulatedAnswer)
 		usage := model.PendingUsage
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, "", "", model.ModelName, usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, model.AccumulatedAnswer, nil, model.ModelName, usage)
 		model.PendingUsage = nil
 	}
 }
@@ -197,35 +191,34 @@ func (model *OpenAICompatibleModel) HandleBodyBytes(bytes []byte, callback_model
 	// Check for tool calls
 	if len(message.ToolCalls) > 0 {
 		logger.Debug.Printf("Found %d tool calls", len(message.ToolCalls))
-		toolResponses, toolResultsJson := model.HandleToolCalls(message)
-
-		// Save assistant message with tool calls
-		messageJson, err := json.Marshal(message)
-		if err != nil {
-			logger.Debug.Printf("Error marshalling message: %s", err)
-		}
+		toolUses, localToolUses := model.collectToolUsesFromChatCompletion(message)
 
 		usage := usageFromOpenAI(apiResponse.Usage)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, string(messageJson), toolResultsJson, model.ModelName, usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, toolUses, model.ModelName, usage)
 		model.PendingUsage = nil
 
 		// Continue conversation with tool results
-		if len(toolResponses) > 0 {
+		if len(localToolUses) > 0 {
 			services.AwaitedQuery("", callback_model, model.HistoryRepository, 1000, model.Context, &commontypes.PayloadModifiers{
-				ToolResponses: toolResponses,
+				ToolUses: localToolUses,
 			}, model.ModelName)
 		}
 	} else {
 		// Regular text response
 		usage := usageFromOpenAI(apiResponse.Usage)
-		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, "", "", model.ModelName, usage)
+		model.ResponseHandler.FinalText(model.ContextId, model.Prompt, message.Content, nil, model.ModelName, usage)
 		model.PendingUsage = nil
 	}
 }
 
+func (model *OpenAICompatibleModel) collectToolUsesFromChatCompletion(message Message) ([]data.ToolUse, []data.ToolUse) {
+	localToolUses := model.HandleToolCalls(message)
+	return localToolUses, localToolUses
+}
+
 // HandleToolCalls executes the requested tools and returns their results
-func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commontypes.ToolResponse, string) {
-	toolResponses := []commontypes.ToolResponse{}
+func (model *OpenAICompatibleModel) HandleToolCalls(message Message) []data.ToolUse {
+	toolUses := []data.ToolUse{}
 
 	for _, toolCall := range message.ToolCalls {
 		logger.Debug.Printf("Executing tool: %s with args: %s", toolCall.Function.Name, toolCall.Function.Arguments)
@@ -237,9 +230,12 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commonty
 		if err != nil {
 			logger.Debug.Printf("Error parsing tool arguments: %s", err)
 			// Try to handle partial JSON or error gracefully
-			toolResponses = append(toolResponses, commontypes.ToolResponse{
-				Id:       toolCall.Id,
-				Response: fmt.Sprintf("Error parsing arguments: %s", err),
+			toolUses = append(toolUses, data.ToolUse{
+				Id:         toolCall.Id,
+				Name:       toolCall.Function.Name,
+				Input:      toolCall.Function.Arguments,
+				CallerType: "assistant",
+				Result:     data.ToolResult{Content: fmt.Sprintf("Error parsing arguments: %s", err), Success: false},
 			})
 			continue
 		}
@@ -260,31 +256,28 @@ func (model *OpenAICompatibleModel) HandleToolCalls(message Message) ([]commonty
 		logger.Debug.Printf("Tool result: %s", result)
 		model.sendToolStatus(fmt.Sprintf("%s result:\n%s", toolCall.Function.Name, result))
 
-		toolResponses = append(toolResponses, commontypes.ToolResponse{
-			Id:       toolCall.Id,
-			Response: result,
+		toolUses = append(toolUses, data.ToolUse{
+			Id:         toolCall.Id,
+			Name:       toolCall.Function.Name,
+			Input:      toolCall.Function.Arguments,
+			CallerType: "assistant",
+			Result:     data.ToolResult{Content: result, Success: err == nil},
 		})
 	}
 
-	// Marshal tool results
-	toolResultsJson := ""
-	if len(toolResponses) > 0 {
-		toolResultsBytes, err := json.Marshal(toolResponses)
-		if err != nil {
-			logger.Debug.Printf("Error marshalling tool results: %s", err)
-		} else {
-			toolResultsJson = string(toolResultsBytes)
-		}
-	}
-
-	return toolResponses, toolResultsJson
+	return toolUses
 }
 
 // CreatePayload builds the request payload with history and tool definitions
 func CreatePayload(prompt string, streamed bool, history []data.History, modifiers *commontypes.PayloadModifiers, model string, maxTokens int, context *data.Context) ChatCompletionRequest {
 	logger.Debug.Printf("\nMODEL USE: creating grok payload: %s", "PLACEHOLDER FROM GROK")
 
+	if modifiers == nil {
+		modifiers = &commontypes.PayloadModifiers{}
+	}
+
 	messages := []interface{}{}
+	replayedToolUseIDs := map[string]bool{}
 
 	if context.SystemPrompt != "" {
 		messages = append(messages, RequestMessage{
@@ -294,54 +287,66 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 	}
 
 	// Process history (including tool results)
-	for i, h := range history {
+	for _, h := range history {
 		questionContent := RequestContent{Type: "text", Text: h.Prompt}
 		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{questionContent}})
 
-		// Check if this history item has tool calls
-		if h.ResponseContent != "" {
-			// Try to parse as tool calls
-			var assistantMsg Message
-			err := json.Unmarshal([]byte(h.ResponseContent), &assistantMsg)
-			if err == nil && len(assistantMsg.ToolCalls) > 0 {
-				// Add assistant message with tool calls
-				messages = append(messages, assistantMsg)
-
-				// Add tool results if available
-				if h.ToolResults != "" && i+1 < len(history) {
-					var toolResults []commontypes.ToolResponse
-					err := json.Unmarshal([]byte(h.ToolResults), &toolResults)
-					if err == nil {
-						for _, tr := range toolResults {
-							messages = append(messages, Message{
-								Role:       "tool",
-								Content:    tr.Response,
-								ToolCallId: tr.Id,
-							})
-						}
-					}
+		localToolUses := filterLocalToolUses(h.ToolUse)
+		if len(localToolUses) > 0 {
+			assistantToolCalls := make([]ToolCall, 0, len(localToolUses))
+			for _, tu := range localToolUses {
+				arguments := strings.TrimSpace(tu.Input)
+				if arguments == "" || !json.Valid([]byte(arguments)) {
+					arguments = "{}"
 				}
-			} else {
-				// Regular text response
-				answerContent := RequestContent{Type: "text", Text: h.Response}
-				messages = append(messages, RequestMessage{Role: "assistant", Content: []RequestContent{answerContent}})
+				assistantToolCalls = append(assistantToolCalls, ToolCall{
+					Id:   tu.Id,
+					Type: "function",
+					Function: FunctionCall{
+						Name:      tu.Name,
+						Arguments: arguments,
+					},
+				})
 			}
-		} else {
-			// Regular text response
+
+			messages = append(messages, Message{
+				Role:      "assistant",
+				Content:   h.Response,
+				ToolCalls: assistantToolCalls,
+			})
+
+			for _, tu := range localToolUses {
+				messages = append(messages, Message{
+					Role:       "tool",
+					Content:    tu.Result.Content,
+					ToolCallId: tu.Id,
+				})
+				replayedToolUseIDs[tu.Id] = true
+			}
+		} else if h.Response != "" {
 			answerContent := RequestContent{Type: "text", Text: h.Response}
 			messages = append(messages, RequestMessage{Role: "assistant", Content: []RequestContent{answerContent}})
 		}
 	}
 
 	// Add tool responses if this is a continuation
-	if len(modifiers.ToolResponses) > 0 {
-		logger.Debug.Printf("Adding %d tool responses to payload", len(modifiers.ToolResponses))
-		for _, tr := range modifiers.ToolResponses {
+	modifierLocalToolUses := filterLocalToolUses(modifiers.ToolUses)
+	if len(modifierLocalToolUses) > 0 {
+		addedToolResponses := 0
+		for _, tr := range modifierLocalToolUses {
+			if replayedToolUseIDs[tr.Id] {
+				continue
+			}
 			messages = append(messages, Message{
-				Role:       "tool",
-				Content:    tr.Response,
+				Role:    "tool",
+				Content: tr.Result.Content,
+				//TODO: Can I send success here?
 				ToolCallId: tr.Id,
 			})
+			addedToolResponses++
+		}
+		if addedToolResponses > 0 {
+			logger.Debug.Printf("Adding %d tool responses to payload", addedToolResponses)
 		}
 	}
 
@@ -358,7 +363,7 @@ func CreatePayload(prompt string, streamed bool, history []data.History, modifie
 
 		messages = append(messages, RequestMessage{Role: "user", Content: []RequestContent{
 			{Type: "text", Text: prompt},
-			{Type: "image_url", ImageURL: Image{
+			{Type: "image_url", ImageURL: &Image{
 				URL: fmt.Sprintf("data:image/png;base64,%s", base64),
 			}},
 		}})
@@ -454,6 +459,9 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 
 	logger.Debug.Printf("Web search response status: %s, output items: %d", webSearchResponse.Status, len(webSearchResponse.Output))
 
+	toolUses := []data.ToolUse{}
+	toolUseByID := map[string]int{}
+
 	// Parse the output array to find the message
 	var responseText string
 	allAnnotations := []Annotation{}
@@ -482,6 +490,25 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 			if webSearchId == "" {
 				webSearchId = item.ID
 			}
+			actionBytes, _ := json.Marshal(item.Action)
+			action := strings.TrimSpace(string(actionBytes))
+			if action == "" || action == "null" {
+				action = "{}"
+			}
+
+			toolUse := data.ToolUse{
+				Id:         item.ID,
+				Name:       "web_search",
+				Input:      action,
+				CallerType: "assistant_server",
+				Result: data.ToolResult{
+					ToolUseId: item.ID,
+					Success:   true,
+				},
+			}
+
+			toolUseByID[item.ID] = len(toolUses)
+			toolUses = append(toolUses, toolUse)
 			logger.Debug.Printf("Web search call ID: %s, Status: %s", item.ID, item.Status)
 
 		case "message":
@@ -509,22 +536,21 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 		responseText = "No response text available from web search"
 	}
 
-	// Create a structured response content for storage
-	// This is key to avoiding the history issues seen in Claude
-	storedContent := WebSearchResponseContent{
-		Type:        "web_search_response",
-		OutputText:  responseText,
-		WebSearchId: webSearchId,
-		MessageId:   messageId,
-		Annotations: allAnnotations,
-	}
-
-	contentJson, err := json.Marshal(storedContent)
-	if err != nil {
-		logger.Debug.Printf("Error marshalling web search response content: %s", err)
-	}
-
 	logger.Debug.Printf("Storing web search response with %d annotations", len(allAnnotations))
+	logger.Debug.Printf("Web search message id: %s, call id: %s", messageId, webSearchId)
+
+	if webSearchId != "" {
+		resultPayload := map[string]interface{}{
+			"type":        "web_search_tool_result",
+			"message_id":  messageId,
+			"annotations": allAnnotations,
+			"output_text": responseText,
+		}
+		resultBytes, _ := json.Marshal(resultPayload)
+		if idx, ok := toolUseByID[webSearchId]; ok {
+			toolUses[idx].Result = data.ToolResult{ToolUseId: webSearchId, Content: string(resultBytes), Success: true}
+		}
+	}
 
 	// Display the response text first
 	model.ResponseHandler.RecievedText(responseText, nil)
@@ -543,11 +569,24 @@ func (model *OpenAICompatibleModel) HandleWebSearchResponse(bytes []byte, callba
 		model.ContextId,
 		model.Prompt,
 		responseText,
-		string(contentJson),
-		"", // No tool results - web search is transparent to us
+		toolUses,
 		model.ModelName,
 		nil,
 	)
+}
+
+func filterLocalToolUses(toolUses []data.ToolUse) []data.ToolUse {
+	if len(toolUses) == 0 {
+		return nil
+	}
+
+	localToolUses := make([]data.ToolUse, 0, len(toolUses))
+	for _, tu := range toolUses {
+		if tu.CallerType == "" || tu.CallerType == "assistant" {
+			localToolUses = append(localToolUses, tu)
+		}
+	}
+	return localToolUses
 }
 
 // CreateWebSearchPayload builds a payload for the /v1/responses endpoint with web search
@@ -565,16 +604,7 @@ func CreateWebSearchPayload(prompt string, history []data.History, model string,
 	for i := startIdx; i < len(history); i++ {
 		h := history[i]
 		messages = append(messages, InputMessage{Role: "user", Content: h.Prompt})
-
-		// For web search responses, use the output text
-		responseText := h.Response
-		if h.ResponseContent != "" {
-			var webContent WebSearchResponseContent
-			if err := json.Unmarshal([]byte(h.ResponseContent), &webContent); err == nil && webContent.Type == "web_search_response" {
-				responseText = webContent.OutputText
-			}
-		}
-		messages = append(messages, InputMessage{Role: "assistant", Content: responseText})
+		messages = append(messages, InputMessage{Role: "assistant", Content: h.Response})
 	}
 
 	// Add current prompt
