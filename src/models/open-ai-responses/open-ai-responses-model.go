@@ -24,13 +24,15 @@ type OpenAiResponseModel struct {
 	prompt            string
 	accumulatedAnswer string
 	contextId         int64
+	modelName         string
 }
 
 func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
-	payload := createResponsePayload(prompt, streaming, history, modifiers.Image)
+	payload := createResponsePayload(prompt, streaming, history, modifiers)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
+	model.modelName = payload.Model
 	return createRequest(payload)
 }
 
@@ -59,11 +61,25 @@ func createRequest(payload RequestPayload) *http.Request {
 	return req
 }
 
-func createResponsePayload(prompt string, streaming bool, history []data.History, b bool) RequestPayload {
+func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) RequestPayload {
+	tools := []Tool{}
+	if modifiers != nil {
+		if modifiers.Image {
+			tools = append(tools, Tool{Type: "image_generation"})
+		}
+		if modifiers.Web {
+			tools = append(tools, Tool{Type: "web_search"})
+			tools = append(tools, Tool{Type: "web_fetch"})
+		}
+	}
+	if len(tools) == 0 {
+		tools = append(tools, Tool{Type: "image_generation"})
+	}
+
 	request := RequestPayload{
 		Model: "gpt-4.1",
 		Input: prompt,
-		Tools: []Tool{Tool{Type: "image_generation"}},
+		Tools: tools,
 	}
 
 	logger.Debug.Println("Will send payload")
@@ -93,7 +109,7 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 
 			if choice.FinishReason != nil {
 				fmt.Println(*&choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, "", "", MODELNAME, nil)
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
 			}
 		}
 	}
@@ -107,6 +123,8 @@ func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
 	}
 
 	text := ""
+	toolUses := []data.ToolUse{}
+	toolUseByID := map[string]int{}
 
 	for _, output := range apiResponse.Output {
 		logger.Debug.Printf("%s", output)
@@ -145,11 +163,65 @@ func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
 					text += "\n\n"
 				}
 			}
+
+		case WebSearchCall:
+			actionBytes, _ := json.Marshal(v.Action)
+			action := strings.TrimSpace(string(actionBytes))
+			if action == "" || action == "null" {
+				action = "{}"
+			}
+
+			toolUse := data.ToolUse{
+				Id:         v.ID,
+				Name:       "web_search",
+				Input:      action,
+				CallerType: "assistant_server",
+				Result: data.ToolResult{
+					ToolUseId: v.ID,
+					Success:   true,
+				},
+			}
+			toolUseByID[v.ID] = len(toolUses)
+			toolUses = append(toolUses, toolUse)
+
+		case WebFetchCall:
+			actionBytes, _ := json.Marshal(v.Action)
+			action := strings.TrimSpace(string(actionBytes))
+			if action == "" || action == "null" {
+				action = "{}"
+			}
+
+			toolUse := data.ToolUse{
+				Id:         v.ID,
+				Name:       "web_fetch",
+				Input:      action,
+				CallerType: "assistant_server",
+				Result: data.ToolResult{
+					ToolUseId: v.ID,
+					Success:   true,
+				},
+			}
+			toolUseByID[v.ID] = len(toolUses)
+			toolUses = append(toolUses, toolUse)
+		}
+	}
+
+	if len(toolUses) > 0 {
+		resultPayload, _ := json.Marshal(map[string]string{
+			"type":        "responses_tool_result",
+			"output_text": text,
+		})
+		for toolUseID, idx := range toolUseByID {
+			toolUses[idx].Result = data.ToolResult{
+				ToolUseId: toolUseID,
+				Content:   string(resultPayload),
+				Success:   true,
+			}
 		}
 	}
 
 	logger.Debug.Printf("Final text from responses: %s", text)
-	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, "", "", MODELNAME, nil)
+	model.ResponseHandler.FinalText(model.contextId, model.prompt, text, toolUses, model.modelName, nil)
 }
 
 func (model *OpenAiResponseModel) SetResponseHandler(responseHandler commontypes.ResponseHandler) {

@@ -66,8 +66,8 @@ func TestOpenAIModelToolCallbacksTriggerFinalText(t *testing.T) {
 	if len(finalEvents) != 1 {
 		t.Fatalf("expected final event, got %d", len(finalEvents))
 	}
-	if !strings.Contains(finalEvents[0].ToolResults, dummyTool.Response) {
-		t.Fatalf("expected tool results to contain dummy response, got %s", finalEvents[0].ToolResults)
+	if len(finalEvents[0].ToolUse) == 0 || !strings.Contains(finalEvents[0].ToolUse[0].Result.Content, dummyTool.Response) {
+		t.Fatalf("expected tool results to contain dummy response, got %+v", finalEvents[0].ToolUse)
 	}
 	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 12 || finalEvents[0].Usage.CompletionTokens != 34 {
 		t.Fatalf("expected token usage to be recorded, got %+v", finalEvents[0].Usage)
@@ -146,6 +146,51 @@ func TestOpenAIModelStreamingToolCallbacks(t *testing.T) {
 	}
 	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 30 || finalEvents[0].Usage.CompletionTokens != 60 {
 		t.Fatalf("expected streaming usage to be recorded, got %+v", finalEvents[0].Usage)
+	}
+}
+
+func TestCreatePayloadReplaysHistoryToolUses(t *testing.T) {
+	history := []data.History{
+		{
+			Prompt:   "question",
+			Response: "tool preamble",
+			ToolUse: []data.ToolUse{
+				{
+					Id:         "tool-1",
+					Name:       "lookup",
+					Input:      `{"q":"ping"}`,
+					CallerType: "assistant",
+					Result: data.ToolResult{
+						ToolUseId: "tool-1",
+						Content:   "pong",
+						Success:   true,
+					},
+				},
+			},
+		},
+	}
+
+	payload := CreatePayload("latest", false, history, &commontypes.PayloadModifiers{}, "gpt-test", 2000, &data.Context{})
+
+	hasAssistantToolCall := false
+	hasToolResult := false
+	for _, raw := range payload.Messages {
+		switch msg := raw.(type) {
+		case Message:
+			if msg.Role == "assistant" && len(msg.ToolCalls) == 1 && msg.ToolCalls[0].Id == "tool-1" {
+				hasAssistantToolCall = true
+			}
+			if msg.Role == "tool" && msg.ToolCallId == "tool-1" && msg.Content == "pong" {
+				hasToolResult = true
+			}
+		}
+	}
+
+	if !hasAssistantToolCall {
+		t.Fatalf("expected assistant tool call replay in payload")
+	}
+	if !hasToolResult {
+		t.Fatalf("expected tool result replay in payload")
 	}
 }
 

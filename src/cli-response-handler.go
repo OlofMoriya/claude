@@ -25,16 +25,15 @@ func (cli CliResponseHandler) RecievedText(text string, useColor *string) {
 }
 
 // All models should call this regardless of if they stream or not.
-func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
+func (cli CliResponseHandler) FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *commontypes.TokenUsage) {
 	history := data.History{
-		ContextId:       contextId,
-		Prompt:          prompt,
-		Response:        response,
-		Abbreviation:    "",
-		TokenCount:      0,
-		ResponseContent: responseContent,
-		ToolResults:     toolResults,
-		Model:           modelName,
+		ContextId:    contextId,
+		Prompt:       prompt,
+		Response:     response,
+		Abbreviation: "",
+		TokenCount:   0,
+		Model:        modelName,
+		ToolUse:      toolUse,
 	}
 
 	if usage != nil {

@@ -44,15 +44,15 @@ func GetModelForQuery(
 	case "grok":
 		model = &grok_model.GrokModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}}
 	case "4o":
-		model = &openai_4o_model.OpenAi4oModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}
+		model = &openai_4o_model.OpenAi4oModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt-4o"}
 	case "gpt":
 		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt"}
 	case "codex":
 		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "codex"}
 	case "ollama":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
+		model = ollama_model.NewOllamaModel(responseHandler, historyRepository, "")
 	case "qwen3":
-		model = ollama_model.NewOllamaModel(responseHandler, "")
+		model = ollama_model.NewOllamaModel(responseHandler, historyRepository, "")
 	case "opus":
 		model = &claude_model.ClaudeModel{UseStreaming: streamMode, HistoryRepository: historyRepository, ResponseHandler: responseHandler, UseThinking: thinkingMode, StreamThought: streamThinkingMode, OutputThought: outputThinkingMode, ModelVersion: "opus"}
 	case "sonnet":

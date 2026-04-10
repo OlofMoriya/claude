@@ -68,12 +68,21 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 
 	files := strings.Split(input, ";")
 	complete_output := ""
-	complete_error := ""
+	var errors []string
+	successCount := 0
+	const maxBytesPerFile = 100 * 1024 // 100KB per file
+	
 	for _, file := range files {
+		file = strings.TrimSpace(file)
+		if file == "" {
+			continue
+		}
+		
 		content, err := os.ReadFile(file)
 		if err != nil {
-			complete_error += err.Error()
-			logger.Debug.Printf("Error reading file: %v", err)
+			errorMsg := fmt.Sprintf("  - %s: %s", file, err.Error())
+			errors = append(errors, errorMsg)
+			logger.Debug.Printf("Error reading file %s: %v", file, err)
 			continue
 		}
 
@@ -81,24 +90,61 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 		fileContent := string(content)
 		if startLine > 0 || endLine > 0 {
 			lines := strings.Split(fileContent, "\n")
-			start := startLine - 1 // Convert to 0-indexed
-			if start < 0 {
-				start = 0
+			startIdx := startLine - 1 // Convert to 0-indexed
+			if startIdx < 0 {
+				startIdx = 0
 			}
-			end := endLine
-			if end < 0 || end > len(lines) {
-				end = len(lines)
+			
+			// Check if the requested range is valid
+			if startIdx >= len(lines) {
+				errorMsg := fmt.Sprintf("  - %s: StartLine %d exceeds file length (%d lines)", file, startLine, len(lines))
+				errors = append(errors, errorMsg)
+				logger.Debug.Printf("Line range error for %s: start exceeds length", file)
+				continue
 			}
-			fileContent = strings.Join(lines[start:end], "\n")
+			
+			endIdx := endLine
+			if endIdx < 0 || endIdx > len(lines) {
+				endIdx = len(lines)
+			}
+			
+			fileContent = strings.Join(lines[startIdx:endIdx], "\n")
+			
+			// Apply max length limit per file
+			if len(fileContent) > maxBytesPerFile {
+				fileContent = fileContent[:maxBytesPerFile] + fmt.Sprintf("\n... [truncated, showing first %d KB of range]", maxBytesPerFile/1024)
+			}
+		} else {
+			// Apply max length limit per file when no line range specified
+			if len(fileContent) > maxBytesPerFile {
+				fileContent = fileContent[:maxBytesPerFile] + fmt.Sprintf("\n... [truncated, showing first %d KB]", maxBytesPerFile/1024)
+			}
 		}
 
-		complete_output += fmt.Sprintf("\n%s\n%s", file, fileContent)
-		logger.Debug.Printf("\ncomplete_output: %v", complete_output)
+		// Add file separator with clean header
+		if complete_output != "" {
+			complete_output += "\n\n"
+		}
+		complete_output += fmt.Sprintf("=== %s ===\n%s", file, fileContent)
+		successCount++
+
+		logger.Debug.Printf("Successfully read file: %s", file)
 	}
 
-	if complete_error != "" {
-		return complete_output, fmt.Errorf("%s", complete_error)
+	// Prepend summary if there were any errors
+	if len(errors) > 0 {
+		summary := fmt.Sprintf("Read %d/%d files successfully.\n\nFailed files:\n%s\n\n", successCount, len(files), strings.Join(errors, "\n"))
+		complete_output = summary + complete_output
 	}
+	
+	// Only return error if ALL files failed
+	if successCount == 0 {
+		if len(errors) > 0 {
+			return "", fmt.Errorf("Failed to read any files:\n%s", strings.Join(errors, "\n"))
+		}
+		return "", fmt.Errorf("No valid files to read")
+	}
+	
 	return complete_output, nil
 }
 
@@ -134,6 +180,33 @@ func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 
 func (tool *ReadFileTool) GetGroups() []string {
 	return []string{"dev"}
+}
+
+func (tool *ReadFileTool) FormatToolUse(toolUse data.ToolUse) []string {
+	input := ParseToolUseInput(toolUse)
+	status := "✓"
+	if !toolUse.Result.Success {
+		status = "✗"
+	}
+
+	lines := []string{fmt.Sprintf("read_file %s", status)}
+	if fileNames := strings.TrimSpace(input["FileNames"]); fileNames != "" {
+		lines = append(lines, fmt.Sprintf("files: %s", singleLine(fileNames, 100)))
+	}
+
+	start := strings.TrimSpace(input["StartLine"])
+	end := strings.TrimSpace(input["EndLine"])
+	if start != "" || end != "" {
+		if start == "" {
+			start = "1"
+		}
+		if end == "" {
+			end = "end"
+		}
+		lines = append(lines, fmt.Sprintf("lines: %s-%s", start, end))
+	}
+
+	return lines
 }
 
 func init() {

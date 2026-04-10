@@ -46,7 +46,7 @@ func TestClaudeModelToolCallbacksTriggerFinalText(t *testing.T) {
 		Usage: Usage{InputTokens: 15, OutputTokens: 25, CacheReadInputTokens: 5, CacheCreationInputTokens: 7},
 		Content: []ResponseMessage{
 			{Type: "text", Text: "partial"},
-			{Type: "tool_use", Id: "tool-1", Name: dummyTool.GetName(), Input: map[string]string{"value": "ping"}},
+			{Type: "tool_use", Id: "tool-1", Name: dummyTool.GetName(), Input: map[string]interface{}{"value": "ping"}},
 		},
 	}
 
@@ -65,8 +65,8 @@ func TestClaudeModelToolCallbacksTriggerFinalText(t *testing.T) {
 	if len(finalEvents) != 1 {
 		t.Fatalf("expected final event, got %d", len(finalEvents))
 	}
-	if !strings.Contains(finalEvents[0].ToolResults, dummyTool.Response) {
-		t.Fatalf("expected tool results to contain dummy response, got %s", finalEvents[0].ToolResults)
+	if len(finalEvents[0].ToolUse) == 0 || !strings.Contains(finalEvents[0].ToolUse[0].Result.Content, dummyTool.Response) {
+		t.Fatalf("expected tool results to contain dummy response, got %+v", finalEvents[0].ToolUse)
 	}
 	if finalEvents[0].Usage == nil || finalEvents[0].Usage.PromptTokens != 15 || finalEvents[0].Usage.CompletionTokens != 25 || finalEvents[0].Usage.CacheReadTokens != 5 || finalEvents[0].Usage.CacheWriteTokens != 7 {
 		t.Fatalf("expected usage to include claude cache metrics, got %+v", finalEvents[0].Usage)
@@ -166,6 +166,151 @@ func TestClaudeModelStreamingToolCallbacks(t *testing.T) {
 	}
 }
 
+func TestClaudeModelHandleBodyBytes_RealToolUsePayload(t *testing.T) {
+	ensureTestLogger()
+
+	repo := testhelpers.NewMockHistoryRepository()
+	ctx := data.Context{Id: 10, Name: "ctx-real-payload"}
+	repo.Contexts[ctx.Id] = ctx
+
+	handler := testhelpers.NewMockResponseHandler()
+	awaitedCalls := 0
+	services.SetAwaitedQueryHook(func(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
+		awaitedCalls++
+	})
+	defer services.SetAwaitedQueryHook(nil)
+
+	model := &ClaudeModel{
+		HistoryRepository: repo,
+		ResponseHandler:   handler,
+		Context:           &ctx,
+		ModelVersion:      "sonnet",
+		Modifiers:         &commontypes.PayloadModifiers{},
+	}
+	model.Prompt = "can you use the dbask tool to look at the customer db"
+
+	body := []byte(`{
+		"model": "claude-sonnet-4-5-20250929",
+		"id": "msg_01PSiBcPCAq3CmE4KBUEEbpe",
+		"type": "message",
+		"role": "assistant",
+		"content": [
+			{
+				"type": "text",
+				"text": "Let me try with a different approach - checking if there's a tracking number mode or trying to query directly:"
+			},
+			{
+				"type": "tool_use",
+				"id": "toolu_01S1U5tyAjjvj6cdwCkb7grt",
+				"name": "internal_dbask_tool",
+				"input": {
+					"Port": "2005",
+					"Database": "customer",
+					"Query": "SELECT table_name FROM information_schema.tables WHERE table_schema = 'customer'"
+				},
+				"caller": {
+					"type": "direct"
+				}
+			}
+		],
+		"stop_reason": "tool_use",
+		"usage": {
+			"input_tokens": 6,
+			"output_tokens": 132,
+			"cache_read_input_tokens": 0,
+			"cache_creation_input_tokens": 3778
+		}
+	}`)
+
+	model.HandleBodyBytes(body)
+
+	finalEvents := handler.CopyFinalEvents()
+	if len(finalEvents) != 1 {
+		t.Fatalf("expected one final event, got %d", len(finalEvents))
+	}
+
+	if len(finalEvents[0].ToolUse) != 1 {
+		t.Fatalf("expected one tool use entry, got %d", len(finalEvents[0].ToolUse))
+	}
+
+	toolUse := finalEvents[0].ToolUse[0]
+	if toolUse.Id != "toolu_01S1U5tyAjjvj6cdwCkb7grt" {
+		t.Fatalf("expected tool id to match fixture, got %s", toolUse.Id)
+	}
+	if toolUse.Name != "internal_dbask_tool" {
+		t.Fatalf("expected tool name to match fixture, got %s", toolUse.Name)
+	}
+	if toolUse.CallerType != "assistant" {
+		t.Fatalf("expected local caller type assistant, got %s", toolUse.CallerType)
+	}
+	if !strings.Contains(toolUse.Input, "table_schema") {
+		t.Fatalf("expected serialized tool input to include SQL query, got %s", toolUse.Input)
+	}
+	if toolUse.Result.Success {
+		t.Fatalf("expected tool execution to fail for unknown test tool")
+	}
+
+	if awaitedCalls != 1 {
+		t.Fatalf("expected awaited query hook to run once for local tool_use, got %d", awaitedCalls)
+	}
+}
+
+func TestClaudePayloadReplaysToolUseFromHistoryRecord(t *testing.T) {
+	history := []data.History{
+		{
+			Prompt:   "can you use the dbask tool to look at the customer db",
+			Response: "Let me try with a different approach",
+			ToolUse: []data.ToolUse{
+				{
+					Id:         "toolu_01Eaj3Jxt9dVG8D3GU81otKR",
+					Name:       "internal_dbask_tool",
+					CallerType: "assistant",
+					Input:      `{"Database":"customer","Port":"2005","Query":"SELECT id, name FROM customers WHERE name LIKE 'Apotea%'"}`,
+					Result: data.ToolResult{
+						ToolUseId: "toolu_01Eaj3Jxt9dVG8D3GU81otKR",
+						Content:   `[{"id":"clfsfe5ab000ks60nbvbghwoo","name":"Apotea AB"}]`,
+						Success:   true,
+					},
+				},
+			},
+		},
+	}
+
+	payload := createClaudePayload("latest", false, history, "claude-sonnet", false, &data.Context{Id: 11}, &commontypes.PayloadModifiers{})
+	messageSlice, ok := payload.Messages.([]Message)
+	if !ok {
+		t.Fatalf("expected payload.Messages to be []Message")
+	}
+
+	foundAssistantToolUse := false
+	foundUserToolResult := false
+	for _, raw := range messageSlice {
+		msg, ok := raw.(RequestMessage)
+		if !ok {
+			continue
+		}
+		for _, c := range msg.Content {
+			switch v := c.(type) {
+			case ToolUseContent:
+				if msg.Role == "assistant" && v.Id == "toolu_01Eaj3Jxt9dVG8D3GU81otKR" && v.Name == "internal_dbask_tool" {
+					foundAssistantToolUse = true
+				}
+			case ToolResponseContent:
+				if msg.Role == "user" && v.Id == "toolu_01Eaj3Jxt9dVG8D3GU81otKR" && strings.Contains(v.Content, "Apotea AB") {
+					foundUserToolResult = true
+				}
+			}
+		}
+	}
+
+	if !foundAssistantToolUse {
+		t.Fatalf("expected assistant tool_use block replay from history")
+	}
+	if !foundUserToolResult {
+		t.Fatalf("expected user tool_result block replay from history")
+	}
+}
+
 func TestClaudePayloadCachingRules(t *testing.T) {
 	history := []data.History{
 		{Prompt: "First question", Response: "answer"},
@@ -211,18 +356,24 @@ func TestClaudePayloadCachingRules(t *testing.T) {
 }
 
 func buildToolHistory(prompt string, toolIDs []string) data.History {
-	responses := make([]ResponseMessage, len(toolIDs))
-	toolResults := make([]commontypes.ToolResponse, len(toolIDs))
+	toolUses := make([]data.ToolUse, len(toolIDs))
 	for i, id := range toolIDs {
-		responses[i] = ResponseMessage{Type: "tool_use", Id: id, Name: fmt.Sprintf("tool-%d", i)}
-		toolResults[i] = commontypes.ToolResponse{Id: id, Response: fmt.Sprintf("result-%s", id)}
+		toolUses[i] = data.ToolUse{
+			Id:         id,
+			Name:       fmt.Sprintf("tool-%d", i),
+			Input:      `{}`,
+			CallerType: "assistant",
+			Result: data.ToolResult{
+				ToolUseId: id,
+				Content:   fmt.Sprintf("result-%s", id),
+				Success:   true,
+			},
+		}
 	}
-	respJSON, _ := json.Marshal(responses)
-	toolJSON, _ := json.Marshal(toolResults)
 	return data.History{
-		Prompt:          prompt,
-		ResponseContent: string(respJSON),
-		ToolResults:     string(toolJSON),
+		Prompt:   prompt,
+		Response: "answer",
+		ToolUse:  toolUses,
 	}
 }
 

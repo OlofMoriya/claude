@@ -78,7 +78,7 @@ type Delta struct {
 type RequestContent struct {
 	Type     string `json:"type"`
 	Text     string `json:"text,omitempty"`
-	ImageURL Image  `json:"image_url,omitempty"`
+	ImageURL *Image `json:"image_url,omitempty"`
 }
 
 type Image struct {

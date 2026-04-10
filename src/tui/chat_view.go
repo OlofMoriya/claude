@@ -14,6 +14,7 @@ import (
 	"owl/logger"
 	picker "owl/picker"
 	"owl/services"
+	"owl/tools"
 	"strings"
 	"time"
 )
@@ -626,6 +627,7 @@ func (m *chatViewModel) updateViewportContent() {
 		pStyle := userPromptStyle
 		rStyle := aiResponseStyle
 		archivedPrefix := ""
+		hasPrompt := strings.TrimSpace(h.Prompt) != ""
 
 		if h.Archived {
 			pStyle = dimStyle
@@ -633,11 +635,17 @@ func (m *chatViewModel) updateViewportContent() {
 			archivedPrefix = "[ARCHIVED] "
 		}
 
-		b.WriteString(pStyle.Render(fmt.Sprintf("%sYou: %s", archivedPrefix, h.Prompt)))
-		b.WriteString("\n\n")
+		if hasPrompt {
+			b.WriteString(pStyle.Render(fmt.Sprintf("%sYou: %s", archivedPrefix, h.Prompt)))
+			b.WriteString("\n\n")
+		}
 
 		rendered := renderMarkdown(h.Response, m.viewport.Width-4)
 		b.WriteString(rStyle.Render(rendered))
+		if len(h.ToolUse) > 0 {
+			b.WriteString("\n")
+			b.WriteString(dimStyle.Render(renderToolUseSummary(h.ToolUse)))
+		}
 		b.WriteString("\n")
 		b.WriteString(dimStyle.Render(strings.Repeat("─", m.width)))
 		b.WriteString("\n\n")
@@ -656,6 +664,45 @@ func (m *chatViewModel) updateViewportContent() {
 	if m.viewport.Height > 0 && m.viewport.Width > 0 {
 		m.viewport.GotoBottom()
 	}
+}
+
+func renderToolUseSummary(toolUses []data.ToolUse) string {
+	if len(toolUses) == 0 {
+		return ""
+	}
+
+	failed := 0
+	for _, tu := range toolUses {
+		if !tu.Result.Success {
+			failed++
+		}
+	}
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Tools: %d call(s)", len(toolUses)))
+	if failed > 0 {
+		b.WriteString(fmt.Sprintf(" (%d failed)", failed))
+	}
+
+	maxShown := 3
+	for i, tu := range toolUses {
+		if i >= maxShown {
+			b.WriteString(fmt.Sprintf("\n- ... and %d more", len(toolUses)-maxShown))
+			break
+		}
+
+		lines := tools.FormatToolUseForDisplay(tu)
+		if len(lines) == 0 {
+			continue
+		}
+
+		b.WriteString(fmt.Sprintf("\n- %s", lines[0]))
+		for _, line := range lines[1:] {
+			b.WriteString(fmt.Sprintf("\n  %s", line))
+		}
+	}
+
+	return b.String()
 }
 
 func (m *chatViewModel) renderModelSelector() string {
@@ -826,18 +873,17 @@ func (h *tuiResponseHandler) RecievedText(text string, color *string) {
 	h.responseChan <- text
 }
 
-func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *commontypes.TokenUsage) {
+func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *commontypes.TokenUsage) {
 	h.fullResponse = response
 
 	history := data.History{
-		ContextId:       contextId,
-		Prompt:          prompt,
-		Response:        response,
-		Abbreviation:    "",
-		TokenCount:      0,
-		ResponseContent: responseContent,
-		ToolResults:     toolResults,
-		Model:           modelName,
+		ContextId:    contextId,
+		Prompt:       prompt,
+		Response:     response,
+		Abbreviation: "",
+		TokenCount:   0,
+		Model:        modelName,
+		ToolUse:      toolUse,
 	}
 
 	if usage != nil {
@@ -861,12 +907,11 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	}
 
 	logger.Debug.Println("Final text in tui response channel")
-	if toolResults == "" {
+	if len(toolUse) == 0 {
 		logger.Debug.Println("closing doneChan and responseChan")
 		close(h.doneChan)
 		close(h.responseChan)
 	} else {
 		logger.Debug.Println("not closing doneChan and responseChan because of expected response to tool call answers.")
-		logger.Debug.Printf("contents of results: %v", toolResults)
 	}
 }

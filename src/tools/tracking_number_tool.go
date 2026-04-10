@@ -57,7 +57,7 @@ func (tool *TrackingNumberTool) GetDefinition() (Tool, string) {
 }
 
 func (tool *TrackingNumberTool) GetGroups() []string {
-	return []string{"manage", "QA"}
+	return []string{"birdnest", "QA"}
 }
 
 func init() {

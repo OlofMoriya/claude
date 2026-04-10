@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"owl/logger"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -34,6 +35,10 @@ func (user User) getUserDb() *sql.DB {
 	// If the database is new (no tables exist), set it up
 	if count == 0 {
 		user.setupDb(db)
+	} else {
+		user.ensureArchivedColumnsExist(db)
+		user.ensureTokenColumnsExist(db)
+		user.ensureToolTablesExist(db)
 	}
 
 	return db
@@ -41,9 +46,11 @@ func (user User) getUserDb() *sql.DB {
 
 func (user User) setupDb(db *sql.DB) {
 	createHistoryTables(db)
+	createToolTables(db)
 	createContextTable(db)
 	user.ensureArchivedColumnsExist(db)
 	user.ensureTokenColumnsExist(db)
+	user.ensureToolTablesExist(db)
 }
 
 func createContextTable(db *sql.DB) {
@@ -89,6 +96,42 @@ func createHistoryTables(db *sql.DB) {
 	}
 }
 
+func createToolTables(db *sql.DB) {
+	createToolUseTableQuery := `
+		CREATE TABLE IF NOT EXISTS tool_use (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			history_id INTEGER,
+			tool_use_external_id TEXT,
+			name TEXT,
+			input TEXT,
+			caller_type TEXT DEFAULT 'assistant',
+			created INT,
+			FOREIGN KEY(history_id) REFERENCES history(id) ON DELETE CASCADE
+		)
+	`
+
+	_, err := db.Exec(createToolUseTableQuery)
+	if err != nil {
+		panic(err)
+	}
+
+	createToolResultTableQuery := `
+		CREATE TABLE IF NOT EXISTS tool_result (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			tool_use_id INTEGER UNIQUE,
+			content TEXT,
+			success INTEGER DEFAULT 1,
+			created INT,
+			FOREIGN KEY(tool_use_id) REFERENCES tool_use(id) ON DELETE CASCADE
+		)
+	`
+
+	_, err = db.Exec(createToolResultTableQuery)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (user User) ensureArchivedColumnsExist(db *sql.DB) {
 	// Add archived column to context if it doesn't exist
 	_, _ = db.Exec("ALTER TABLE context ADD COLUMN archived INTEGER DEFAULT 0")
@@ -102,6 +145,10 @@ func (user User) ensureTokenColumnsExist(db *sql.DB) {
 	_, _ = db.Exec("ALTER TABLE history ADD COLUMN completion_tokens INTEGER DEFAULT 0")
 	_, _ = db.Exec("ALTER TABLE history ADD COLUMN cache_read_tokens INTEGER DEFAULT 0")
 	_, _ = db.Exec("ALTER TABLE history ADD COLUMN cache_write_tokens INTEGER DEFAULT 0")
+}
+
+func (user User) ensureToolTablesExist(db *sql.DB) {
+	createToolTables(db)
 }
 
 func (user User) ArchiveContext(contextId int64, archived bool) error {
@@ -176,23 +223,63 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 
 func (user User) InsertHistory(history History) (int64, error) {
 	db := user.getUserDb()
+	defer db.Close()
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
 
 	insertQuery := "INSERT INTO history (context_id, prompt, response, abreviation, token_count, prompt_tokens, completion_tokens, cache_read_tokens, cache_write_tokens, response_content, created, tool_results, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-	result, err := db.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.PromptTokens, history.CompletionTokens, history.CacheReadTokens, history.CacheWriteTokens, history.ResponseContent, time.Now(), history.ToolResults, history.Model)
+	result, err := tx.Exec(insertQuery, history.ContextId, history.Prompt, history.Response, history.Abbreviation, history.TokenCount, history.PromptTokens, history.CompletionTokens, history.CacheReadTokens, history.CacheWriteTokens, history.ResponseContent, time.Now(), history.ToolResults, history.Model)
 	if err != nil {
-		println(err)
-		defer db.Close()
+		_ = tx.Rollback()
 		return 0, err
 	}
 
 	historyId, err := result.LastInsertId()
 	if err != nil {
-		println(err)
-		defer db.Close()
+		_ = tx.Rollback()
 		return 0, err
 	}
 
-	defer db.Close()
+	for _, toolUse := range history.ToolUse {
+		callerType := strings.TrimSpace(toolUse.CallerType)
+		if callerType == "" {
+			callerType = "assistant"
+		}
+
+		toolUseInsertQuery := "INSERT INTO tool_use (history_id, tool_use_external_id, name, input, caller_type, created) VALUES (?, ?, ?, ?, ?, ?)"
+		toolUseResult, err := tx.Exec(toolUseInsertQuery, historyId, toolUse.Id, toolUse.Name, toolUse.Input, callerType, time.Now())
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, err
+		}
+
+		toolUseId, err := toolUseResult.LastInsertId()
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, err
+		}
+
+		success := 0
+		if toolUse.Result.Success {
+			success = 1
+		}
+
+		toolResultInsertQuery := "INSERT INTO tool_result (tool_use_id, content, success, created) VALUES (?, ?, ?, ?)"
+		_, err = tx.Exec(toolResultInsertQuery, toolUseId, toolUse.Result.Content, success, time.Now())
+		if err != nil {
+			_ = tx.Rollback()
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
 	return historyId, nil
 }
 
@@ -217,8 +304,55 @@ func (user User) GetHistoryByContextId(contextId int64, maxCount int) ([]History
 			return nil, err
 		}
 		history.Archived = archived == 1
+		history.ToolUse = []ToolUse{}
 		histories = append(histories, history)
 	}
+
+	historyIDs := make([]int64, 0, len(histories))
+	historyIdx := make(map[int64]int, len(histories))
+	for i := range histories {
+		historyIDs = append(historyIDs, histories[i].Id)
+		historyIdx[histories[i].Id] = i
+	}
+
+	if len(historyIDs) > 0 {
+		placeholders := make([]string, len(historyIDs))
+		queryArgs := make([]interface{}, len(historyIDs))
+		for i, id := range historyIDs {
+			placeholders[i] = "?"
+			queryArgs[i] = id
+		}
+
+		toolQuery := fmt.Sprintf("SELECT tu.history_id, tu.tool_use_external_id, tu.name, tu.input, COALESCE(tu.caller_type, 'assistant'), COALESCE(tr.content, ''), COALESCE(tr.success, 1) FROM tool_use tu LEFT JOIN tool_result tr ON tr.tool_use_id = tu.id WHERE tu.history_id IN (%s) ORDER BY tu.history_id ASC, tu.id ASC", strings.Join(placeholders, ","))
+		toolRows, err := db.Query(toolQuery, queryArgs...)
+		if err != nil {
+			return nil, err
+		}
+		defer toolRows.Close()
+
+		for toolRows.Next() {
+			var historyId int64
+			var toolUse ToolUse
+			var success int
+
+			err := toolRows.Scan(&historyId, &toolUse.Id, &toolUse.Name, &toolUse.Input, &toolUse.CallerType, &toolUse.Result.Content, &success)
+			if err != nil {
+				return nil, err
+			}
+
+			toolUse.Result.ToolUseId = toolUse.Id
+			toolUse.Result.Success = success == 1
+
+			if idx, ok := historyIdx[historyId]; ok {
+				histories[idx].ToolUse = append(histories[idx].ToolUse, toolUse)
+			}
+		}
+
+		if err := toolRows.Err(); err != nil {
+			return nil, err
+		}
+	}
+
 	for i, j := 0, len(histories)-1; i < j; i, j = i+1, j-1 {
 		histories[i], histories[j] = histories[j], histories[i]
 	}

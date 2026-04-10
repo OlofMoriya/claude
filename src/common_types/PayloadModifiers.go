@@ -19,7 +19,7 @@ type TokenUsage struct {
 }
 
 type PayloadModifiers struct {
-	ToolResponses    []ToolResponse
+	ToolUses         []data.ToolUse
 	Pdf              string
 	Web              bool
 	Image            bool
@@ -28,7 +28,7 @@ type PayloadModifiers struct {
 
 type ResponseHandler interface {
 	RecievedText(text string, color *string)
-	FinalText(contextId int64, prompt string, response string, responseContent string, toolResults string, modelName string, usage *TokenUsage)
+	FinalText(contextId int64, prompt string, response string, toolUse []data.ToolUse, modelName string, usage *TokenUsage)
 	// func recievedImage(encoded string)
 }
 

@@ -43,6 +43,7 @@ type Tool struct {
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"input_schema"`
 	MaxUses     int         `json:"max_uses,omitempty"`
+	Id          string      `json:"id,omitempty"`
 }
 
 // InputSchema represents the schema for tool inputs
@@ -85,15 +86,15 @@ type Usage struct {
 }
 
 type ResponseMessage struct {
-	Type      string              `json:"type"`
-	Text      string              `json:"text,omitempty"`
-	Id        string              `json:"id,omitempty"`
-	ToolUseId string              `json:"tool_use_id,omitempty"`
-	Content   []map[string]string `json:"content,omitempty"`
-	Name      string              `json:"name,omitempty"`
-	Input     map[string]string   `json:"input,omitempty"`
-	Thinking  string              `json:"thinking,omitempty"`
-	Signature string              `json:"signature,omitempty"`
+	Type      string                 `json:"type"`
+	Text      string                 `json:"text,omitempty"`
+	Id        string                 `json:"id,omitempty"`
+	ToolUseId string                 `json:"tool_use_id,omitempty"`
+	Content   interface{}            `json:"content,omitempty"`
+	Name      string                 `json:"name,omitempty"`
+	Input     map[string]interface{} `json:"input,omitempty"`
+	Thinking  string                 `json:"thinking,omitempty"`
+	Signature string                 `json:"signature,omitempty"`
 }
 
 type Role string
@@ -109,6 +110,38 @@ type Content interface {
 type SourceContent struct {
 	Type   string `json:"type"`
 	Source Source `json:"source"`
+}
+
+type ToolUseCaller struct {
+	Type   string `json:"type,omitempty"`
+	ToolId string `json:"toolId,omitempty"`
+}
+
+type ToolUseContent struct {
+	Type   string         `json:"type"`
+	Id     string         `json:"id"`
+	Name   string         `json:"name"`
+	Input  interface{}    `json:"input"`
+	Caller *ToolUseCaller `json:"caller,omitempty"`
+}
+
+type ServerToolResultContent struct {
+	Type      string      `json:"type"`
+	ToolUseId string      `json:"tool_use_id"`
+	Content   interface{} `json:"content"`
+}
+
+type WebSearchResultItem struct {
+	Type             string `json:"type"`
+	URL              string `json:"url,omitempty"`
+	Title            string `json:"title,omitempty"`
+	EncryptedContent string `json:"encrypted_content,omitempty"`
+	PageAge          string `json:"page_age,omitempty"`
+}
+
+type WebSearchToolResultError struct {
+	Type      string `json:"type"`
+	ErrorCode string `json:"error_code"`
 }
 
 type ToolResponseContent struct {

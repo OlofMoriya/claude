@@ -39,7 +39,7 @@ func awaitedQueryImplementation(prompt string, model commontypes.Model, historyR
 
 	trimmedPrompt := strings.TrimSpace(prompt)
 	hasToolResponses := false
-	if modifiers != nil && len(modifiers.ToolResponses) > 0 {
+	if modifiers != nil && len(modifiers.ToolUses) > 0 {
 		hasToolResponses = true
 	}
 	if trimmedPrompt == "" && !hasToolResponses {
@@ -50,7 +50,7 @@ func awaitedQueryImplementation(prompt string, model commontypes.Model, historyR
 
 	history := []data.History{}
 	if historyCount > 0 {
-		logger.Debug.Printf("Fetching history for HistoryRepository: >%v<, with context: >%v<", historyRepository, context)
+		// logger.Debug.Printf("Fetching history for HistoryRepository: >%v<, with context: >%v<", historyRepository, context)
 		h, err := historyRepository.GetHistoryByContextId(context.Id, historyCount)
 		if err != nil {
 			logger.Debug.Printf("error while fetching history for context: %v", err)

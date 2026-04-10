@@ -57,7 +57,7 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 	}
 
 	value := string(out)
-	
+
 	// Apply limits to prevent overflow
 	lines := strings.Split(value, "\n")
 	if len(lines) > maxLines {
@@ -65,7 +65,7 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 		value = strings.Join(lines, "\n")
 		value += fmt.Sprintf("\n\n... [Output truncated: showing first %d of %d total lines]", maxLines, len(strings.Split(string(out), "\n")))
 	}
-	
+
 	// Also check byte size
 	if utf8.RuneCountInString(value) > maxBytes {
 		runes := []rune(value)
@@ -77,6 +77,32 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 
 func (tool *ListFilesTool) GetGroups() []string {
 	return []string{"dev", "writer"}
+}
+
+func (tool *ListFilesTool) FormatToolUse(toolUse data.ToolUse) []string {
+	input := ParseToolUseInput(toolUse)
+	status := "✓"
+	if !toolUse.Result.Success {
+		status = "✗"
+	}
+
+	lines := []string{fmt.Sprintf("list_files %s", status)}
+	if filter := strings.TrimSpace(input["Filter"]); filter != "" {
+		lines = append(lines, fmt.Sprintf("filter: %s", singleLine(filter, 80)))
+	}
+
+	resultLines := strings.Split(strings.TrimSpace(toolUse.Result.Content), "\n")
+	nonEmpty := 0
+	for _, l := range resultLines {
+		if strings.TrimSpace(l) != "" {
+			nonEmpty++
+		}
+	}
+	if nonEmpty > 0 {
+		lines = append(lines, fmt.Sprintf("items: %d", nonEmpty))
+	}
+
+	return lines
 }
 
 func init() {
