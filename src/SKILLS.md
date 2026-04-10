@@ -478,24 +478,10 @@ Safely runs the local `dbask` CLI with strict database guardrails.
 - `Json` (`true/false/1/0/yes/no`)
 
 **Approved Ports:**
-- `2001` dev services (`bird-nest-dev:europe-north1:services-db-instance`)
-- `2002` test services (`bird-nest-test:europe-north1:services-db-instance`)
-- `2003` stage services (`bird-nest-stage:europe-north1:services-db-instance`)
-- `2004` prod services (`bird-nest-prod:europe-north1:services-db-instance`)
-- `2005` prod services replica (`bird-nest-prod:europe-north1:services-db-instance-replica`)
-- `2101` dev status (`bird-nest-dev:europe-north1:status-db-instance`)
-- `2102` test status (`bird-nest-test:europe-north1:status-db-instance`)
-- `2103` stage status (`bird-nest-stage:europe-north1:status-db-instance`)
-- `2104` prod status (`bird-nest-prod:europe-north1:status-db-instance`)
-- `2201` dev sagas (`bird-nest-dev:europe-north1:sagas-db-instance`)
-- `2202` test sagas (`bird-nest-test:europe-north1:sagas-db-instance`)
-- `2203` stage sagas (`bird-nest-stage:europe-north1:sagas-db-instance`)
-- `2204` prod sagas (`bird-nest-prod:europe-north1:sagas-db-instance`)
-- `2301` dev address (`bird-nest-dev:europe-north1:address-db-instance`)
-- `2302` test address (`bird-nest-test:europe-north1:address-db-instance`)
-- `2303` stage address (`bird-nest-stage:europe-north1:address-db-instance`)
-- `2304` prod address (`bird-nest-prod:europe-north1:address-db-instance`)
-- `2305` prod address replica (`bird-nest-prod:europe-north1:address-db-instance-replica`)
+- `2001`, `2002`, `2003`, `2004`, `2005` - services environments
+- `2101`, `2102`, `2103`, `2104` - status environments
+- `2201`, `2202`, `2203`, `2204` - sagas environments
+- `2301`, `2302`, `2303`, `2304`, `2305` - address environments
 
 ---
 

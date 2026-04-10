@@ -31,6 +31,19 @@ go build -o owl
 ./owl -serve -port 3000
 ```
 
+### Docker
+
+```bash
+# Build container image
+docker build -t owl:latest .
+
+# Run server mode from container
+docker run --rm -p 3000:3000 \
+  -e ANTHROPIC_API_KEY=your_claude_key \
+  -e OPENAI_API_KEY=your_openai_key \
+  owl:latest
+```
+
 ## Configuration
 
 ### Required API keys

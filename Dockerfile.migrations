@@ -1,8 +1,0 @@
-FROM migrate/migrate:latest
-
-ENV DATABASE_URL ""
-
-COPY /db/migrations /migrations
-
-ENTRYPOINT migrate -database $DATABASE_URL?sslmode=disable -path /migrations/ up
-

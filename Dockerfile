@@ -1,5 +1,7 @@
-FROM golang:1.22 AS build-env
+FROM golang:1.24 AS build-env
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y gcc libc6-dev libx11-dev pkg-config && rm -rf /var/lib/apt/lists/*
 
 COPY ./src/go.mod ./src/go.sum ./
 RUN go mod download
@@ -28,4 +30,3 @@ EXPOSE 3000
 ENV PORT=3000
 
 ENTRYPOINT ["./main", "--serve"]
-

@@ -77,27 +77,33 @@ func registerFlags(fs *flag.FlagSet) {
 	fs.StringVar(&prompt, "prompt", "", "The prompt to use for the conversation")
 	fs.StringVar(&context_name, "context_name", "misc", "The context to provide for the conversation")
 	fs.IntVar(&history_count, "history", services.DefaultHistoryCount, "The number of previous messages to include in the context")
+	fs.BoolVar(&stream, "stream", false, "Enable streaming response")
+	fs.StringVar(&llm_model, "model", "claude", "set model used for the call")
+
 	fs.BoolVar(&serve, "serve", false, "Enable server mode")
 	fs.IntVar(&port, "port", 3000, "Port to listen on")
 	fs.BoolVar(&secure, "secure", false, "Enable HTTPS")
-	fs.BoolVar(&stream, "stream", false, "Enable streaming response")
-	fs.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
-	fs.StringVar(&llm_model, "model", "claude", "set model used for the call")
 
 	fs.BoolVar(&thinking, "thinking", true, "use thinking in request")
 	fs.BoolVar(&stream_thinkning, "stream_thinking", true, "stream thinking")
 	fs.BoolVar(&output_thinkning, "output_thinking", false, "output thinking")
 	fs.StringVar(&system_prompt, "system", "", "set a system promt for the context")
+
 	fs.BoolVar(&view, "view", false, "view")
+	fs.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
+
 	fs.BoolVar(&image, "image", false, "image (used clipboard as image)")
 	fs.BoolVar(&web, "web", false, "web search enabled")
 	fs.StringVar(&pdf, "pdf", "", "path to pdf")
-	fs.BoolVar(&tui_mode, "tui", false, "Launch TUI mode")
+
+	fs.BoolVar(&store, "embeddings", false, "Enable embeddings generation (no streaming)")
 	fs.StringVar(&search, "search", "", "search for phrase in embedding")
 	fs.StringVar(&chunk, "chunk", "", "path to markdown document that should be chunked and stored as embeddings")
-	fs.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
 	fs.StringVar(&mardown_path, "path", "", "mardown path")
-	fs.StringVar(&tool_groups, "tools", "", "comma-separated list of tool groups to enable")
+
+	fs.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
+
+	fs.StringVar(&tool_groups, "agent", "", "comma-separated list of agents to enable")
 	fs.StringVar(&skillsFlag, "skills", "", "comma-separated list of skill files located under ~/.owl/skills")
 }
 
