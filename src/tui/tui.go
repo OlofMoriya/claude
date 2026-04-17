@@ -18,10 +18,13 @@ type TUIConfig struct {
 func Run(config TUIConfig) error {
 	// Create the status channel for logger messages
 	logger.StatusChan = make(chan string, 50) // buffered channel
+	logger.HistoryPersistedChan = make(chan int64, 50)
 	defer func() {
 		// Clean up when TUI exits
 		close(logger.StatusChan)
+		close(logger.HistoryPersistedChan)
 		logger.StatusChan = nil
+		logger.HistoryPersistedChan = nil
 	}()
 
 	p := tea.NewProgram(

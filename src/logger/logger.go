@@ -11,6 +11,7 @@ import (
 // Global logger - accessible from anywhere
 var Debug *log.Logger
 var StatusChan chan string
+var HistoryPersistedChan chan int64
 
 // Init sets up the logger - call this from main
 func Init(filename string) error {
@@ -45,5 +46,18 @@ func Screen(text string, color *color.Color) {
 		} else {
 			print(text)
 		}
+	}
+}
+
+// HistoryPersisted notifies TUI listeners when a history row is saved.
+func HistoryPersisted(contextId int64) {
+	if HistoryPersistedChan == nil {
+		return
+	}
+
+	select {
+	case HistoryPersistedChan <- contextId:
+	default:
+		// Channel full, drop message
 	}
 }

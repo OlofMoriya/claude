@@ -52,6 +52,7 @@ type chatViewModel struct {
 
 	historyCount     int
 	statusMessage    string
+	statusVersion    int
 	showUsagePanel   bool
 	usagePanelPinned bool
 	contextUsage     commontypes.TokenUsage
@@ -73,6 +74,11 @@ type messageDoneMsg struct {
 }
 
 type statusMsg string
+type clearStatusMsg struct {
+	version int
+}
+
+type historyPersistedMsg int64
 
 type chatChunkMsg struct {
 	text         string
@@ -138,6 +144,7 @@ func (m *chatViewModel) Init() tea.Cmd {
 		textarea.Blink,
 		m.loadHistory(),
 		m.listenForStatus(),
+		m.listenForHistoryPersisted(),
 	)
 }
 
@@ -153,6 +160,21 @@ func (m *chatViewModel) listenForStatus() tea.Cmd {
 		}
 
 		return statusMsg(msg)
+	}
+}
+
+func (m *chatViewModel) listenForHistoryPersisted() tea.Cmd {
+	return func() tea.Msg {
+		if logger.HistoryPersistedChan == nil {
+			return nil
+		}
+
+		contextId, ok := <-logger.HistoryPersistedChan
+		if !ok {
+			return nil
+		}
+
+		return historyPersistedMsg(contextId)
 	}
 }
 
@@ -257,15 +279,40 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case statusMsg:
-		m.statusMessage = string(msg)
-		if msg != "" {
-			logger.Debug.Printf("Received status: %s", msg)
+		cleaned := strings.TrimSpace(string(msg))
+		cleaned = strings.ReplaceAll(cleaned, "\n", " ")
+		cleaned = strings.Join(strings.Fields(cleaned), " ")
+
+		if cleaned == "" {
+			m.statusMessage = ""
+			return m, m.listenForStatus()
 		}
+
+		m.statusMessage = cleaned
+		m.statusVersion++
+		currentVersion := m.statusVersion
+		logger.Debug.Printf("Received status: %s", cleaned)
 
 		return m, tea.Batch(
 			m.listenForStatus(),
-			m.clearStatusAfterDelay(),
+			m.clearStatusAfterDelay(currentVersion),
 		)
+
+	case clearStatusMsg:
+		if msg.version == m.statusVersion {
+			m.statusMessage = ""
+		}
+		return m, nil
+
+	case historyPersistedMsg:
+		if int64(msg) == m.shared.selectedCtx.Id {
+			m.currentResponse = ""
+			return m, tea.Batch(
+				m.listenForHistoryPersisted(),
+				m.loadHistory(),
+			)
+		}
+		return m, m.listenForHistoryPersisted()
 
 	case chatChunkMsg:
 		m.currentResponse += msg.text
@@ -543,9 +590,9 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(tiCmd, vpCmd)
 }
 
-func (m *chatViewModel) clearStatusAfterDelay() tea.Cmd {
+func (m *chatViewModel) clearStatusAfterDelay(version int) tea.Cmd {
 	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
-		return statusMsg("")
+		return clearStatusMsg{version: version}
 	})
 }
 
@@ -896,6 +943,8 @@ func (h *tuiResponseHandler) FinalText(contextId int64, prompt string, response 
 	_, err := h.Repository.InsertHistory(history)
 	if err != nil {
 		println(fmt.Sprintf("Error while trying to save history: %s", err))
+	} else {
+		logger.HistoryPersisted(contextId)
 	}
 
 	code := services.ExtractCodeBlocks(response)

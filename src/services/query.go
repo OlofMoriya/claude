@@ -118,12 +118,16 @@ func StreamedQuery(prompt string, model commontypes.Model, historyRepository dat
 
 	logger.Screen("sending streamed query", color.RGB(150, 150, 150))
 
-	validHistory := make([]data.History, 0)
-	for _, h := range history {
-		if !h.Archived && strings.TrimSpace(h.Prompt) != "" && strings.TrimSpace(h.Response) != "" {
-			validHistory = append(validHistory, h)
-		}
-	}
+	validHistory, droppedArchived, droppedEmpty := filterStreamHistory(history)
+
+	logger.Debug.Printf(
+		"stream history filter: context=%d total=%d kept=%d dropped_archived=%d dropped_empty=%d",
+		context.Id,
+		len(history),
+		len(validHistory),
+		droppedArchived,
+		droppedEmpty,
+	)
 
 	req := model.CreateRequest(context, prompt, true, validHistory, modifiers)
 
@@ -162,4 +166,28 @@ func StreamedQuery(prompt string, model commontypes.Model, historyRepository dat
 			logger.Debug.Printf("Failed to update preferred model: %v", err)
 		}
 	}
+}
+
+func filterStreamHistory(history []data.History) ([]data.History, int, int) {
+	validHistory := make([]data.History, 0, len(history))
+	droppedArchived := 0
+	droppedEmpty := 0
+
+	for _, h := range history {
+		if h.Archived {
+			droppedArchived++
+			continue
+		}
+
+		hasPrompt := strings.TrimSpace(h.Prompt) != ""
+		hasResponse := strings.TrimSpace(h.Response) != ""
+		if !hasPrompt && !hasResponse {
+			droppedEmpty++
+			continue
+		}
+
+		validHistory = append(validHistory, h)
+	}
+
+	return validHistory, droppedArchived, droppedEmpty
 }
