@@ -36,6 +36,14 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 		model_version = "gpt-5.3-codex"
 	case "gpt":
 		model_version = "gpt-5.3"
+	case "gpt-5.4":
+		model_version = "gpt-5.4"
+	case "gpt-5.5":
+		model_version = "gpt-5.5"
+	case "gpt-mini":
+		model_version = "gpt-5.4-mini-2026-03-17"
+	case "gpt-nano":
+		model_version = "gpt-5.4-nano-2026-03-17"
 	default:
 		model_version = "gpt-5.3"
 	}
@@ -44,12 +52,12 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 	// Check if web search is enabled - use different API endpoint
 	if modifiers.Web {
 		logger.Debug.Println("Web search enabled, using /v1/responses endpoint")
-		payload := openai_base.CreateWebSearchPayload(prompt, history, "gpt-5", context)
+		payload := openai_base.CreateWebSearchPayload(prompt, history, model_version, context)
 		return createOpenAIGPTRequest(payload, true)
 	}
 
 	// Standard chat completions request
-	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, "gpt-5.2", 16000, context)
+	payload := openai_base.CreatePayload(prompt, streaming, history, modifiers, model_version, 16000, context)
 	return createOpenAIGPTRequest(payload, false)
 }
 
