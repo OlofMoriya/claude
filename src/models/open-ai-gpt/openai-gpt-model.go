@@ -35,7 +35,7 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 	case "codex":
 		model_version = "gpt-5.3-codex"
 	case "gpt":
-		model_version = "gpt-5.3"
+		model_version = "gpt-5.3-chat-latest"
 	case "gpt-5.4":
 		model_version = "gpt-5.4"
 	case "gpt-5.5":
@@ -45,7 +45,7 @@ func (model *OpenAIGPTModel) CreateRequest(context *data.Context, prompt string,
 	case "gpt-nano":
 		model_version = "gpt-5.4-nano-2026-03-17"
 	default:
-		model_version = "gpt-5.3"
+		model_version = "gpt-5.4"
 	}
 	model.ModelName = model_version
 
