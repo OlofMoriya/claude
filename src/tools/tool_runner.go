@@ -5,6 +5,7 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"slices"
+	"strings"
 	"sync"
 )
 
@@ -16,7 +17,7 @@ type ToolModel interface {
 	Run(input map[string]string) (string, error)
 	GetName() string
 	SetHistory(*data.HistoryRepository, *data.Context)
-	GetGroups() []string
+	GetGroups() []ToolGroup
 }
 
 type ToolRunner struct {
@@ -64,12 +65,21 @@ func (runner *ToolRunner) ExecuteTool(ctx data.Context, name string, rawInput ma
 }
 
 func GetCustomTools(mode string, filterGroups ...string) []Tool {
+	capabilities := []ToolDependency{ToolDependencyLocalExec}
+	if strings.EqualFold(mode, REMOTE) {
+		capabilities = []ToolDependency{ToolDependencyRemoteExec}
+	}
+	return GetCustomToolsByCapabilities(capabilities, ParseToolGroups(filterGroups)...)
+}
+
+func GetCustomToolsByCapabilities(capabilities []ToolDependency, filterGroups ...ToolGroup) []Tool {
 	tools := []Tool{}
+	isRemote := slices.Contains(capabilities, ToolDependencyRemoteExec)
 	for _, tool := range defaultRegistry.tools {
 		definition, tool_mode := tool.GetDefinition()
 
 		// 1. Mode check
-		if mode == REMOTE && tool_mode != REMOTE {
+		if isRemote && tool_mode != REMOTE {
 			continue
 		}
 
@@ -86,6 +96,19 @@ func GetCustomTools(mode string, filterGroups ...string) []Tool {
 				}
 			}
 			if !match {
+				continue
+			}
+		}
+
+		if len(definition.Dependencies) > 0 {
+			depsSatisfied := true
+			for _, dep := range definition.Dependencies {
+				if !slices.Contains(capabilities, dep) {
+					depsSatisfied = false
+					break
+				}
+			}
+			if !depsSatisfied {
 				continue
 			}
 		}

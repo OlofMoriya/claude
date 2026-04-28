@@ -82,14 +82,16 @@ func (tool *StockPriceLookupTool) GetName() string {
 	return "stock_price_lookup"
 }
 
-func (tool *StockPriceLookupTool) GetGroups() []string {
-	return []string{"manage"}
+func (tool *StockPriceLookupTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupManager}
 }
 
 func (tool *StockPriceLookupTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Fetches current stock and index prices from Yahoo Finance (no API key). Supports single symbol lookup, custom lists, a general multi-region market preset, and a personal standards preset.",
+		Name:         tool.GetName(),
+		Description:  "Fetches current stock and index prices from Yahoo Finance (no API key). Supports single symbol lookup, custom lists, a general multi-region market preset, and a personal standards preset.",
+		Groups:       []ToolGroup{ToolGroupManager},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 		InputSchema: InputSchema{
 			Type: "object",
 			Properties: map[string]Property{

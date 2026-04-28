@@ -230,17 +230,6 @@ Creates todo items using the external `todo-tui` application. Supports:
 
 ---
 
-## Owl architecture - tools/issue_list_tool.go
-
-**Purpose**: Issue tracker integration
-
-Fetches completed issues from a company's issue tracker. Returns items marked as Done or Released from the last 7 days. Useful for demos and status reports.
-
-**Tool Name**: `issue_list`
-
-**Integration**: Calls external `item-list.sh` script
-
----
 
 ## Owl architecture - tools/generate_image_tool.go
 
@@ -254,19 +243,6 @@ Generates images from text prompts using OpenAI's image generation API. Returns 
 
 ---
 
-## Owl architecture - tools/tracking_number_tool.go
-
-**Purpose**: Shipment tracking tool
-
-Looks up shipment status in the Early Bird Logistics chain. Provides delivery location and status information.
-
-**Tool Name**: `early_bird_track_lookup`
-
-**Mode**: REMOTE (available in server mode)
-
-**Integration**: Calls `login-and-status.sh` script
-
----
 
 ## Owl architecture - tools/http_request_tool.go
 

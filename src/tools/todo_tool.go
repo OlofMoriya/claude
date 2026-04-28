@@ -61,8 +61,10 @@ func (tool *TodoTool) GetName() string {
 
 func (tool *TodoTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Creates a todo item using the todo-tui application. Use this when you identify action items from emails, messages, or other input that the user needs to follow up on. This creates todos for the human user, not for the LLM.",
+		Name:         tool.GetName(),
+		Description:  "Creates a todo item using the todo-tui application. Use this when you identify action items from emails, messages, or other input that the user needs to follow up on. This creates todos for the human user, not for the LLM.",
+		Groups:       []ToolGroup{ToolGroupChat, ToolGroupManager, ToolGroupEmail, ToolGroupSecretary},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
 			Type: "object",
@@ -85,8 +87,8 @@ func (tool *TodoTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
-func (tool *TodoTool) GetGroups() []string {
-	return []string{"chat", "manager", "email", "secretery"}
+func (tool *TodoTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupChat, ToolGroupManager, ToolGroupEmail, ToolGroupSecretary}
 }
 
 func init() {

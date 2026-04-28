@@ -149,8 +149,10 @@ func (tool *FileUpdateTool) GetName() string {
 
 func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Updates specific parts of an existing file using a Git-style unified diff. Cannot create new files - use write_file for that. Path is relative to current working directory. Parent directory references (..) are not allowed for security. Format NEEDS to end with a empty new line",
+		Name:         tool.GetName(),
+		Description:  "Updates specific parts of an existing file using a Git-style unified diff. Cannot create new files - use write_file for that. Path is relative to current working directory. Parent directory references (..) are not allowed for security. Format NEEDS to end with a empty new line",
+		Groups:       []ToolGroup{ToolGroupDev, ToolGroupWriter},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
 			Type: "object",
@@ -168,8 +170,8 @@ func (tool *FileUpdateTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
-func (tool *FileUpdateTool) GetGroups() []string {
-	return []string{"dev", "writer"}
+func (tool *FileUpdateTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupDev, ToolGroupWriter}
 }
 
 func validateUnifiedDiff(diff string) error {

@@ -78,8 +78,10 @@ func (tool *FileWriterTool) GetName() string {
 
 func (tool *FileWriterTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Writes content to one or more files. Can create new files or overwrite existing ones. Path is relative to the current working directory. Parent directory references (..) are not allowed for security.",
+		Name:         tool.GetName(),
+		Description:  "Writes content to one or more files. Can create new files or overwrite existing ones. Path is relative to the current working directory. Parent directory references (..) are not allowed for security.",
+		Groups:       []ToolGroup{ToolGroupDev, ToolGroupWriter},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
 			Type: "object",
@@ -98,8 +100,8 @@ func (tool *FileWriterTool) GetDefinition() (Tool, string) {
 
 }
 
-func (tool *FileWriterTool) GetGroups() []string {
-	return []string{"dev", "writer"}
+func (tool *FileWriterTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupDev, ToolGroupWriter}
 }
 
 func init() {
