@@ -187,7 +187,7 @@ func TestClaudeModelHandleBodyBytes_RealToolUsePayload(t *testing.T) {
 		ModelVersion:      "sonnet",
 		Modifiers:         &commontypes.PayloadModifiers{},
 	}
-	model.Prompt = "can you use the dbask tool to look at the customer db"
+	model.Prompt = "can you use a helper tool to inspect customer records"
 
 	body := []byte(`{
 		"model": "claude-sonnet-4-5-20250929",
@@ -202,7 +202,7 @@ func TestClaudeModelHandleBodyBytes_RealToolUsePayload(t *testing.T) {
 			{
 				"type": "tool_use",
 				"id": "toolu_01S1U5tyAjjvj6cdwCkb7grt",
-				"name": "internal_dbask_tool",
+				"name": "nonexistent_test_tool",
 				"input": {
 					"Port": "2005",
 					"Database": "customer",
@@ -237,7 +237,7 @@ func TestClaudeModelHandleBodyBytes_RealToolUsePayload(t *testing.T) {
 	if toolUse.Id != "toolu_01S1U5tyAjjvj6cdwCkb7grt" {
 		t.Fatalf("expected tool id to match fixture, got %s", toolUse.Id)
 	}
-	if toolUse.Name != "internal_dbask_tool" {
+	if toolUse.Name != "nonexistent_test_tool" {
 		t.Fatalf("expected tool name to match fixture, got %s", toolUse.Name)
 	}
 	if toolUse.CallerType != "assistant" {
@@ -258,12 +258,12 @@ func TestClaudeModelHandleBodyBytes_RealToolUsePayload(t *testing.T) {
 func TestClaudePayloadReplaysToolUseFromHistoryRecord(t *testing.T) {
 	history := []data.History{
 		{
-			Prompt:   "can you use the dbask tool to look at the customer db",
+			Prompt:   "can you use a helper tool to inspect customer records",
 			Response: "Let me try with a different approach",
 			ToolUse: []data.ToolUse{
 				{
 					Id:         "toolu_01Eaj3Jxt9dVG8D3GU81otKR",
-					Name:       "internal_dbask_tool",
+					Name:       "nonexistent_test_tool",
 					CallerType: "assistant",
 					Input:      `{"Database":"customer","Port":"2005","Query":"SELECT id, name FROM customers WHERE name LIKE 'Apotea%'"}`,
 					Result: data.ToolResult{
@@ -292,7 +292,7 @@ func TestClaudePayloadReplaysToolUseFromHistoryRecord(t *testing.T) {
 		for _, c := range msg.Content {
 			switch v := c.(type) {
 			case ToolUseContent:
-				if msg.Role == "assistant" && v.Id == "toolu_01Eaj3Jxt9dVG8D3GU81otKR" && v.Name == "internal_dbask_tool" {
+				if msg.Role == "assistant" && v.Id == "toolu_01Eaj3Jxt9dVG8D3GU81otKR" && v.Name == "nonexistent_test_tool" {
 					foundAssistantToolUse = true
 				}
 			case ToolResponseContent:

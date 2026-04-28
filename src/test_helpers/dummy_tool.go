@@ -31,8 +31,10 @@ func (t *DummyTool) Register() {
 
 func (t *DummyTool) GetDefinition() (tools.Tool, string) {
 	return tools.Tool{
-		Name:        t.GetName(),
-		Description: "dummy tool for tests",
+		Name:         t.GetName(),
+		Description:  "dummy tool for tests",
+		Groups:       []tools.ToolGroup{tools.ToolGroup("test")},
+		Dependencies: []tools.ToolDependency{tools.ToolDependencyLocalExec},
 		InputSchema: tools.InputSchema{
 			Type: "object",
 			Properties: map[string]tools.Property{
@@ -68,8 +70,8 @@ func (t *DummyTool) SetHistory(repo *data.HistoryRepository, context *data.Conte
 	t.context = context
 }
 
-func (t *DummyTool) GetGroups() []string {
-	return []string{"test"}
+func (t *DummyTool) GetGroups() []tools.ToolGroup {
+	return []tools.ToolGroup{tools.ToolGroup("test")}
 }
 
 func (t *DummyTool) ResetCalls() {

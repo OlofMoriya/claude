@@ -71,13 +71,13 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 	var errors []string
 	successCount := 0
 	const maxBytesPerFile = 100 * 1024 // 100KB per file
-	
+
 	for _, file := range files {
 		file = strings.TrimSpace(file)
 		if file == "" {
 			continue
 		}
-		
+
 		content, err := os.ReadFile(file)
 		if err != nil {
 			errorMsg := fmt.Sprintf("  - %s: %s", file, err.Error())
@@ -94,7 +94,7 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 			if startIdx < 0 {
 				startIdx = 0
 			}
-			
+
 			// Check if the requested range is valid
 			if startIdx >= len(lines) {
 				errorMsg := fmt.Sprintf("  - %s: StartLine %d exceeds file length (%d lines)", file, startLine, len(lines))
@@ -102,14 +102,14 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 				logger.Debug.Printf("Line range error for %s: start exceeds length", file)
 				continue
 			}
-			
+
 			endIdx := endLine
 			if endIdx < 0 || endIdx > len(lines) {
 				endIdx = len(lines)
 			}
-			
+
 			fileContent = strings.Join(lines[startIdx:endIdx], "\n")
-			
+
 			// Apply max length limit per file
 			if len(fileContent) > maxBytesPerFile {
 				fileContent = fileContent[:maxBytesPerFile] + fmt.Sprintf("\n... [truncated, showing first %d KB of range]", maxBytesPerFile/1024)
@@ -136,7 +136,7 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 		summary := fmt.Sprintf("Read %d/%d files successfully.\n\nFailed files:\n%s\n\n", successCount, len(files), strings.Join(errors, "\n"))
 		complete_output = summary + complete_output
 	}
-	
+
 	// Only return error if ALL files failed
 	if successCount == 0 {
 		if len(errors) > 0 {
@@ -144,7 +144,7 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 		}
 		return "", fmt.Errorf("No valid files to read")
 	}
-	
+
 	return complete_output, nil
 }
 
@@ -154,8 +154,10 @@ func (tool *ReadFileTool) GetName() string {
 
 func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Fetches the contents of the files specified by name and dynamic path. Path starts from where script is being executed. Prefere reading files with .go, .md, .tsx, .ts, .csv, .js, .txt, .mod, .cs, .csproj, .gitignore, .tsx, .jsx, .json extentions. Don't overuse this tool as it increase token use a lot",
+		Name:         tool.GetName(),
+		Description:  "Fetches the contents of the files specified by name and dynamic path. Path starts from where script is being executed. Prefere reading files with .go, .md, .tsx, .ts, .csv, .js, .txt, .mod, .cs, .csproj, .gitignore, .tsx, .jsx, .json extentions. Don't overuse this tool as it increase token use a lot",
+		Groups:       []ToolGroup{ToolGroupDev},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
 			Type:     "object",
@@ -178,8 +180,8 @@ func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
-func (tool *ReadFileTool) GetGroups() []string {
-	return []string{"dev"}
+func (tool *ReadFileTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupDev}
 }
 
 func (tool *ReadFileTool) FormatToolUse(toolUse data.ToolUse) []string {

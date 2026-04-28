@@ -354,21 +354,7 @@ Lists all files in and under a specified directory.
 
 ---
 
-### 4. **Issue Tracking Tool** (`issue_list_tool.go`)
-Fetches completed issues from the company's issue tracker.
-
-**Capabilities:**
-- Retrieve completed issues from last 7 days
-- Filter by Done or Released status
-- Generate demo materials
-- Report status for meetings
-
-**Parameters:**
-- `Span` (string): Duration for lookup - `Day`, `Week`, or `Month`
-
----
-
-### 5. **Todo Tool** (`todo_tool.go`)
+### 4. **Todo Tool** (`todo_tool.go`)
 Creates and manages todo items for action tracking.
 
 **Capabilities:**
@@ -384,7 +370,7 @@ Creates and manages todo items for action tracking.
 
 ---
 
-### 6. **Image Generation Tool** (`generate_image_tool.go`)
+### 5. **Image Generation Tool** (`generate_image_tool.go`)
 Generates images from text prompts using AI.
 
 **Capabilities:**
@@ -398,20 +384,7 @@ Generates images from text prompts using AI.
 
 ---
 
-### 7. **Tracking Number Tool** (`tracking_number_tool.go`)
-Looks up shipment status in Early Bird Logistics chain.
-
-**Capabilities:**
-- Track delivery status
-- Identify shipment location in process
-- Report shipping issues
-
-**Parameters:**
-- `TrackingNumber` (string, required): Tracking number for the shipment
-
----
-
-### 8. **Diff Viewer Tools**
+### 6. **Diff Viewer Tools**
 
 #### 8a. **Diff Viewer** (`diff_viewer.go`)
 Displays code differences and changes.
@@ -432,7 +405,7 @@ Enhanced diff viewer using TMUX for terminal multiplexing.
 
 ---
 
-### 9. **Tool Response Handler** (`tool_response_handler.go`)
+### 7. **Tool Response Handler** (`tool_response_handler.go`)
 Manages responses from tool executions.
 
 **Capabilities:**
@@ -442,7 +415,7 @@ Manages responses from tool executions.
 
 ---
 
-### 10. **Tool Runner** (`tool_runner.go`)
+### 8. **Tool Runner** (`tool_runner.go`)
 Executes and orchestrates tool operations.
 
 **Capabilities:**
@@ -452,40 +425,7 @@ Executes and orchestrates tool operations.
 
 ---
 
-### 11. **Internal DBAsk Tool** (`dbask_internal_tool.go`)
-Safely runs the local `dbask` CLI with strict database guardrails.
-
-**Tool Name:** `internal_dbask_tool`
-
-**Capabilities:**
-- Executes `dbask` query mode (`-q`), tracking mode (`-t`), table listing (`-at`), and table structure lookup (`-ts`)
-- Requires and enforces `-p` on every command
-- Validates port against a hardcoded allowlist
-- Blocks write queries in every environment (read-only enforcement)
-- Requires interactive approval before running `-q` queries against production ports
-- When running inside TMUX, requires interactive approval for all `-q` queries (all environments)
-- Uses a dedicated query approval popup with yes/no prompt (not the diff viewer)
-
-**Required Parameter:**
-- `Port` (string)
-
-**Optional Parameters:**
-- `Database` (required when `Query` is used)
-- `Query` (SQL query)
-- `TrackingNumber` (tracking lookup mode)
-- `AllTables` (`true/false`, uses `-at`, requires `Database`)
-- `TableStructure` (table name, uses `-ts`, requires `Database`)
-- `Json` (`true/false/1/0/yes/no`)
-
-**Approved Ports:**
-- `2001`, `2002`, `2003`, `2004`, `2005` - services environments
-- `2101`, `2102`, `2103`, `2104` - status environments
-- `2201`, `2202`, `2203`, `2204` - sagas environments
-- `2301`, `2302`, `2303`, `2304`, `2305` - address environments
-
----
-
-### 12. **Stock Price Lookup Tool** (`stock_price_lookup_tool.go`)
+### 9. **Stock Price Lookup Tool** (`stock_price_lookup_tool.go`)
 Fetches current stock/index quotes from Yahoo Finance without API keys.
 
 **Tool Name:** `stock_price_lookup`
@@ -577,7 +517,7 @@ The application integrates with multiple AI providers:
 2. View recent commits (git_tool log)
 3. Read code files (read_file_tool)
 4. Update implementation (update_file_tool)
-5. Generate issues documentation (issue_list_tool)
+5. Run focused validation or checks for the updated area
 ```
 
 ### Integration Workflow

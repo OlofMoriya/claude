@@ -1,11 +1,13 @@
 package tools
 
 type Tool struct {
-	Type        string      `json:"type,omitempty"`
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	InputSchema InputSchema `json:"input_schema,omitempty"`
-	MaxUses     int         `json:"max_uses,omitempty"`
+	Type         string           `json:"type,omitempty"`
+	Name         string           `json:"name"`
+	Description  string           `json:"description"`
+	InputSchema  InputSchema      `json:"input_schema,omitempty"`
+	MaxUses      int              `json:"max_uses,omitempty"`
+	Groups       []ToolGroup      `json:"groups,omitempty"`
+	Dependencies []ToolDependency `json:"dependencies,omitempty"`
 }
 
 type InputSchema struct {

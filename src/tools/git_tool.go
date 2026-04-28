@@ -64,8 +64,10 @@ func (tool *GitStatusTool) GetName() string {
 
 func (tool *GitStatusTool) GetDefinition() (Tool, string) {
 	return Tool{
-		Name:        tool.GetName(),
-		Description: "Executes git commands to get repository information. Can show status, current branch, recent commits, and diffs. Useful for understanding the state of the codebase and recent changes.",
+		Name:         tool.GetName(),
+		Description:  "Executes git commands to get repository information. Can show status, current branch, recent commits, and diffs. Useful for understanding the state of the codebase and recent changes.",
+		Groups:       []ToolGroup{ToolGroupDev},
+		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
 			Type: "object",
@@ -83,8 +85,8 @@ func (tool *GitStatusTool) GetDefinition() (Tool, string) {
 	}, LOCAL
 }
 
-func (tool *GitStatusTool) GetGroups() []string {
-	return []string{"dev"}
+func (tool *GitStatusTool) GetGroups() []ToolGroup {
+	return []ToolGroup{ToolGroupDev}
 }
 
 func (tool *GitStatusTool) FormatToolUse(toolUse data.ToolUse) []string {
