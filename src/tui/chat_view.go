@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
@@ -11,6 +12,7 @@ import (
 	"github.com/muesli/termenv"
 	commontypes "owl/common_types"
 	"owl/data"
+	"owl/interaction"
 	"owl/logger"
 	picker "owl/picker"
 	"owl/services"
@@ -25,7 +27,24 @@ const (
 	chatInputMode chatMode = iota
 	chatNormalMode
 	chatModelSelectMode
+	chatQuestionMode
 )
+
+type questionAnswerState struct {
+	selectedOption  int
+	selectedOptions map[int]bool
+	customAnswer    string
+}
+
+type questionPromptState struct {
+	prompt      interaction.QuestionPrompt
+	title       string
+	questionIdx int
+	optionIdx   int
+	answers     []questionAnswerState
+	customInput textinput.Model
+	editingText bool
+}
 
 type chatViewModel struct {
 	shared          *sharedState
@@ -57,6 +76,7 @@ type chatViewModel struct {
 	usagePanelPinned bool
 	contextUsage     commontypes.TokenUsage
 	lastUsage        *commontypes.TokenUsage
+	questionPrompt   *questionPromptState
 }
 
 const (
@@ -94,6 +114,10 @@ type chatCompleteMsg struct {
 
 type chatErrorMsg struct {
 	err error
+}
+
+type questionPromptMsg struct {
+	prompt interaction.QuestionPrompt
 }
 
 func newChatViewModel(shared *sharedState) *chatViewModel {
@@ -145,6 +169,7 @@ func (m *chatViewModel) Init() tea.Cmd {
 		m.loadHistory(),
 		m.listenForStatus(),
 		m.listenForHistoryPersisted(),
+		m.listenForQuestionPrompts(),
 	)
 }
 
@@ -175,6 +200,21 @@ func (m *chatViewModel) listenForHistoryPersisted() tea.Cmd {
 		}
 
 		return historyPersistedMsg(contextId)
+	}
+}
+
+func (m *chatViewModel) listenForQuestionPrompts() tea.Cmd {
+	return func() tea.Msg {
+		if interaction.QuestionPromptChan == nil {
+			return nil
+		}
+
+		prompt, ok := <-interaction.QuestionPromptChan
+		if !ok {
+			return nil
+		}
+
+		return questionPromptMsg{prompt: prompt}
 	}
 }
 
@@ -333,7 +373,17 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = ""
 		return m, nil
 
+	case questionPromptMsg:
+		state := newQuestionPromptState(msg.prompt)
+		m.questionPrompt = &state
+		m.mode = chatQuestionMode
+		return m, m.listenForQuestionPrompts()
+
 	case tea.KeyMsg:
+		if m.mode == chatQuestionMode {
+			return m, m.handleQuestionModeKey(msg)
+		}
+
 		if m.sending {
 			return m, nil
 		}
@@ -596,6 +646,177 @@ func (m *chatViewModel) clearStatusAfterDelay(version int) tea.Cmd {
 	})
 }
 
+func newQuestionPromptState(prompt interaction.QuestionPrompt) questionPromptState {
+	title := strings.TrimSpace(prompt.Request.Title)
+	if title == "" {
+		title = "Answer Questions"
+	}
+
+	answers := make([]questionAnswerState, len(prompt.Request.Questions))
+	for i := range answers {
+		answers[i] = questionAnswerState{selectedOption: -1, selectedOptions: map[int]bool{}}
+	}
+
+	ti := textinput.New()
+	ti.Placeholder = "Type custom answer"
+	ti.Prompt = "> "
+	ti.CharLimit = 400
+
+	return questionPromptState{
+		prompt:      prompt,
+		title:       title,
+		questionIdx: 0,
+		optionIdx:   0,
+		answers:     answers,
+		customInput: ti,
+		editingText: false,
+	}
+}
+
+func (m *chatViewModel) handleQuestionModeKey(msg tea.KeyMsg) tea.Cmd {
+	if m.questionPrompt == nil {
+		m.mode = chatInputMode
+		return nil
+	}
+
+	qs := m.questionPrompt
+	question := qs.prompt.Request.Questions[qs.questionIdx]
+
+	if qs.editingText {
+		switch msg.String() {
+		case "esc":
+			qs.editingText = false
+			qs.customInput.Blur()
+			return nil
+		case "enter":
+			qs.answers[qs.questionIdx].customAnswer = strings.TrimSpace(qs.customInput.Value())
+			qs.editingText = false
+			qs.customInput.Blur()
+			return nil
+		default:
+			var cmd tea.Cmd
+			qs.customInput, cmd = qs.customInput.Update(msg)
+			return cmd
+		}
+	}
+
+	switch msg.String() {
+	case "j", "down":
+		if qs.optionIdx < len(question.Options)-1 {
+			qs.optionIdx++
+		}
+	case "k", "up":
+		if qs.optionIdx > 0 {
+			qs.optionIdx--
+		}
+	case "tab", "l", "right":
+		if qs.questionIdx < len(qs.prompt.Request.Questions)-1 {
+			qs.questionIdx++
+			qs.optionIdx = 0
+		}
+	case "shift+tab", "h", "left":
+		if qs.questionIdx > 0 {
+			qs.questionIdx--
+			qs.optionIdx = 0
+		}
+	case "enter":
+		if len(question.Options) > 0 {
+			if question.AllowMultiple {
+				if qs.answers[qs.questionIdx].selectedOptions == nil {
+					qs.answers[qs.questionIdx].selectedOptions = map[int]bool{}
+				}
+				qs.answers[qs.questionIdx].selectedOptions[qs.optionIdx] = !qs.answers[qs.questionIdx].selectedOptions[qs.optionIdx]
+			} else {
+				qs.answers[qs.questionIdx].selectedOption = qs.optionIdx
+			}
+		}
+	case " ":
+		if question.AllowMultiple && len(question.Options) > 0 {
+			if qs.answers[qs.questionIdx].selectedOptions == nil {
+				qs.answers[qs.questionIdx].selectedOptions = map[int]bool{}
+			}
+			qs.answers[qs.questionIdx].selectedOptions[qs.optionIdx] = !qs.answers[qs.questionIdx].selectedOptions[qs.optionIdx]
+		}
+	case "i":
+		if question.AllowCustom {
+			qs.editingText = true
+			qs.customInput.SetValue(qs.answers[qs.questionIdx].customAnswer)
+			qs.customInput.Focus()
+		}
+	case "x":
+		qs.answers[qs.questionIdx] = questionAnswerState{selectedOption: -1, selectedOptions: map[int]bool{}}
+	case "esc":
+		qs.prompt.ResponseChan <- interaction.QuestionPromptResult{Err: fmt.Errorf("questionnaire canceled")}
+		m.questionPrompt = nil
+		m.mode = chatInputMode
+	case "ctrl+w":
+		response, err := buildQuestionBatchResponse(qs)
+		if err != nil {
+			m.statusMessage = err.Error()
+			m.statusVersion++
+			return m.clearStatusAfterDelay(m.statusVersion)
+		}
+		qs.prompt.ResponseChan <- interaction.QuestionPromptResult{Response: response}
+		m.questionPrompt = nil
+		m.mode = chatInputMode
+	}
+
+	return nil
+}
+
+func buildQuestionBatchResponse(state *questionPromptState) (*commontypes.QuestionBatchResponse, error) {
+	answers := make([]commontypes.QuestionAnswer, 0, len(state.prompt.Request.Questions))
+
+	for idx, q := range state.prompt.Request.Questions {
+		a := state.answers[idx]
+		custom := strings.TrimSpace(a.customAnswer)
+		selectedIdx := a.selectedOption
+		selectedLabel := ""
+		selectedIndexes := []int{}
+		selectedLabels := []string{}
+
+		if q.AllowMultiple {
+			for i := range q.Options {
+				if a.selectedOptions != nil && a.selectedOptions[i] {
+					selectedIndexes = append(selectedIndexes, i)
+					selectedLabels = append(selectedLabels, q.Options[i].Label)
+				}
+			}
+			if len(selectedLabels) > 0 {
+				selectedLabel = strings.Join(selectedLabels, ", ")
+			}
+		} else if selectedIdx >= 0 && selectedIdx < len(q.Options) {
+			selectedLabel = q.Options[selectedIdx].Label
+			selectedIndexes = append(selectedIndexes, selectedIdx)
+			selectedLabels = append(selectedLabels, selectedLabel)
+		}
+
+		if q.Required && selectedLabel == "" && custom == "" {
+			return nil, fmt.Errorf("question %d is required", idx+1)
+		}
+
+		finalAnswer := selectedLabel
+		if custom != "" {
+			finalAnswer = custom
+		}
+
+		answer := commontypes.QuestionAnswer{
+			ID:                    q.ID,
+			SelectedOptionLabel:   selectedLabel,
+			SelectedOptionIndexes: selectedIndexes,
+			SelectedOptionLabels:  selectedLabels,
+			CustomAnswer:          custom,
+			FinalAnswer:           finalAnswer,
+		}
+		if selectedLabel != "" && selectedIdx >= 0 {
+			answer.SelectedOptionIndex = &selectedIdx
+		}
+		answers = append(answers, answer)
+	}
+
+	return &commontypes.QuestionBatchResponse{Answers: answers}, nil
+}
+
 func (m *chatViewModel) View() string {
 	if m.loading || !m.historyLoaded {
 		return loadingStyle.Render("Loading conversation...")
@@ -607,6 +828,10 @@ func (m *chatViewModel) View() string {
 
 	if m.mode == chatModelSelectMode {
 		return m.renderModelSelector()
+	}
+
+	if m.mode == chatQuestionMode {
+		return m.renderQuestionPrompt()
 	}
 
 	status := ""
@@ -661,6 +886,59 @@ func (m *chatViewModel) View() string {
 	}
 
 	return mainRendered
+}
+
+func (m *chatViewModel) renderQuestionPrompt() string {
+	if m.questionPrompt == nil {
+		return loadingStyle.Render("Loading questions...")
+	}
+
+	qs := m.questionPrompt
+	q := qs.prompt.Request.Questions[qs.questionIdx]
+
+	var b strings.Builder
+	b.WriteString(headerStyle.Render("? "+qs.title) + "\n\n")
+	b.WriteString(dimStyle.Render(fmt.Sprintf("Question %d/%d", qs.questionIdx+1, len(qs.prompt.Request.Questions))) + "\n\n")
+	b.WriteString(userPromptStyle.Render(q.Question) + "\n\n")
+
+	for i, opt := range q.Options {
+		cursor := " "
+		if i == qs.optionIdx {
+			cursor = ">"
+		}
+		selected := " "
+		if q.AllowMultiple {
+			if qs.answers[qs.questionIdx].selectedOptions != nil && qs.answers[qs.questionIdx].selectedOptions[i] {
+				selected = "x"
+			}
+		} else if qs.answers[qs.questionIdx].selectedOption == i {
+			selected = "x"
+		}
+		b.WriteString(fmt.Sprintf("%s [%s] %s\n", cursor, selected, opt.Label))
+	}
+
+	if q.AllowCustom {
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render("Custom answer") + "\n")
+		if qs.editingText {
+			b.WriteString(qs.customInput.View() + "\n")
+		} else {
+			custom := strings.TrimSpace(qs.answers[qs.questionIdx].customAnswer)
+			if custom == "" {
+				custom = "(none)"
+			}
+			b.WriteString(dimStyle.Render(custom) + "\n")
+		}
+	}
+
+	b.WriteString("\n")
+	selectHint := "enter: select"
+	if q.AllowMultiple {
+		selectHint = "enter/space: toggle"
+	}
+	b.WriteString(helpStyle.Render("j/k: option  tab/shift+tab: question  " + selectHint + "  i: custom  x: clear  ctrl+w: submit  esc: cancel"))
+
+	return b.String()
 }
 
 func (m *chatViewModel) updateViewportContent() {

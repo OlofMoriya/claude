@@ -5,15 +5,10 @@ import "strings"
 type ToolGroup string
 
 const (
-	ToolGroupChat      ToolGroup = "chat"
-	ToolGroupDev       ToolGroup = "dev"
 	ToolGroupDeveloper ToolGroup = "developer"
-	ToolGroupEmail     ToolGroup = "email"
 	ToolGroupManager   ToolGroup = "manager"
 	ToolGroupPlanner   ToolGroup = "planner"
 	ToolGroupSecretary ToolGroup = "secretary"
-	ToolGroupWriter    ToolGroup = "writer"
-	ToolGroupManage    ToolGroup = "manage"
 )
 
 type ToolDependency string
@@ -26,14 +21,10 @@ const (
 
 func NormalizeToolGroup(input string) ToolGroup {
 	v := strings.ToLower(strings.TrimSpace(input))
-	switch v {
-	case "":
+	if v == "" {
 		return ""
-	case "secretery":
-		return ToolGroupSecretary
-	default:
-		return ToolGroup(v)
 	}
+	return ToolGroup(v)
 }
 
 func ParseToolGroups(inputs []string) []ToolGroup {
@@ -48,4 +39,15 @@ func ParseToolGroups(inputs []string) []ToolGroup {
 		groups = append(groups, g)
 	}
 	return groups
+}
+
+func ToolGroupsToStrings(groups []ToolGroup) []string {
+	result := make([]string, 0, len(groups))
+	for _, g := range groups {
+		if g == "" {
+			continue
+		}
+		result = append(result, string(g))
+	}
+	return result
 }
