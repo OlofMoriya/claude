@@ -237,7 +237,7 @@ func (tool *NoteTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:         tool.GetName(),
 		Description:  "Interacts with the users note system, create, search, read, append to notes. Notes should contain brief information about domain logic, major arcitechture, notes about important conversations, and logs for important communication such as applications etc. All notes should be taken in markdown format",
-		Groups:       []ToolGroup{ToolGroupDev, ToolGroupWriter},
+		Groups:       []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper},
 		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
@@ -261,7 +261,7 @@ func (tool *NoteTool) GetDefinition() (Tool, string) {
 }
 
 func (tool *NoteTool) GetGroups() []ToolGroup {
-	return []ToolGroup{ToolGroupDev, ToolGroupWriter}
+	return []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper}
 }
 
 func init() {

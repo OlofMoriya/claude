@@ -29,7 +29,7 @@ func (tool *ListFilesTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:         tool.GetName(),
 		Description:  "Lists all files in and under this directory. Can be used to understand the project structure.",
-		Groups:       []ToolGroup{ToolGroupDev, ToolGroupWriter},
+		Groups:       []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper},
 		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
@@ -78,7 +78,7 @@ func (tool *ListFilesTool) Run(i map[string]string) (string, error) {
 }
 
 func (tool *ListFilesTool) GetGroups() []ToolGroup {
-	return []ToolGroup{ToolGroupDev, ToolGroupWriter}
+	return []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper}
 }
 
 func (tool *ListFilesTool) FormatToolUse(toolUse data.ToolUse) []string {

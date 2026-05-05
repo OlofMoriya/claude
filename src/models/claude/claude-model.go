@@ -459,7 +459,8 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (commontypes.ToolResp
 		default:
 			bytes, err := json.Marshal(v)
 			if err != nil {
-				return commontypes.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("could not marshal tool arg %s: %w", key, err)
+				msg := fmt.Sprintf("%s: invalid argument %s (%v)", content.Name, key, err)
+				return commontypes.ToolResponse{Id: content.Id, Response: msg}, fmt.Errorf("could not marshal tool arg %s: %w", key, err)
 			}
 			args[key] = string(bytes)
 		}
@@ -475,7 +476,13 @@ func (model *ClaudeModel) useTool(content ResponseMessage) (commontypes.ToolResp
 		}, nil
 	}
 
-	return commontypes.ToolResponse{Id: content.Id, Response: "error"}, fmt.Errorf("No response or err from tool: %s, err: %s", content.Name, err.Error())
+	if err != nil {
+		msg := fmt.Sprintf("%s failed: %v", content.Name, err)
+		return commontypes.ToolResponse{Id: content.Id, Response: msg}, err
+	}
+
+	msg := fmt.Sprintf("%s failed: empty response", content.Name)
+	return commontypes.ToolResponse{Id: content.Id, Response: msg}, fmt.Errorf("no response returned from tool: %s", content.Name)
 }
 
 func getCacheControl() *CacheControl {
@@ -736,12 +743,35 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 func toClaudeToolProperties(props map[string]tools.Property) map[string]Property {
 	result := make(map[string]Property, len(props))
 	for key, prop := range props {
-		result[key] = Property{
+		mapped := Property{
 			Type:        prop.Type,
 			Description: prop.Description,
 		}
+		if len(prop.Properties) > 0 {
+			mapped.Properties = toClaudeToolProperties(prop.Properties)
+		}
+		if prop.Items != nil {
+			mappedItem := toClaudeToolProperty(*prop.Items)
+			mapped.Items = &mappedItem
+		}
+		result[key] = mapped
 	}
 	return result
+}
+
+func toClaudeToolProperty(prop tools.Property) Property {
+	mapped := Property{
+		Type:        prop.Type,
+		Description: prop.Description,
+	}
+	if len(prop.Properties) > 0 {
+		mapped.Properties = toClaudeToolProperties(prop.Properties)
+	}
+	if prop.Items != nil {
+		mappedItem := toClaudeToolProperty(*prop.Items)
+		mapped.Items = &mappedItem
+	}
+	return mapped
 }
 
 func selectToolCacheTargets(history []data.History) map[int]bool {

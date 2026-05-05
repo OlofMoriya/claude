@@ -3,6 +3,7 @@ package tui
 import (
 	commontypes "owl/common_types"
 	"owl/data"
+	"owl/interaction"
 	"owl/logger"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,12 +20,15 @@ func Run(config TUIConfig) error {
 	// Create the status channel for logger messages
 	logger.StatusChan = make(chan string, 50) // buffered channel
 	logger.HistoryPersistedChan = make(chan int64, 50)
+	interaction.QuestionPromptChan = make(chan interaction.QuestionPrompt, 10)
 	defer func() {
 		// Clean up when TUI exits
 		close(logger.StatusChan)
 		close(logger.HistoryPersistedChan)
+		close(interaction.QuestionPromptChan)
 		logger.StatusChan = nil
 		logger.HistoryPersistedChan = nil
+		interaction.QuestionPromptChan = nil
 	}()
 
 	p := tea.NewProgram(

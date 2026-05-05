@@ -57,7 +57,7 @@ func (tool *GenerateImageTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:         tool.GetName(),
 		Description:  "Generates images from a prompt. This call takes time so don't generate more than two at the time. Can take a subject and a style and creates a image which it returns as base64 and saves it to disc as png",
-		Groups:       []ToolGroup{ToolGroupChat, ToolGroupWriter},
+		Groups:       []ToolGroup{ToolGroupDeveloper},
 		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
@@ -73,7 +73,7 @@ func (tool *GenerateImageTool) GetDefinition() (Tool, string) {
 }
 
 func (tool *GenerateImageTool) GetGroups() []ToolGroup {
-	return []ToolGroup{ToolGroupChat, ToolGroupWriter}
+	return []ToolGroup{ToolGroupDeveloper}
 }
 
 func init() {

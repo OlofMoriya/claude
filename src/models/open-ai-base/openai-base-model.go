@@ -431,10 +431,32 @@ func ConvertProperties(props map[string]tools.Property) map[string]interface{} {
 		if prop.Description != "" {
 			propMap["description"] = prop.Description
 		}
+		if len(prop.Properties) > 0 {
+			propMap["properties"] = ConvertProperties(prop.Properties)
+		}
+		if prop.Items != nil {
+			propMap["items"] = ConvertProperty(*prop.Items)
+		}
 		result[key] = propMap
 	}
 
 	return result
+}
+
+func ConvertProperty(prop tools.Property) map[string]interface{} {
+	propMap := map[string]interface{}{
+		"type": prop.Type,
+	}
+	if prop.Description != "" {
+		propMap["description"] = prop.Description
+	}
+	if len(prop.Properties) > 0 {
+		propMap["properties"] = ConvertProperties(prop.Properties)
+	}
+	if prop.Items != nil {
+		propMap["items"] = ConvertProperty(*prop.Items)
+	}
+	return propMap
 }
 
 func usageFromOpenAI(u Usage) *commontypes.TokenUsage {

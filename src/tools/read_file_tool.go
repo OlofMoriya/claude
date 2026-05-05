@@ -78,6 +78,13 @@ func (tool *ReadFileTool) Run(i map[string]string) (string, error) {
 			continue
 		}
 
+		if isForbiddenEnvFile(file) {
+			errorMsg := fmt.Sprintf("  - %s: reading .env files is blocked for security", file)
+			errors = append(errors, errorMsg)
+			logger.Debug.Printf("Blocked env file read attempt: %s", file)
+			continue
+		}
+
 		content, err := os.ReadFile(file)
 		if err != nil {
 			errorMsg := fmt.Sprintf("  - %s: %s", file, err.Error())
@@ -156,7 +163,7 @@ func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 	return Tool{
 		Name:         tool.GetName(),
 		Description:  "Fetches the contents of the files specified by name and dynamic path. Path starts from where script is being executed. Prefere reading files with .go, .md, .tsx, .ts, .csv, .js, .txt, .mod, .cs, .csproj, .gitignore, .tsx, .jsx, .json extentions. Don't overuse this tool as it increase token use a lot",
-		Groups:       []ToolGroup{ToolGroupDev},
+		Groups:       []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper},
 		Dependencies: []ToolDependency{ToolDependencyLocalExec},
 
 		InputSchema: InputSchema{
@@ -181,7 +188,7 @@ func (tool *ReadFileTool) GetDefinition() (Tool, string) {
 }
 
 func (tool *ReadFileTool) GetGroups() []ToolGroup {
-	return []ToolGroup{ToolGroupDev}
+	return []ToolGroup{ToolGroupPlanner, ToolGroupDeveloper}
 }
 
 func (tool *ReadFileTool) FormatToolUse(toolUse data.ToolUse) []string {
@@ -209,6 +216,28 @@ func (tool *ReadFileTool) FormatToolUse(toolUse data.ToolUse) []string {
 	}
 
 	return lines
+}
+
+func isForbiddenEnvFile(path string) bool {
+	normalized := strings.ReplaceAll(strings.TrimSpace(path), "\\", "/")
+	if normalized == "" {
+		return false
+	}
+
+	base := normalized
+	if idx := strings.LastIndex(normalized, "/"); idx >= 0 {
+		base = normalized[idx+1:]
+	}
+
+	if base == ".env.example" {
+		return false
+	}
+
+	if base == ".env" {
+		return true
+	}
+
+	return strings.HasPrefix(base, ".env.")
 }
 
 func init() {
