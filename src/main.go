@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"owl/agents"
 	commontypes "owl/common_types"
 	data "owl/data"
 	"owl/embeddings"
@@ -53,6 +54,8 @@ var (
 	tool_groups      string
 	skillsFlag       string
 )
+
+const owlBaseSystemPrompt = "You are Owl, a coding assistant that prioritizes safe, minimal, and verifiable changes while following repository conventions."
 
 var (
 	runServerFunc        = server.Run
@@ -103,7 +106,7 @@ func registerFlags(fs *flag.FlagSet) {
 
 	fs.BoolVar(&create_context, "create_context", false, "create a context with proper system prompt")
 
-	fs.StringVar(&tool_groups, "agent", "", "comma-separated list of agents to enable")
+	fs.StringVar(&tool_groups, "agent", "", "agent role to use (planner, developer, manager, secretary)")
 	fs.StringVar(&skillsFlag, "skills", "", "comma-separated list of skill files located under ~/.owl/skills")
 }
 
@@ -111,7 +114,15 @@ func main() {
 	godotenv.Load()
 	flag.Parse()
 	skillNames := parseSkillNames(skillsFlag)
-	sessionSystemPrompt := combineSystemPrompt(system_prompt, skillNames)
+	skillsPrompt := loadSkillsPrompt(skillNames)
+	selectedAgent, err := agents.Resolve(tool_groups)
+	if err != nil {
+		log.Fatal(err)
+	}
+	agentPrompt := strings.TrimSpace(selectedAgent.SystemPrompt)
+	agentGroups := selectedAgent.ToolGroups
+	userSystemPrompt := strings.TrimSpace(system_prompt)
+	resolvedSystemPrompt := composeSystemPrompt(owlBaseSystemPrompt, agentPrompt, userSystemPrompt, skillsPrompt)
 
 	if serve {
 		logger.Screen("\nsetting mode to REMOTE\n", color.RGB(150, 150, 150))
@@ -125,16 +136,16 @@ func main() {
 		return
 	}
 
-	if system_prompt != "" && context_name != "" {
+	if system_prompt != "" && context_name != "" && prompt == "" && !serve && !view && search == "" && chunk == "" && !tui_mode {
 		db := os.Getenv("OWL_LOCAL_DATABASE")
 		if db == "" {
 			db = "owl"
 		}
 
 		user := data.User{Name: &db}
-		context := getContextFunc(user, &sessionSystemPrompt)
+		context := getContextFunc(user, &resolvedSystemPrompt)
 
-		err := user.UpdateSystemPrompt(context.Id, sessionSystemPrompt)
+		err := user.UpdateSystemPrompt(context.Id, resolvedSystemPrompt)
 		if err != nil {
 			println(err)
 		}
@@ -167,7 +178,7 @@ func main() {
 
 		context := &new_context
 		context.Id = id
-		context.SystemPrompt = sessionSystemPrompt
+		context.SystemPrompt = resolvedSystemPrompt
 
 		model, modelName := getModelForQueryFunc("haiku", context, &toolResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
@@ -229,12 +240,10 @@ func main() {
 		}
 		user := data.User{Name: &db}
 		cliResponseHandler := CliResponseHandler{Repository: user}
-		context := getContextFunc(user, &sessionSystemPrompt)
-		if strings.TrimSpace(sessionSystemPrompt) != "" {
-			context.SystemPrompt = sessionSystemPrompt
-		}
+		context := getContextFunc(user, &resolvedSystemPrompt)
+		context.SystemPrompt = resolvedSystemPrompt
 		model, modelName := getModelForQueryFunc(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
-		awaitedQueryFunc(search_prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}, modelName)
+		awaitedQueryFunc(search_prompt, model, user, history_count, context, &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web, ToolGroupFilters: tools.ToolGroupsToStrings(agentGroups)}, modelName)
 		return
 	}
 
@@ -250,20 +259,14 @@ func main() {
 
 	user := data.User{Name: &db}
 	cliResponseHandler := CliResponseHandler{Repository: user}
-	context := getContextFunc(user, &sessionSystemPrompt)
-	if strings.TrimSpace(sessionSystemPrompt) != "" {
-		context.SystemPrompt = sessionSystemPrompt
-	}
+	context := getContextFunc(user, &resolvedSystemPrompt)
+	context.SystemPrompt = resolvedSystemPrompt
 
 	model, modelName := getModelForQueryFunc(llm_model, context, cliResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 	modifiers := &commontypes.PayloadModifiers{Image: image, Pdf: pdf, Web: web}
 
-	var filterGroups []string
-	if tool_groups != "" {
-		filterGroups = strings.Split(tool_groups, ",")
-		modifiers.ToolGroupFilters = filterGroups
-	}
+	modifiers.ToolGroupFilters = tools.ToolGroupsToStrings(agentGroups)
 
 	if stream {
 		streamedQueryFunc(prompt, model, user, history_count, context, modifiers, modelName)
@@ -345,21 +348,34 @@ func parseSkillNames(raw string) []string {
 	return result
 }
 
-func combineSystemPrompt(base string, skillNames []string) string {
-	trimmedBase := strings.TrimSpace(base)
+func composeSystemPrompt(basePrompt string, agentPrompt string, userPrompt string, skillsPrompt string) string {
+	sections := []string{}
+	if trimmed := strings.TrimSpace(basePrompt); trimmed != "" {
+		sections = append(sections, trimmed)
+	}
+	if trimmed := strings.TrimSpace(agentPrompt); trimmed != "" {
+		sections = append(sections, trimmed)
+	}
+	if trimmed := strings.TrimSpace(userPrompt); trimmed != "" {
+		sections = append(sections, trimmed)
+	}
+	if trimmed := strings.TrimSpace(skillsPrompt); trimmed != "" {
+		sections = append(sections, trimmed)
+	}
+	return strings.Join(sections, "\n\n")
+}
+
+func loadSkillsPrompt(skillNames []string) string {
 	if len(skillNames) == 0 {
-		return trimmedBase
+		return ""
 	}
 	dir, err := skillsDirectory()
 	if err != nil {
 		logger.Screen(fmt.Sprintf("unable to load skills: %v", err), color.RGB(250, 150, 150))
 		logger.Debug.Printf("skills directory error: %v", err)
-		return trimmedBase
+		return ""
 	}
 	builder := strings.Builder{}
-	if trimmedBase != "" {
-		builder.WriteString(trimmedBase)
-	}
 	for _, skill := range skillNames {
 		name := strings.TrimSpace(skill)
 		if name == "" {

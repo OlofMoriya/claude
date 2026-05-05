@@ -693,8 +693,18 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	})
 
 	payload.Tools = make([]ToolModel, len(toolsList))
-	for i := range toolsList {
-		payload.Tools[i] = ToolModel{Value: toolsList[i]}
+	for i, tool := range toolsList {
+		payload.Tools[i] = ToolModel{Value: Tool{
+			Type:        tool.Type,
+			Name:        tool.Name,
+			Description: tool.Description,
+			InputSchema: InputSchema{
+				Type:       tool.InputSchema.Type,
+				Properties: toClaudeToolProperties(tool.InputSchema.Properties),
+				Required:   tool.InputSchema.Required,
+			},
+			MaxUses: tool.MaxUses,
+		}}
 	}
 
 	if modifiers.Web {
@@ -721,6 +731,17 @@ func createClaudePayload(prompt string, streamed bool, history []data.History, m
 	// logger.Debug.Println("FULL PAYLOAD:")
 	// logger.Debug.Printf("\n----\n\n%v\n\n------\n", payload)
 	return payload
+}
+
+func toClaudeToolProperties(props map[string]tools.Property) map[string]Property {
+	result := make(map[string]Property, len(props))
+	for key, prop := range props {
+		result[key] = Property{
+			Type:        prop.Type,
+			Description: prop.Description,
+		}
+	}
+	return result
 }
 
 func selectToolCacheTargets(history []data.History) map[int]bool {
