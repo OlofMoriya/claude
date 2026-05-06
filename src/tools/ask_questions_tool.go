@@ -242,6 +242,9 @@ func validateQuestionBatch(batch commontypes.QuestionBatchRequest) error {
 		if len(q.Options) > 6 {
 			return fmt.Errorf("question %s has too many options (max 6)", qID)
 		}
+		if len(q.Options) == 0 && !q.AllowCustom && q.Required {
+			return fmt.Errorf("question %s has no options and disallows custom answers", qID)
+		}
 		for optIdx, opt := range q.Options {
 			if strings.TrimSpace(opt.Label) == "" {
 				return fmt.Errorf("question %s option %d is empty", qID, optIdx+1)

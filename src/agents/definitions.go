@@ -9,14 +9,20 @@ import (
 
 type Definition struct {
 	Name         string
+	DisplayName  string
+	AccentColor  string
 	Description  string
 	SystemPrompt string
 	ToolGroups   []tools.ToolGroup
 }
 
+var defaultOrder = []string{"planner", "developer", "manager", "secretary"}
+
 var defaults = map[string]Definition{
 	"planner": {
 		Name:        "planner",
+		DisplayName: "Planner",
+		AccentColor: "yellow",
 		Description: "Read-only planning and implementation strategy",
 		SystemPrompt: "You are Owl Planner. Focus on read-only analysis, implementation planning, and risk assessment. " +
 			"Do not edit files in planning mode. Provide concrete step-by-step plans and validation checklists.",
@@ -24,6 +30,8 @@ var defaults = map[string]Definition{
 	},
 	"developer": {
 		Name:        "developer",
+		DisplayName: "Developer",
+		AccentColor: "blue",
 		Description: "Implementation-focused coding agent",
 		SystemPrompt: "You are Owl Developer. Implement approved plans with minimal, safe diffs. " +
 			"Follow repository conventions, run relevant validation, and clearly report what changed and why.",
@@ -31,6 +39,8 @@ var defaults = map[string]Definition{
 	},
 	"manager": {
 		Name:        "manager",
+		DisplayName: "Manager",
+		AccentColor: "green",
 		Description: "Work/life management assistant",
 		SystemPrompt: "You are Owl Manager Assistant. Help organize priorities, commitments, and next actions. " +
 			"Be concise, practical, and deadline-aware.",
@@ -38,6 +48,8 @@ var defaults = map[string]Definition{
 	},
 	"secretary": {
 		Name:        "secretary",
+		DisplayName: "Secretary",
+		AccentColor: "cyan",
 		Description: "Communication and follow-up assistant",
 		SystemPrompt: "You are Owl Secretary Assistant. Draft clear communication, track follow-ups, and support scheduling tasks. " +
 			"Confirm key details before proposing final messages.",
@@ -62,4 +74,14 @@ func Resolve(name string) (Definition, error) {
 	}
 
 	return def, nil
+}
+
+func List() []Definition {
+	items := make([]Definition, 0, len(defaultOrder))
+	for _, name := range defaultOrder {
+		if def, ok := defaults[name]; ok {
+			items = append(items, def)
+		}
+	}
+	return items
 }

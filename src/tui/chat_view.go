@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+	"owl/agents"
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/interaction"
@@ -68,6 +69,8 @@ type chatViewModel struct {
 	availableModels  []string
 	selectedModelIdx int
 	modelCursor      int
+	availableAgents  []agents.Definition
+	selectedAgentIdx int
 
 	historyCount     int
 	statusMessage    string
@@ -142,6 +145,15 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		"claude",
 	}
 
+	availableAgents := agents.List()
+	selectedAgentIdx := 0
+	for idx, agent := range availableAgents {
+		if agent.Name == "planner" {
+			selectedAgentIdx = idx
+			break
+		}
+	}
+
 	m := &chatViewModel{
 		shared:           shared,
 		textarea:         ta,
@@ -152,6 +164,8 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		height:           shared.height,
 		availableModels:  availableModels,
 		selectedModelIdx: 0,
+		availableAgents:  availableAgents,
+		selectedAgentIdx: selectedAgentIdx,
 		mode:             chatInputMode,
 		historyCount:     shared.config.HistoryCount,
 		statusMessage:    "",
@@ -263,16 +277,21 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 		logger.Debug.Printf("MODEL SELECTION: %s (actual: %s)", modelName, actualModelName)
 
 		go func() {
+			selectedAgent := m.currentAgent()
+			contextForRequest := *m.shared.selectedCtx
+			contextForRequest.SystemPrompt = composeAgentSystemPrompt(contextForRequest.SystemPrompt, selectedAgent)
+
 			services.StreamedQuery(
 				prompt,
 				model,
 				m.shared.config.Repository,
 				m.historyCount,
-				m.shared.selectedCtx,
+				&contextForRequest,
 				&commontypes.PayloadModifiers{
-					Pdf:   "",
-					Web:   false,
-					Image: false,
+					Pdf:              "",
+					Web:              false,
+					Image:            false,
+					ToolGroupFilters: tools.ToolGroupsToStrings(selectedAgent.ToolGroups),
 				},
 				actualModelName,
 			)
@@ -516,6 +535,14 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
+		case "tab":
+			m.selectNextAgent()
+			return m, nil
+
+		case "shift+tab":
+			m.selectPreviousAgent()
+			return m, nil
+
 		case "ctrl+n":
 			m.mode = chatNormalMode
 			m.textarea.Blur()
@@ -693,6 +720,20 @@ func (m *chatViewModel) handleQuestionModeKey(msg tea.KeyMsg) tea.Cmd {
 			qs.editingText = false
 			qs.customInput.Blur()
 			return nil
+		case "ctrl+w":
+			qs.answers[qs.questionIdx].customAnswer = strings.TrimSpace(qs.customInput.Value())
+			qs.editingText = false
+			qs.customInput.Blur()
+			response, err := buildQuestionBatchResponse(qs)
+			if err != nil {
+				m.statusMessage = err.Error()
+				m.statusVersion++
+				return m.clearStatusAfterDelay(m.statusVersion)
+			}
+			qs.prompt.ResponseChan <- interaction.QuestionPromptResult{Response: response}
+			m.questionPrompt = nil
+			m.mode = chatInputMode
+			return nil
 		default:
 			var cmd tea.Cmd
 			qs.customInput, cmd = qs.customInput.Update(msg)
@@ -720,6 +761,12 @@ func (m *chatViewModel) handleQuestionModeKey(msg tea.KeyMsg) tea.Cmd {
 			qs.optionIdx = 0
 		}
 	case "enter":
+		if len(question.Options) == 0 && question.AllowCustom {
+			qs.editingText = true
+			qs.customInput.SetValue(qs.answers[qs.questionIdx].customAnswer)
+			qs.customInput.Focus()
+			return nil
+		}
 		if len(question.Options) > 0 {
 			if question.AllowMultiple {
 				if qs.answers[qs.questionIdx].selectedOptions == nil {
@@ -858,16 +905,22 @@ func (m *chatViewModel) View() string {
 	if m.mode == chatNormalMode {
 		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • ctrl+t: usage • esc: back"
 	} else {
-		helpText = "ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
+		helpText = "tab/shift+tab: agent • ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
 	}
 
+	agent := m.currentAgent()
+	agentLabel := fmt.Sprintf("Agent: %s", agent.DisplayName)
+	agentLabelStyle := dimStyle.Foreground(agentAccentColor(agent.AccentColor))
+	textareaStyled := textareaAgentStyle(agent.AccentColor).Render(m.textarea.View())
+
 	mainContent := fmt.Sprintf(
-		"%s%s%s\n\n%s\n\n%s\n%s%s",
+		"%s%s%s\n\n%s\n\n%s\n%s\n%s%s",
 		headerStyle.Render(fmt.Sprintf("💬 %s", m.shared.selectedCtx.Name)),
 		modelInfo,
 		modeIndicator,
 		m.viewport.View(),
-		m.textarea.View(),
+		agentLabelStyle.Render(agentLabel),
+		textareaStyled,
 		helpStyle.Render(helpText),
 		status,
 	)
@@ -888,6 +941,69 @@ func (m *chatViewModel) View() string {
 	return mainRendered
 }
 
+func (m *chatViewModel) currentAgent() agents.Definition {
+	if len(m.availableAgents) == 0 {
+		return agents.Definition{Name: "planner", DisplayName: "Planner", AccentColor: "yellow"}
+	}
+	if m.selectedAgentIdx < 0 || m.selectedAgentIdx >= len(m.availableAgents) {
+		return m.availableAgents[0]
+	}
+	return m.availableAgents[m.selectedAgentIdx]
+}
+
+func (m *chatViewModel) selectNextAgent() {
+	if len(m.availableAgents) == 0 {
+		return
+	}
+	m.selectedAgentIdx = (m.selectedAgentIdx + 1) % len(m.availableAgents)
+}
+
+func (m *chatViewModel) selectPreviousAgent() {
+	if len(m.availableAgents) == 0 {
+		return
+	}
+	m.selectedAgentIdx = (m.selectedAgentIdx - 1 + len(m.availableAgents)) % len(m.availableAgents)
+}
+
+func composeAgentSystemPrompt(existing string, agent agents.Definition) string {
+	existing = strings.TrimSpace(existing)
+	agentPrompt := strings.TrimSpace(agent.SystemPrompt)
+	if agentPrompt == "" {
+		return existing
+	}
+	section := fmt.Sprintf("## Agent: %s\n%s", agent.Name, agentPrompt)
+	if existing == "" {
+		return section
+	}
+	return existing + "\n\n" + section
+}
+
+func agentAccentColor(accent string) lipgloss.Color {
+	switch strings.ToLower(strings.TrimSpace(accent)) {
+	case "yellow":
+		return lipgloss.Color("220")
+	case "blue":
+		return lipgloss.Color("39")
+	case "green":
+		return lipgloss.Color("42")
+	case "cyan":
+		return lipgloss.Color("44")
+	default:
+		return lipgloss.Color("243")
+	}
+}
+
+func textareaAgentStyle(accent string) lipgloss.Style {
+	return lipgloss.NewStyle().
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderLeft(true).
+		BorderTop(false).
+		BorderRight(false).
+		BorderBottom(false).
+		BorderForeground(agentAccentColor(accent)).
+		PaddingLeft(1)
+}
+
 func (m *chatViewModel) renderQuestionPrompt() string {
 	if m.questionPrompt == nil {
 		return loadingStyle.Render("Loading questions...")
@@ -900,6 +1016,9 @@ func (m *chatViewModel) renderQuestionPrompt() string {
 	b.WriteString(headerStyle.Render("? "+qs.title) + "\n\n")
 	b.WriteString(dimStyle.Render(fmt.Sprintf("Question %d/%d", qs.questionIdx+1, len(qs.prompt.Request.Questions))) + "\n\n")
 	b.WriteString(userPromptStyle.Render(q.Question) + "\n\n")
+	if len(q.Options) == 0 && q.AllowCustom {
+		b.WriteString(dimStyle.Render("No predefined options. Press enter or i to type your answer.") + "\n\n")
+	}
 
 	for i, opt := range q.Options {
 		cursor := " "
