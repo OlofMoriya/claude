@@ -18,6 +18,7 @@ import (
 	mode "owl/mode"
 	"owl/models"
 	claude_model "owl/models/claude"
+	"owl/openai_auth"
 	picker "owl/picker"
 	"owl/services"
 	"owl/tools"
@@ -53,6 +54,8 @@ var (
 	mardown_path     string
 	tool_groups      string
 	skillsFlag       string
+	authProvider     string
+	authStatus       bool
 )
 
 const owlBaseSystemPrompt = "You are Owl, a coding assistant that prioritizes safe, minimal, and verifiable changes while following repository conventions."
@@ -108,11 +111,20 @@ func registerFlags(fs *flag.FlagSet) {
 
 	fs.StringVar(&tool_groups, "agent", "", "agent role to use (planner, developer, manager, secretary)")
 	fs.StringVar(&skillsFlag, "skills", "", "comma-separated list of skill files located under ~/.owl/skills")
+	fs.StringVar(&authProvider, "auth", "", "auth provider commands (currently: openai)")
+	fs.BoolVar(&authStatus, "status", false, "show auth status for provider specified with -auth")
 }
 
 func main() {
 	godotenv.Load()
 	flag.Parse()
+	if !wasFlagProvided("model") && openai_auth.HasCodexOAuthCredential() {
+		llm_model = "gpt"
+	}
+	if authStatus {
+		handleAuthStatus()
+		return
+	}
 	skillNames := parseSkillNames(skillsFlag)
 	skillsPrompt := loadSkillsPrompt(skillNames)
 	selectedAgent, err := agents.Resolve(tool_groups)
@@ -273,6 +285,29 @@ func main() {
 	} else {
 		awaitedQueryFunc(prompt, model, user, history_count, context, modifiers, modelName)
 	}
+}
+
+func handleAuthStatus() {
+	provider := strings.TrimSpace(strings.ToLower(authProvider))
+	if provider == "" {
+		log.Fatal("-auth is required when using -status")
+	}
+	if provider != "openai" {
+		log.Fatalf("unsupported auth provider %q", provider)
+	}
+
+	status := openai_auth.CurrentStatus()
+	fmt.Printf("openai auth status: %s\n", status)
+}
+
+func wasFlagProvided(name string) bool {
+	found := false
+	flag.CommandLine.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
 
 func view_history() {
