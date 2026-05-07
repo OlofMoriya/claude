@@ -135,6 +135,8 @@ func createResponsePayload(context *data.Context, prompt string, streaming bool,
 		Tools: tools,
 	}
 	if codexAuth {
+		store := false
+		request.Store = &store
 		instructions := ""
 		if context != nil {
 			instructions = strings.TrimSpace(context.SystemPrompt)
