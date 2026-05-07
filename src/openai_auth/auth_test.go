@@ -144,3 +144,23 @@ func TestCurrentStatus(t *testing.T) {
 		}
 	})
 }
+
+func TestLogoutRemovesAuthFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	path := filepath.Join(home, openAIOAuthFilePath)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	if err := os.WriteFile(path, []byte(`{"type":"oauth"}`), 0o600); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	if err := Logout(); err != nil {
+		t.Fatalf("logout failed: %v", err)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected auth file removed, got err=%v", err)
+	}
+}

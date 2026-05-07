@@ -2,18 +2,22 @@ package openai_auth
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 const (
 	openAIOAuthClientID   = "app_EMoamEEZ73f0CkXaXp7hrann"
+	openAIOAuthIssuer     = "https://auth.openai.com"
 	openAIOAuthTokenURL   = "https://auth.openai.com/oauth/token"
 	openAIOAuthEarlySkew  = 60 * 1000
+	openAIOAuthPollMargin = 3 * time.Second
 	openAIOAuthFilePath   = ".owl/auth/openai.json"
 	openAIOAuthFilePerm   = 0o600
 	openAIOAuthFolderPerm = 0o700
@@ -51,7 +55,61 @@ type refreshResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
+type deviceCodeResponse struct {
+	DeviceAuthID string `json:"device_auth_id"`
+	UserCode     string `json:"user_code"`
+	Interval     string `json:"interval"`
+}
+
+type deviceTokenResponse struct {
+	AuthorizationCode string `json:"authorization_code"`
+	CodeVerifier      string `json:"code_verifier"`
+}
+
+type loginResult struct {
+	VerificationURL string
+	UserCode        string
+}
+
 var refreshToken = refreshTokenFromAPI
+
+func Login() (string, error) {
+	result, tokens, err := loginDeviceFlow()
+	if err != nil {
+		return "", err
+	}
+
+	auth := oauthFile{
+		Type:      "oauth",
+		Access:    tokens.AccessToken,
+		Refresh:   tokens.RefreshToken,
+		AccountID: extractAccountID(tokens.AccessToken),
+	}
+	auth.updateFromRefresh(tokens)
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(home, openAIOAuthFilePath)
+	if err := writeOAuthFile(path, auth); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("OpenAI login successful. Visit %s and enter code %s", result.VerificationURL, result.UserCode), nil
+}
+
+func Logout() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(home, openAIOAuthFilePath)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
 
 func Resolve() (ResolvedAuth, error) {
 	oauth, path, err := loadOAuthFile()
@@ -175,6 +233,179 @@ func refreshTokenFromAPI(refreshTok string) (refreshResponse, error) {
 	}
 
 	return out, nil
+}
+
+func loginDeviceFlow() (loginResult, refreshResponse, error) {
+	deviceURL := openAIOAuthIssuer + "/api/accounts/deviceauth/usercode"
+
+	body := map[string]string{"client_id": openAIOAuthClientID}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return loginResult{}, refreshResponse{}, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, deviceURL, bytes.NewBuffer(encoded))
+	if err != nil {
+		return loginResult{}, refreshResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return loginResult{}, refreshResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return loginResult{}, refreshResponse{}, fmt.Errorf("device auth start failed with status %d", resp.StatusCode)
+	}
+
+	var device deviceCodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&device); err != nil {
+		return loginResult{}, refreshResponse{}, err
+	}
+	if device.DeviceAuthID == "" || device.UserCode == "" {
+		return loginResult{}, refreshResponse{}, fmt.Errorf("device auth response missing fields")
+	}
+
+	interval := 5 * time.Second
+	if parsed, err := time.ParseDuration(device.Interval + "s"); err == nil && parsed > 0 {
+		interval = parsed
+	}
+
+	statusURL := openAIOAuthIssuer + "/api/accounts/deviceauth/token"
+	for attempt := 0; attempt < 120; attempt++ {
+		tokens, done, err := pollDeviceToken(statusURL, device)
+		if err != nil {
+			return loginResult{}, refreshResponse{}, err
+		}
+		if done {
+			return loginResult{VerificationURL: openAIOAuthIssuer + "/codex/device", UserCode: device.UserCode}, tokens, nil
+		}
+		time.Sleep(interval + openAIOAuthPollMargin)
+	}
+
+	return loginResult{}, refreshResponse{}, fmt.Errorf("device auth timed out")
+}
+
+func pollDeviceToken(statusURL string, device deviceCodeResponse) (refreshResponse, bool, error) {
+	body := map[string]string{
+		"device_auth_id": device.DeviceAuthID,
+		"user_code":      device.UserCode,
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return refreshResponse{}, false, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, statusURL, bytes.NewBuffer(encoded))
+	if err != nil {
+		return refreshResponse{}, false, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return refreshResponse{}, false, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound {
+		return refreshResponse{}, false, nil
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return refreshResponse{}, false, fmt.Errorf("device auth poll failed with status %d", resp.StatusCode)
+	}
+
+	var tokenResp deviceTokenResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return refreshResponse{}, false, err
+	}
+	if tokenResp.AuthorizationCode == "" || tokenResp.CodeVerifier == "" {
+		return refreshResponse{}, false, fmt.Errorf("device auth token response missing fields")
+	}
+
+	tokens, err := exchangeAuthorizationCode(tokenResp.AuthorizationCode, tokenResp.CodeVerifier)
+	if err != nil {
+		return refreshResponse{}, false, err
+	}
+	return tokens, true, nil
+}
+
+func exchangeAuthorizationCode(code string, verifier string) (refreshResponse, error) {
+	body := map[string]string{
+		"grant_type":    "authorization_code",
+		"code":          code,
+		"redirect_uri":  openAIOAuthIssuer + "/deviceauth/callback",
+		"client_id":     openAIOAuthClientID,
+		"code_verifier": verifier,
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return refreshResponse{}, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, openAIOAuthTokenURL, bytes.NewBuffer(encoded))
+	if err != nil {
+		return refreshResponse{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return refreshResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return refreshResponse{}, fmt.Errorf("token exchange failed with status %d", resp.StatusCode)
+	}
+
+	var out refreshResponse
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return refreshResponse{}, err
+	}
+	if out.AccessToken == "" || out.RefreshToken == "" {
+		return refreshResponse{}, fmt.Errorf("token exchange response missing token fields")
+	}
+	return out, nil
+}
+
+func extractAccountID(accessToken string) string {
+	parts := bytes.Split([]byte(accessToken), []byte("."))
+	if len(parts) != 3 {
+		return ""
+	}
+	payload, err := decodeBase64URL(parts[1])
+	if err != nil {
+		return ""
+	}
+	var claims map[string]any
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return ""
+	}
+	if value, ok := claims["chatgpt_account_id"].(string); ok {
+		return value
+	}
+	if nested, ok := claims["https://api.openai.com/auth"].(map[string]any); ok {
+		if value, ok := nested["chatgpt_account_id"].(string); ok {
+			return value
+		}
+	}
+	return ""
+}
+
+func decodeBase64URL(raw []byte) ([]byte, error) {
+	for len(raw)%4 != 0 {
+		raw = append(raw, '=')
+	}
+	normalized := strings.NewReplacer("-", "+", "_", "/").Replace(string(raw))
+	out := make([]byte, len(normalized))
+	n, err := base64.StdEncoding.Decode(out, []byte(normalized))
+	if err != nil {
+		return nil, err
+	}
+	return out[:n], nil
 }
 
 func (a oauthFile) accessToken() string {
