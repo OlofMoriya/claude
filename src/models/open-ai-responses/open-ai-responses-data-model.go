@@ -8,6 +8,7 @@ import (
 type RequestPayload struct {
 	Model        string      `json:"model"`
 	Instructions string      `json:"instructions,omitempty"`
+	Store        *bool       `json:"store,omitempty"`
 	Input        []InputItem `json:"input"`
 	Tools        []Tool      `json:"tools"`
 }
