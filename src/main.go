@@ -56,6 +56,8 @@ var (
 	skillsFlag       string
 	authProvider     string
 	authStatus       bool
+	authLogin        bool
+	authLogout       bool
 )
 
 const owlBaseSystemPrompt = "You are Owl, a coding assistant that prioritizes safe, minimal, and verifiable changes while following repository conventions."
@@ -113,6 +115,8 @@ func registerFlags(fs *flag.FlagSet) {
 	fs.StringVar(&skillsFlag, "skills", "", "comma-separated list of skill files located under ~/.owl/skills")
 	fs.StringVar(&authProvider, "auth", "", "auth provider commands (currently: openai)")
 	fs.BoolVar(&authStatus, "status", false, "show auth status for provider specified with -auth")
+	fs.BoolVar(&authLogin, "login", false, "login for provider specified with -auth")
+	fs.BoolVar(&authLogout, "logout", false, "logout for provider specified with -auth")
 }
 
 func main() {
@@ -123,6 +127,14 @@ func main() {
 	}
 	if authStatus {
 		handleAuthStatus()
+		return
+	}
+	if authLogin {
+		handleAuthLogin()
+		return
+	}
+	if authLogout {
+		handleAuthLogout()
 		return
 	}
 	skillNames := parseSkillNames(skillsFlag)
@@ -298,6 +310,39 @@ func handleAuthStatus() {
 
 	status := openai_auth.CurrentStatus()
 	fmt.Printf("openai auth status: %s\n", status)
+}
+
+func handleAuthLogin() {
+	provider := strings.TrimSpace(strings.ToLower(authProvider))
+	if provider == "" {
+		log.Fatal("-auth is required when using -login")
+	}
+	if provider != "openai" {
+		log.Fatalf("unsupported auth provider %q", provider)
+	}
+
+	fmt.Println("OpenAI device login required.")
+	fmt.Println("Visit https://auth.openai.com/codex/device and follow instructions.")
+	message, err := openai_auth.Login()
+	if err != nil {
+		log.Fatalf("openai login failed: %v", err)
+	}
+	fmt.Println(message)
+}
+
+func handleAuthLogout() {
+	provider := strings.TrimSpace(strings.ToLower(authProvider))
+	if provider == "" {
+		log.Fatal("-auth is required when using -logout")
+	}
+	if provider != "openai" {
+		log.Fatalf("unsupported auth provider %q", provider)
+	}
+
+	if err := openai_auth.Logout(); err != nil {
+		log.Fatalf("openai logout failed: %v", err)
+	}
+	fmt.Println("OpenAI auth cleared.")
 }
 
 func wasFlagProvided(name string) bool {

@@ -15,6 +15,7 @@ import (
 	"owl/data"
 	"owl/interaction"
 	"owl/logger"
+	"owl/openai_auth"
 	picker "owl/picker"
 	"owl/services"
 	"owl/tools"
@@ -121,6 +122,11 @@ type chatErrorMsg struct {
 
 type questionPromptMsg struct {
 	prompt interaction.QuestionPrompt
+}
+
+type authCommandResultMsg struct {
+	text string
+	err  error
 }
 
 func newChatViewModel(shared *sharedState) *chatViewModel {
@@ -392,6 +398,16 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusMessage = ""
 		return m, nil
 
+	case authCommandResultMsg:
+		m.sending = false
+		if msg.err != nil {
+			m.statusMessage = msg.err.Error()
+		} else {
+			m.statusMessage = msg.text
+		}
+		m.statusVersion++
+		return m, m.clearStatusAfterDelay(m.statusVersion)
+
 	case questionPromptMsg:
 		state := newQuestionPromptState(msg.prompt)
 		m.questionPrompt = &state
@@ -594,8 +610,13 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+w":
 			if !m.sending && m.textarea.Value() != "" {
-				m.sending = true
 				prompt := m.textarea.Value()
+				if strings.HasPrefix(strings.TrimSpace(prompt), "/") {
+					m.sending = true
+					m.textarea.Reset()
+					return m, m.handleSlashCommand(prompt)
+				}
+				m.sending = true
 				m.currentPrompt = prompt
 				m.currentResponse = ""
 				m.textarea.Reset()
@@ -671,6 +692,49 @@ func (m *chatViewModel) clearStatusAfterDelay(version int) tea.Cmd {
 	return tea.Tick(3*time.Second, func(t time.Time) tea.Msg {
 		return clearStatusMsg{version: version}
 	})
+}
+
+func (m *chatViewModel) handleSlashCommand(raw string) tea.Cmd {
+	trimmed := strings.TrimSpace(raw)
+	parts := strings.Fields(trimmed)
+	if len(parts) == 0 {
+		return func() tea.Msg {
+			return authCommandResultMsg{err: fmt.Errorf("empty command")}
+		}
+	}
+
+	if parts[0] != "/auth" {
+		return func() tea.Msg {
+			return authCommandResultMsg{err: fmt.Errorf("unsupported command: %s", parts[0])}
+		}
+	}
+
+	if len(parts) < 3 || strings.ToLower(parts[1]) != "openai" {
+		return func() tea.Msg {
+			return authCommandResultMsg{err: fmt.Errorf("usage: /auth openai <login|status|logout>")}
+		}
+	}
+
+	action := strings.ToLower(parts[2])
+	return func() tea.Msg {
+		switch action {
+		case "status":
+			return authCommandResultMsg{text: fmt.Sprintf("openai auth status: %s", openai_auth.CurrentStatus())}
+		case "logout":
+			if err := openai_auth.Logout(); err != nil {
+				return authCommandResultMsg{err: fmt.Errorf("openai logout failed: %w", err)}
+			}
+			return authCommandResultMsg{text: "OpenAI auth cleared."}
+		case "login":
+			msg, err := openai_auth.Login()
+			if err != nil {
+				return authCommandResultMsg{err: fmt.Errorf("openai login failed: %w", err)}
+			}
+			return authCommandResultMsg{text: msg}
+		default:
+			return authCommandResultMsg{err: fmt.Errorf("unsupported auth action: %s", action)}
+		}
+	}
 }
 
 func newQuestionPromptState(prompt interaction.QuestionPrompt) questionPromptState {
@@ -905,7 +969,7 @@ func (m *chatViewModel) View() string {
 	if m.mode == chatNormalMode {
 		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • ctrl+t: usage • esc: back"
 	} else {
-		helpText = "tab/shift+tab: agent • ctrl+n: normal • ctrl+w: send • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
+		helpText = "tab/shift+tab: agent • ctrl+n: normal • ctrl+w: send • /auth openai status|login|logout • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
 	}
 
 	agent := m.currentAgent()
