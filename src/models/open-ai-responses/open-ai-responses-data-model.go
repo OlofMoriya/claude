@@ -6,9 +6,10 @@ import (
 )
 
 type RequestPayload struct {
-	Model string      `json:"model"`
-	Input []InputItem `json:"input"`
-	Tools []Tool      `json:"tools"`
+	Model        string      `json:"model"`
+	Instructions string      `json:"instructions,omitempty"`
+	Input        []InputItem `json:"input"`
+	Tools        []Tool      `json:"tools"`
 }
 
 type InputItem struct {

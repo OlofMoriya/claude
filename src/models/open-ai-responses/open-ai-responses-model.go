@@ -35,7 +35,7 @@ func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt st
 		panic(fmt.Errorf("could not resolve OpenAI auth: %w", authErr))
 	}
 
-	payload := createResponsePayload(prompt, streaming, history, modifiers, model.ModelVersion, auth.IsCodex)
+	payload := createResponsePayload(context, prompt, streaming, history, modifiers, model.ModelVersion, auth.IsCodex)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
@@ -69,7 +69,7 @@ func createRequest(payload RequestPayload, auth openai_auth.ResolvedAuth) *http.
 	return req
 }
 
-func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string, codexAuth bool) RequestPayload {
+func createResponsePayload(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string, codexAuth bool) RequestPayload {
 	modelVersion := "gpt-5.3-chat-latest"
 	switch requestedModel {
 	case "codex":
@@ -133,6 +133,16 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 		Model: modelVersion,
 		Input: input,
 		Tools: tools,
+	}
+	if codexAuth {
+		instructions := ""
+		if context != nil {
+			instructions = strings.TrimSpace(context.SystemPrompt)
+		}
+		if instructions == "" {
+			instructions = "You are Owl, a coding assistant that prioritizes safe, minimal, and verifiable changes while following repository conventions."
+		}
+		request.Instructions = instructions
 	}
 
 	logger.Debug.Println("Will send payload")
