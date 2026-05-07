@@ -30,20 +30,20 @@ type OpenAiResponseModel struct {
 }
 
 func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
-	payload := createResponsePayload(prompt, streaming, history, modifiers, model.ModelVersion)
-	model.prompt = prompt
-	model.accumulatedAnswer = ""
-	model.contextId = context.Id
-	model.modelName = payload.Model
-	return createRequest(payload)
-}
-
-func createRequest(payload RequestPayload) *http.Request {
 	auth, authErr := openai_auth.Resolve()
 	if authErr != nil {
 		panic(fmt.Errorf("could not resolve OpenAI auth: %w", authErr))
 	}
 
+	payload := createResponsePayload(prompt, streaming, history, modifiers, model.ModelVersion, auth.IsCodex)
+	model.prompt = prompt
+	model.accumulatedAnswer = ""
+	model.contextId = context.Id
+	model.modelName = payload.Model
+	return createRequest(payload, auth)
+}
+
+func createRequest(payload RequestPayload, auth openai_auth.ResolvedAuth) *http.Request {
 	jsonpayload, err := json.Marshal(payload)
 	logger.Debug.Println("Will send payload")
 	logger.Debug.Println(jsonpayload)
@@ -69,7 +69,7 @@ func createRequest(payload RequestPayload) *http.Request {
 	return req
 }
 
-func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string) RequestPayload {
+func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string, codexAuth bool) RequestPayload {
 	modelVersion := "gpt-5.3-chat-latest"
 	switch requestedModel {
 	case "codex":
@@ -84,6 +84,9 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 		modelVersion = "gpt-5.4-mini-2026-03-17"
 	case "gpt-nano":
 		modelVersion = "gpt-5.4-nano-2026-03-17"
+	}
+	if codexAuth && (requestedModel == "gpt" || requestedModel == "") {
+		modelVersion = "gpt-5.3-codex"
 	}
 
 	input := make([]InputItem, 0, len(history)*2+1)
@@ -124,9 +127,6 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 			tools = append(tools, Tool{Type: "web_search"})
 			tools = append(tools, Tool{Type: "web_fetch"})
 		}
-	}
-	if len(tools) == 0 {
-		tools = append(tools, Tool{Type: "image_generation"})
 	}
 
 	request := RequestPayload{
