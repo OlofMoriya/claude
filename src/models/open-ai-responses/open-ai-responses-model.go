@@ -89,6 +89,10 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 		Input: prompt,
 		Tools: tools,
 	}
+	if streaming {
+		stream := true
+		request.Stream = &stream
+	}
 
 	logger.Debug.Println("Will send payload")
 	logger.Debug.Printf("request %v", request)
@@ -98,29 +102,70 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 	responseLine := string(line)
 
-	// fmt.Printf("\n\n%v\n", responseLine)
 	if strings.HasPrefix(responseLine, "data: ") {
-		var apiResponse ChatCompletionChunk
 		data, _ := strings.CutPrefix(responseLine, "data: ")
-
-		logger.Debug.Printf("json")
-		logger.Debug.Printf("%v", apiResponse)
-		if err := json.Unmarshal([]byte(data), &apiResponse); err != nil {
-			// fmt.Printf("Error unmarshalling response: %v\n %s", err, line)
+		data = strings.TrimSpace(data)
+		if data == "" || data == "[DONE]" {
+			if model.accumulatedAnswer != "" {
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+			}
+			return
 		}
 
-		if len(apiResponse.Choices) > 0 {
-			choice := apiResponse.Choices[0]
+		var event map[string]interface{}
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			return
+		}
 
-			model.accumulatedAnswer = model.accumulatedAnswer + choice.Delta.Content
-			model.ResponseHandler.RecievedText(choice.Delta.Content, nil)
+		eventType, _ := event["type"].(string)
+		switch eventType {
+		case "response.output_text.delta", "response.refusal.delta", "response.reasoning_summary_text.delta", "response.content_part.added":
+			text := extractEventText(event)
+			if text != "" {
+				model.accumulatedAnswer += text
+				model.ResponseHandler.RecievedText(text, nil)
+			}
 
-			if choice.FinishReason != nil {
-				fmt.Println(*&choice.FinishReason)
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+		case "response.output_text.done", "response.completed":
+			if text := extractEventText(event); text != "" && !strings.Contains(model.accumulatedAnswer, text) {
+				model.accumulatedAnswer += text
+			}
+			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+
+		case "response.error":
+			if msg, ok := event["message"].(string); ok && strings.TrimSpace(msg) != "" {
+				model.ResponseHandler.RecievedText("\nError: "+msg+"\n", nil)
+			}
+			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+
+		default:
+			// Ignore unknown event types to remain resilient.
+		}
+	}
+}
+
+func extractEventText(event map[string]interface{}) string {
+	if v, ok := event["delta"].(string); ok {
+		return v
+	}
+	if v, ok := event["text"].(string); ok {
+		return v
+	}
+	if item, ok := event["item"].(map[string]interface{}); ok {
+		if content, ok := item["content"].([]interface{}); ok {
+			for _, part := range content {
+				if m, ok := part.(map[string]interface{}); ok {
+					if txt, ok := m["text"].(string); ok {
+						return txt
+					}
+					if delta, ok := m["delta"].(string); ok {
+						return delta
+					}
+				}
 			}
 		}
 	}
+	return ""
 }
 
 func (model *OpenAiResponseModel) HandleBodyBytes(byte_list []byte) {
