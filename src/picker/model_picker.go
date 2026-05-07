@@ -52,13 +52,21 @@ func GetModelForQuery(
 	case "4o":
 		model = &openai_4o_model.OpenAi4oModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt-4o"}
 	case "gpt":
-		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		if openai_auth.HasCodexOAuthCredential() {
+			model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		} else {
+			model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
+		}
 	case "codex":
-		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		if openai_auth.HasCodexOAuthCredential() {
+			model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		} else {
+			model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
+		}
 	case "gpt-5.4":
-		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
 	case "gpt-5.5":
-		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
 	case "responses":
 		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: "gpt"}
 	case "gpt-nano":
