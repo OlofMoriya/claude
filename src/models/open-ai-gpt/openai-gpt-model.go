@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models/open-ai-base"
+	"owl/openai_auth"
 )
 
 type OpenAIGPTModel struct {
@@ -80,9 +80,9 @@ func (model *OpenAIGPTModel) HandleBodyBytes(bytes []byte) {
 }
 
 func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request {
-	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
-	if !ok {
-		panic(fmt.Errorf("Could not fetch OPENAI_API_KEY"))
+	auth, err := openai_auth.Resolve()
+	if err != nil {
+		panic(fmt.Errorf("could not resolve OpenAI auth: %w", err))
 	}
 
 	jsonpayload, err := json.Marshal(payload)
@@ -105,7 +105,10 @@ func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", auth.Token))
+	if auth.AccountID != "" {
+		req.Header.Set("ChatGPT-Account-Id", auth.AccountID)
+	}
 
 	return req
 }

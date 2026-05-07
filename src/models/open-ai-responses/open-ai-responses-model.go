@@ -11,6 +11,7 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
+	"owl/openai_auth"
 	"strings"
 	"time"
 
@@ -37,9 +38,9 @@ func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt st
 }
 
 func createRequest(payload RequestPayload) *http.Request {
-	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
-	if !ok {
-		panic(fmt.Errorf("Could not fetch api key"))
+	auth, authErr := openai_auth.Resolve()
+	if authErr != nil {
+		panic(fmt.Errorf("could not resolve OpenAI auth: %w", authErr))
 	}
 
 	jsonpayload, err := json.Marshal(payload)
@@ -56,7 +57,10 @@ func createRequest(payload RequestPayload) *http.Request {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", auth.Token))
+	if auth.AccountID != "" {
+		req.Header.Set("ChatGPT-Account-Id", auth.AccountID)
+	}
 
 	return req
 }

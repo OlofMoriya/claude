@@ -10,6 +10,7 @@ import (
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 	open_ai_gpt_model "owl/models/open-ai-gpt"
+	"owl/openai_auth"
 )
 
 func GetModelForQuery(
@@ -28,7 +29,11 @@ func GetModelForQuery(
 		modelToUse = context.PreferredModel
 	}
 	if modelToUse == "" {
-		modelToUse = "claude"
+		if openai_auth.HasCodexOAuthCredential() {
+			modelToUse = "gpt"
+		} else {
+			modelToUse = "claude"
+		}
 	}
 
 	var model commontypes.Model
