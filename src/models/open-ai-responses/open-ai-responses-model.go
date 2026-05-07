@@ -11,7 +11,6 @@ import (
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
-	"owl/openai_auth"
 	"strings"
 	"time"
 
@@ -30,20 +29,20 @@ type OpenAiResponseModel struct {
 }
 
 func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
-	auth, authErr := openai_auth.Resolve()
-	if authErr != nil {
-		panic(fmt.Errorf("could not resolve OpenAI auth: %w", authErr))
-	}
-
-	payload := createResponsePayload(context, prompt, streaming, history, modifiers, model.ModelVersion, auth.IsCodex)
+	payload := createResponsePayload(prompt, streaming, history, modifiers, model.ModelVersion)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
 	model.modelName = payload.Model
-	return createRequest(payload, auth)
+	return createRequest(payload)
 }
 
-func createRequest(payload RequestPayload, auth openai_auth.ResolvedAuth) *http.Request {
+func createRequest(payload RequestPayload) *http.Request {
+	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
+	if !ok {
+		panic(fmt.Errorf("Could not fetch api key"))
+	}
+
 	jsonpayload, err := json.Marshal(payload)
 	logger.Debug.Println("Will send payload")
 	logger.Debug.Println(jsonpayload)
@@ -52,71 +51,24 @@ func createRequest(payload RequestPayload, auth openai_auth.ResolvedAuth) *http.
 	}
 
 	url := "https://api.openai.com/v1/responses"
-	if auth.IsCodex {
-		url = "https://chatgpt.com/backend-api/codex/responses"
-	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonpayload))
 	if err != nil {
 		panic(fmt.Errorf("failed to create request: %v", err))
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", auth.Token))
-	if auth.AccountID != "" {
-		req.Header.Set("ChatGPT-Account-Id", auth.AccountID)
-	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 	return req
 }
 
-func createResponsePayload(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string, codexAuth bool) RequestPayload {
+func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string) RequestPayload {
 	modelVersion := "gpt-5.3-chat-latest"
-	switch requestedModel {
-	case "codex":
-		modelVersion = "gpt-5.3-codex"
-	case "gpt":
-		modelVersion = "gpt-5.3-chat-latest"
-	case "gpt-5.4":
-		modelVersion = "gpt-5.4"
-	case "gpt-5.5":
+	if requestedModel == "gpt-5.5" {
 		modelVersion = "gpt-5.5"
-	case "gpt-mini":
-		modelVersion = "gpt-5.4-mini-2026-03-17"
-	case "gpt-nano":
-		modelVersion = "gpt-5.4-nano-2026-03-17"
+	} else if requestedModel == "gpt-5.4" {
+		modelVersion = "gpt-5.4"
 	}
-	if codexAuth && (requestedModel == "gpt" || requestedModel == "") {
-		modelVersion = "gpt-5.3-codex"
-	}
-
-	input := make([]InputItem, 0, len(history)*2+1)
-	for _, h := range history {
-		if strings.TrimSpace(h.Prompt) != "" {
-			input = append(input, InputItem{
-				Role: "user",
-				Content: []ContentBlock{{
-					Type: "input_text",
-					Text: h.Prompt,
-				}},
-			})
-		}
-		if strings.TrimSpace(h.Response) != "" {
-			input = append(input, InputItem{
-				Role: "assistant",
-				Content: []ContentBlock{{
-					Type: "output_text",
-					Text: h.Response,
-				}},
-			})
-		}
-	}
-	input = append(input, InputItem{
-		Role: "user",
-		Content: []ContentBlock{{
-			Type: "input_text",
-			Text: prompt,
-		}},
-	})
 
 	tools := []Tool{}
 	if modifiers != nil {
@@ -128,25 +80,14 @@ func createResponsePayload(context *data.Context, prompt string, streaming bool,
 			tools = append(tools, Tool{Type: "web_fetch"})
 		}
 	}
+	if len(tools) == 0 {
+		tools = append(tools, Tool{Type: "image_generation"})
+	}
 
 	request := RequestPayload{
 		Model: modelVersion,
-		Input: input,
+		Input: prompt,
 		Tools: tools,
-	}
-	if codexAuth {
-		store := false
-		stream := streaming
-		request.Store = &store
-		request.Stream = &stream
-		instructions := ""
-		if context != nil {
-			instructions = strings.TrimSpace(context.SystemPrompt)
-		}
-		if instructions == "" {
-			instructions = "You are Owl, a coding assistant that prioritizes safe, minimal, and verifiable changes while following repository conventions."
-		}
-		request.Instructions = instructions
 	}
 
 	logger.Debug.Println("Will send payload")
