@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	commontypes "owl/common_types"
 	"owl/data"
 	"owl/logger"
 	"owl/models/open-ai-base"
-	"owl/openai_auth"
 )
 
 type OpenAIGPTModel struct {
@@ -80,9 +80,9 @@ func (model *OpenAIGPTModel) HandleBodyBytes(bytes []byte) {
 }
 
 func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request {
-	auth, err := openai_auth.Resolve()
-	if err != nil {
-		panic(fmt.Errorf("could not resolve OpenAI auth: %w", err))
+	apiKey, ok := os.LookupEnv("OPENAI_API_KEY")
+	if !ok {
+		panic(fmt.Errorf("OPENAI_API_KEY is required for chat-completions models"))
 	}
 
 	jsonpayload, err := json.Marshal(payload)
@@ -90,7 +90,7 @@ func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request
 		panic("failed to marshal payload")
 	}
 
-	logger.Debug.Printf("OpenAI GPT-5.2 Request Payload:\n%s", string(jsonpayload))
+	logger.Debug.Printf("OpenAI chat-completions request payload:\n%s", string(jsonpayload))
 
 	// Use different endpoint for web search
 	url := "https://api.openai.com/v1/chat/completions"
@@ -105,10 +105,7 @@ func createOpenAIGPTRequest(payload interface{}, isWebSearch bool) *http.Request
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", auth.Token))
-	if auth.AccountID != "" {
-		req.Header.Set("ChatGPT-Account-Id", auth.AccountID)
-	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 	return req
 }

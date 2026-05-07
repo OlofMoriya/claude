@@ -143,9 +143,11 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 	availableModels := []string{
 		"sonnet",
 		"codex",
+		"codex-chat",
 		"grok",
 		"opus",
 		"gpt",
+		"gpt-chat",
 		"haiku",
 		"ollama",
 		"claude",
@@ -153,10 +155,19 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 
 	availableAgents := agents.List()
 	selectedAgentIdx := 0
+	selectedModelIdx := 0
 	for idx, agent := range availableAgents {
 		if agent.Name == "planner" {
 			selectedAgentIdx = idx
 			break
+		}
+	}
+	if openai_auth.HasCodexOAuthCredential() {
+		for idx, model := range availableModels {
+			if model == "gpt" {
+				selectedModelIdx = idx
+				break
+			}
 		}
 	}
 
@@ -169,7 +180,7 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		width:            shared.width,
 		height:           shared.height,
 		availableModels:  availableModels,
-		selectedModelIdx: 0,
+		selectedModelIdx: selectedModelIdx,
 		availableAgents:  availableAgents,
 		selectedAgentIdx: selectedAgentIdx,
 		mode:             chatInputMode,
@@ -962,7 +973,7 @@ func (m *chatViewModel) View() string {
 		modeIndicator = dimStyle.Render(" [INPUT]")
 	}
 
-	currentModel := m.availableModels[m.selectedModelIdx]
+	currentModel := displayModelName(m.availableModels[m.selectedModelIdx])
 	modelInfo := dimStyle.Render(fmt.Sprintf(" [%s] [history: %d]", currentModel, m.historyCount))
 
 	helpText := ""
@@ -1228,7 +1239,7 @@ func (m *chatViewModel) renderModelSelector() string {
 			style = selectedItemStyle
 		}
 
-		modelName := model
+		modelName := displayModelName(model)
 		if i == m.selectedModelIdx {
 			modelName += " ✓"
 		}
@@ -1242,6 +1253,21 @@ func (m *chatViewModel) renderModelSelector() string {
 	b.WriteString(helpStyle.Render("↑/k up • ↓/j down • enter select • esc/q cancel"))
 
 	return b.String()
+}
+
+func displayModelName(model string) string {
+	switch model {
+	case "gpt":
+		return "gpt (responses)"
+	case "codex":
+		return "codex (responses)"
+	case "gpt-chat":
+		return "gpt-chat (chat completions)"
+	case "codex-chat":
+		return "codex-chat (chat completions)"
+	default:
+		return model
+	}
 }
 
 func (m *chatViewModel) recalculateUsage() {
