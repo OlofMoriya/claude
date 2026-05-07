@@ -6,9 +6,19 @@ import (
 )
 
 type RequestPayload struct {
-	Model string `json:"model"`
-	Input string `json:"input"`
-	Tools []Tool `json:"tools"`
+	Model string      `json:"model"`
+	Input []InputItem `json:"input"`
+	Tools []Tool      `json:"tools"`
+}
+
+type InputItem struct {
+	Role    string         `json:"role"`
+	Content []ContentBlock `json:"content"`
+}
+
+type ContentBlock struct {
+	Type string `json:"type"`
+	Text string `json:"text,omitempty"`
 }
 
 type Tool struct {

@@ -26,10 +26,11 @@ type OpenAiResponseModel struct {
 	accumulatedAnswer string
 	contextId         int64
 	modelName         string
+	ModelVersion      string
 }
 
 func (model *OpenAiResponseModel) CreateRequest(context *data.Context, prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) *http.Request {
-	payload := createResponsePayload(prompt, streaming, history, modifiers)
+	payload := createResponsePayload(prompt, streaming, history, modifiers, model.ModelVersion)
 	model.prompt = prompt
 	model.accumulatedAnswer = ""
 	model.contextId = context.Id
@@ -51,6 +52,9 @@ func createRequest(payload RequestPayload) *http.Request {
 	}
 
 	url := "https://api.openai.com/v1/responses"
+	if auth.IsCodex {
+		url = "https://chatgpt.com/backend-api/codex/responses"
+	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonpayload))
 	if err != nil {
 		panic(fmt.Errorf("failed to create request: %v", err))
@@ -65,7 +69,52 @@ func createRequest(payload RequestPayload) *http.Request {
 	return req
 }
 
-func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers) RequestPayload {
+func createResponsePayload(prompt string, streaming bool, history []data.History, modifiers *commontypes.PayloadModifiers, requestedModel string) RequestPayload {
+	modelVersion := "gpt-5.3-chat-latest"
+	switch requestedModel {
+	case "codex":
+		modelVersion = "gpt-5.3-codex"
+	case "gpt":
+		modelVersion = "gpt-5.3-chat-latest"
+	case "gpt-5.4":
+		modelVersion = "gpt-5.4"
+	case "gpt-5.5":
+		modelVersion = "gpt-5.5"
+	case "gpt-mini":
+		modelVersion = "gpt-5.4-mini-2026-03-17"
+	case "gpt-nano":
+		modelVersion = "gpt-5.4-nano-2026-03-17"
+	}
+
+	input := make([]InputItem, 0, len(history)*2+1)
+	for _, h := range history {
+		if strings.TrimSpace(h.Prompt) != "" {
+			input = append(input, InputItem{
+				Role: "user",
+				Content: []ContentBlock{{
+					Type: "input_text",
+					Text: h.Prompt,
+				}},
+			})
+		}
+		if strings.TrimSpace(h.Response) != "" {
+			input = append(input, InputItem{
+				Role: "assistant",
+				Content: []ContentBlock{{
+					Type: "output_text",
+					Text: h.Response,
+				}},
+			})
+		}
+	}
+	input = append(input, InputItem{
+		Role: "user",
+		Content: []ContentBlock{{
+			Type: "input_text",
+			Text: prompt,
+		}},
+	})
+
 	tools := []Tool{}
 	if modifiers != nil {
 		if modifiers.Image {
@@ -81,8 +130,8 @@ func createResponsePayload(prompt string, streaming bool, history []data.History
 	}
 
 	request := RequestPayload{
-		Model: "gpt-4.1",
-		Input: prompt,
+		Model: modelVersion,
+		Input: input,
 		Tools: tools,
 	}
 

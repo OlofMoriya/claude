@@ -10,6 +10,7 @@ import (
 	openai_4o_model "owl/models/open-ai-4o"
 	openai_base "owl/models/open-ai-base"
 	open_ai_gpt_model "owl/models/open-ai-gpt"
+	open_ai_responses "owl/models/open-ai-responses"
 	"owl/openai_auth"
 )
 
@@ -51,17 +52,25 @@ func GetModelForQuery(
 	case "4o":
 		model = &openai_4o_model.OpenAi4oModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt-4o"}
 	case "gpt":
-		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
+		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+	case "codex":
+		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+	case "gpt-5.4":
+		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+	case "gpt-5.5":
+		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: modelToUse}
+	case "responses":
+		model = &open_ai_responses.OpenAiResponseModel{ResponseHandler: responseHandler, ModelVersion: "gpt"}
 	case "gpt-nano":
 		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
 	case "gpt-mini":
 		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
-	case "gpt-5.5":
-		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
-	case "gpt-5.4":
-		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
-	case "codex":
-		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: modelToUse}
+	case "gpt-chat":
+		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "gpt"}
+		modelToUse = "gpt-chat"
+	case "codex-chat":
+		model = &open_ai_gpt_model.OpenAIGPTModel{OpenAICompatibleModel: openai_base.OpenAICompatibleModel{ResponseHandler: responseHandler, HistoryRepository: historyRepository}, ModelVersion: "codex"}
+		modelToUse = "codex-chat"
 	case "ollama":
 		model = ollama_model.NewOllamaModel(responseHandler, historyRepository, "")
 	case "qwen3":
