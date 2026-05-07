@@ -71,10 +71,32 @@ type loginResult struct {
 	UserCode        string
 }
 
+type LoginSession struct {
+	device   deviceCodeResponse
+	interval time.Duration
+}
+
 var refreshToken = refreshTokenFromAPI
 
 func Login() (string, error) {
-	result, tokens, err := loginDeviceFlow()
+	result, session, err := StartLogin()
+	if err != nil {
+		return "", err
+	}
+
+	return CompleteLogin(result, session)
+}
+
+func StartLogin() (loginResult, *LoginSession, error) {
+	result, session, err := startDeviceFlow()
+	if err != nil {
+		return loginResult{}, nil, err
+	}
+	return result, session, nil
+}
+
+func CompleteLogin(result loginResult, session *LoginSession) (string, error) {
+	tokens, err := waitForDeviceAuthorization(session)
 	if err != nil {
 		return "", err
 	}
@@ -235,37 +257,37 @@ func refreshTokenFromAPI(refreshTok string) (refreshResponse, error) {
 	return out, nil
 }
 
-func loginDeviceFlow() (loginResult, refreshResponse, error) {
+func startDeviceFlow() (loginResult, *LoginSession, error) {
 	deviceURL := openAIOAuthIssuer + "/api/accounts/deviceauth/usercode"
 
 	body := map[string]string{"client_id": openAIOAuthClientID}
 	encoded, err := json.Marshal(body)
 	if err != nil {
-		return loginResult{}, refreshResponse{}, err
+		return loginResult{}, nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, deviceURL, bytes.NewBuffer(encoded))
 	if err != nil {
-		return loginResult{}, refreshResponse{}, err
+		return loginResult{}, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return loginResult{}, refreshResponse{}, err
+		return loginResult{}, nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return loginResult{}, refreshResponse{}, fmt.Errorf("device auth start failed with status %d", resp.StatusCode)
+		return loginResult{}, nil, fmt.Errorf("device auth start failed with status %d", resp.StatusCode)
 	}
 
 	var device deviceCodeResponse
 	if err := json.NewDecoder(resp.Body).Decode(&device); err != nil {
-		return loginResult{}, refreshResponse{}, err
+		return loginResult{}, nil, err
 	}
 	if device.DeviceAuthID == "" || device.UserCode == "" {
-		return loginResult{}, refreshResponse{}, fmt.Errorf("device auth response missing fields")
+		return loginResult{}, nil, fmt.Errorf("device auth response missing fields")
 	}
 
 	interval := 5 * time.Second
@@ -273,19 +295,26 @@ func loginDeviceFlow() (loginResult, refreshResponse, error) {
 		interval = parsed
 	}
 
+	return loginResult{VerificationURL: openAIOAuthIssuer + "/codex/device", UserCode: device.UserCode}, &LoginSession{device: device, interval: interval}, nil
+}
+
+func waitForDeviceAuthorization(session *LoginSession) (refreshResponse, error) {
+	if session == nil {
+		return refreshResponse{}, fmt.Errorf("login session missing")
+	}
 	statusURL := openAIOAuthIssuer + "/api/accounts/deviceauth/token"
 	for attempt := 0; attempt < 120; attempt++ {
-		tokens, done, err := pollDeviceToken(statusURL, device)
+		tokens, done, err := pollDeviceToken(statusURL, session.device)
 		if err != nil {
-			return loginResult{}, refreshResponse{}, err
+			return refreshResponse{}, err
 		}
 		if done {
-			return loginResult{VerificationURL: openAIOAuthIssuer + "/codex/device", UserCode: device.UserCode}, tokens, nil
+			return tokens, nil
 		}
-		time.Sleep(interval + openAIOAuthPollMargin)
+		time.Sleep(session.interval + openAIOAuthPollMargin)
 	}
 
-	return loginResult{}, refreshResponse{}, fmt.Errorf("device auth timed out")
+	return refreshResponse{}, fmt.Errorf("device auth timed out")
 }
 
 func pollDeviceToken(statusURL string, device deviceCodeResponse) (refreshResponse, bool, error) {
