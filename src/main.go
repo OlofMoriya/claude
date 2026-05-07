@@ -322,8 +322,15 @@ func handleAuthLogin() {
 	}
 
 	fmt.Println("OpenAI device login required.")
-	fmt.Println("Visit https://auth.openai.com/codex/device and follow instructions.")
-	message, err := openai_auth.Login()
+	result, session, err := openai_auth.StartLogin()
+	if err != nil {
+		log.Fatalf("openai login failed: %v", err)
+	}
+	fmt.Printf("Visit: %s\n", result.VerificationURL)
+	fmt.Printf("Enter code: %s\n", result.UserCode)
+	fmt.Println("Waiting for authorization...")
+
+	message, err := openai_auth.CompleteLogin(result, session)
 	if err != nil {
 		log.Fatalf("openai login failed: %v", err)
 	}
