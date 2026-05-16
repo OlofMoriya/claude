@@ -36,8 +36,8 @@ func (r *PostgresHistoryRepository) GetContextById(contextId int64) (Context, er
 
 	var context Context
 	var archived int
-	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE id = $1 AND user_id = $2", contextId, r.User.Id).
-		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel, &archived)
+	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context WHERE id = $1 AND user_id = $2", contextId, r.User.Id).
+		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel, &context.PreferredAgent, &context.PreferredSkills, &archived)
 	if err != nil {
 		return Context{}, err
 	}
@@ -58,8 +58,8 @@ func (r *PostgresHistoryRepository) InsertHistory(history History) (int64, error
 
 func (r *PostgresHistoryRepository) InsertContext(context Context) (int64, error) {
 	var id int64
-	err := r.db.QueryRow("INSERT INTO context (name, user_id, system_prompt, preferred_model) VALUES ($1, $2, $3, $4) RETURNING id",
-		context.Name, context.UserId, context.SystemPrompt, context.PreferredModel).
+	err := r.db.QueryRow("INSERT INTO context (name, user_id, system_prompt, preferred_model, preferred_agent, preferred_skills) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+		context.Name, context.UserId, context.SystemPrompt, context.PreferredModel, context.PreferredAgent, context.PreferredSkills).
 		Scan(&id)
 	if err != nil {
 		return 0, err
@@ -96,8 +96,8 @@ func (r *PostgresHistoryRepository) GetContextByName(name string) (*Context, err
 
 	var context Context
 	var archived int
-	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE name = $1 AND user_id = $2", name, r.User.Id).
-		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel, &archived)
+	err := r.db.QueryRow("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context WHERE name = $1 AND user_id = $2", name, r.User.Id).
+		Scan(&context.Id, &context.Name, &context.UserId, &context.SystemPrompt, &context.PreferredModel, &context.PreferredAgent, &context.PreferredSkills, &archived)
 	if err != nil {
 		log.Println("err selecting context", err)
 		if err == sql.ErrNoRows {
@@ -110,7 +110,7 @@ func (r *PostgresHistoryRepository) GetContextByName(name string) (*Context, err
 }
 
 func (r *PostgresHistoryRepository) GetAllContexts() ([]Context, error) {
-	rows, err := r.db.Query("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE user_id = $1", r.User.Id)
+	rows, err := r.db.Query("SELECT id, name, user_id, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context WHERE user_id = $1", r.User.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (r *PostgresHistoryRepository) GetAllContexts() ([]Context, error) {
 	for rows.Next() {
 		var c Context
 		var archived int
-		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.SystemPrompt, &c.PreferredModel, &archived)
+		err := rows.Scan(&c.Id, &c.Name, &c.UserId, &c.SystemPrompt, &c.PreferredModel, &c.PreferredAgent, &c.PreferredSkills, &archived)
 		if err != nil {
 			return nil, err
 		}
@@ -155,6 +155,16 @@ func (r *PostgresHistoryRepository) UpdateSystemPrompt(contextId int64, systemPr
 func (r *PostgresHistoryRepository) UpdatePreferredModel(contextId int64, model string) error {
 	_, err := r.db.Exec("UPDATE contexts SET preferred_model = $1 WHERE id = $2",
 		model, contextId)
+	return err
+}
+
+func (r *PostgresHistoryRepository) UpdatePreferredAgent(contextId int64, agent string) error {
+	_, err := r.db.Exec("UPDATE contexts SET preferred_agent = $1 WHERE id = $2", agent, contextId)
+	return err
+}
+
+func (r *PostgresHistoryRepository) UpdatePreferredSkills(contextId int64, skills string) error {
+	_, err := r.db.Exec("UPDATE contexts SET preferred_skills = $1 WHERE id = $2", skills, contextId)
 	return err
 }
 

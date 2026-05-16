@@ -5,14 +5,16 @@ import (
 )
 
 type Context struct {
-	Id             int64     `json:"id"`
-	Name           string    `json:"name"`
-	History        []History `json:"history"`
-	UserId         int64     `json:"userId"`
-	Created        time.Time `json:"created"`
-	SystemPrompt   string    `json:"system_prompt"`
-	PreferredModel string    `json:"preferred_model"`
-	Archived       bool      `json:"archived"`
+	Id              int64     `json:"id"`
+	Name            string    `json:"name"`
+	History         []History `json:"history"`
+	UserId          int64     `json:"userId"`
+	Created         time.Time `json:"created"`
+	SystemPrompt    string    `json:"system_prompt"`
+	PreferredModel  string    `json:"preferred_model"`
+	PreferredAgent  string    `json:"preferred_agent"`
+	PreferredSkills string    `json:"preferred_skills"`
+	Archived        bool      `json:"archived"`
 }
 
 type History struct {

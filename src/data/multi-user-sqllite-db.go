@@ -64,6 +64,14 @@ func (mu_context *MultiUserContext) UpdatePreferredModel(contextId int64, model 
 	return mu_context.User.UpdatePreferredModel(contextId, model)
 }
 
+func (mu_context *MultiUserContext) UpdatePreferredAgent(contextId int64, agent string) error {
+	return mu_context.User.UpdatePreferredAgent(contextId, agent)
+}
+
+func (mu_context *MultiUserContext) UpdatePreferredSkills(contextId int64, skills string) error {
+	return mu_context.User.UpdatePreferredSkills(contextId, skills)
+}
+
 func (mu_context *MultiUserContext) ArchiveContext(contextId int64, archived bool) error {
 	return mu_context.User.ArchiveContext(contextId, archived)
 }

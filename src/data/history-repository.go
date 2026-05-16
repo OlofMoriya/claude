@@ -11,7 +11,8 @@ type HistoryRepository interface {
 	DeleteHistory(historyId int64) (int64, error)
 	UpdateSystemPrompt(contextId int64, systemPrompt string) error
 	UpdatePreferredModel(contextId int64, model string) error
+	UpdatePreferredAgent(contextId int64, agent string) error
+	UpdatePreferredSkills(contextId int64, skills string) error
 	ArchiveContext(contextId int64, archived bool) error
 	ArchiveHistory(historyId int64, archived bool) error
 }
-

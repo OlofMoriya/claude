@@ -38,6 +38,7 @@ func (user User) getUserDb() *sql.DB {
 	} else {
 		user.ensureArchivedColumnsExist(db)
 		user.ensureTokenColumnsExist(db)
+		user.ensureContextPreferenceColumnsExist(db)
 		user.ensureToolTablesExist(db)
 	}
 
@@ -50,18 +51,21 @@ func (user User) setupDb(db *sql.DB) {
 	createContextTable(db)
 	user.ensureArchivedColumnsExist(db)
 	user.ensureTokenColumnsExist(db)
+	user.ensureContextPreferenceColumnsExist(db)
 	user.ensureToolTablesExist(db)
 }
 
 func createContextTable(db *sql.DB) {
 	createTableQuery := `
-         CREATE TABLE IF NOT EXISTS context (
-             id INTEGER PRIMARY KEY AUTOINCREMENT,
-             name TEXT,
+		 CREATE TABLE IF NOT EXISTS context (
+	             id INTEGER PRIMARY KEY AUTOINCREMENT,
+	             name TEXT,
 			 system_prompt TEXT,
 			 preferred_model TEXT,
+			 preferred_agent TEXT,
+			 preferred_skills TEXT,
 			 archived INTEGER DEFAULT 0
-         )
+	         )
      `
 
 	_, err := db.Exec(createTableQuery)
@@ -147,6 +151,11 @@ func (user User) ensureTokenColumnsExist(db *sql.DB) {
 	_, _ = db.Exec("ALTER TABLE history ADD COLUMN cache_write_tokens INTEGER DEFAULT 0")
 }
 
+func (user User) ensureContextPreferenceColumnsExist(db *sql.DB) {
+	_, _ = db.Exec("ALTER TABLE context ADD COLUMN preferred_agent TEXT")
+	_, _ = db.Exec("ALTER TABLE context ADD COLUMN preferred_skills TEXT")
+}
+
 func (user User) ensureToolTablesExist(db *sql.DB) {
 	createToolTables(db)
 }
@@ -178,8 +187,8 @@ func (user User) InsertContext(context Context) (int64, error) {
 
 	logger.Debug.Printf("inserting context %v, %v, %v", context.Name, user.Name, user.Id)
 
-	insertQuery := "INSERT INTO context (name, system_prompt, preferred_model) VALUES (?, ?, ?)"
-	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt, context.PreferredModel)
+	insertQuery := "INSERT INTO context (name, system_prompt, preferred_model, preferred_agent, preferred_skills) VALUES (?, ?, ?, ?, ?)"
+	result, err := db.Exec(insertQuery, context.Name, context.SystemPrompt, context.PreferredModel, context.PreferredAgent, context.PreferredSkills)
 	logger.Debug.Println("result of context insert", result)
 
 	defer db.Close()
@@ -204,12 +213,12 @@ func (user User) GetContextById(contextId int64) (Context, error) {
 	// When getting by ID, we unarchive it as it is being "used"
 	_, _ = db.Exec("UPDATE context SET archived = 0 WHERE id = ?", contextId)
 
-	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE id = ?"
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context WHERE id = ?"
 	row := db.QueryRow(selectQuery, contextId)
 
 	var context Context
 	var archived int
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &context.PreferredAgent, &context.PreferredSkills, &archived)
 	context.Archived = archived == 1
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -372,12 +381,12 @@ func (user User) GetContextByName(name string) (*Context, error) {
 	// When getting by name, we unarchive it as it is being "used"
 	_, _ = db.Exec("UPDATE context SET archived = 0 WHERE name = ?", name)
 
-	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context WHERE name = ?"
+	selectQuery := "SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context WHERE name = ?"
 	row := db.QueryRow(selectQuery, name)
 
 	var context Context
 	var archived int
-	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
+	err := row.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &context.PreferredAgent, &context.PreferredSkills, &archived)
 	context.Archived = archived == 1
 
 	if err != nil {
@@ -391,7 +400,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	db := user.getUserDb()
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), archived FROM context")
+	rows, err := db.Query("SELECT id, name, system_prompt, COALESCE(preferred_model, 'sonnet'), COALESCE(preferred_agent, ''), COALESCE(preferred_skills, ''), archived FROM context")
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +410,7 @@ func (user User) GetAllContexts() ([]Context, error) {
 	for rows.Next() {
 		var context Context
 		var archived int
-		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &archived)
+		err := rows.Scan(&context.Id, &context.Name, &context.SystemPrompt, &context.PreferredModel, &context.PreferredAgent, &context.PreferredSkills, &archived)
 		if err != nil {
 			return nil, err
 		}
@@ -458,5 +467,21 @@ func (user User) UpdatePreferredModel(contextId int64, model string) error {
 
 	_, err := db.Exec("UPDATE context SET preferred_model = ? WHERE id = ?",
 		model, contextId)
+	return err
+}
+
+func (user User) UpdatePreferredAgent(contextId int64, agent string) error {
+	db := user.getUserDb()
+	defer db.Close()
+
+	_, err := db.Exec("UPDATE context SET preferred_agent = ? WHERE id = ?", agent, contextId)
+	return err
+}
+
+func (user User) UpdatePreferredSkills(contextId int64, skills string) error {
+	db := user.getUserDb()
+	defer db.Close()
+
+	_, err := db.Exec("UPDATE context SET preferred_skills = ? WHERE id = ?", skills, contextId)
 	return err
 }
