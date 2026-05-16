@@ -192,6 +192,7 @@ func main() {
 		user := data.User{Name: &db}
 		cliResponseHandler := CliResponseHandler{Repository: user}
 		toolResponseHandler := tools.ToolResponseHandler{ResponseHandler: cliResponseHandler}
+		toolResponseHandler.Init()
 
 		context_name := nameNewContextFunc(prompt, user)
 		new_context := data.Context{Name: context_name}
@@ -207,13 +208,10 @@ func main() {
 		model, modelName := getModelForQueryFunc("haiku", context, &toolResponseHandler, user, stream, thinking, stream_thinkning, output_thinkning)
 
 		// send with proper instructions and catch the answer
-		awaitedQueryFunc("", model, user, history_count, context, &commontypes.PayloadModifiers{}, modelName)
+		awaitedQueryFunc(prompt, model, user, history_count, context, &commontypes.PayloadModifiers{}, modelName)
 
 		response := <-toolResponseHandler.ResponseChannel
-
-		//context_name?
-		//create context and store the systemsprompt
-		getContext(user, &response)
+		_ = response
 
 		return
 	}
