@@ -69,5 +69,19 @@ func (m *MockHistoryRepository) UpdatePreferredModel(contextId int64, model stri
 	return nil
 }
 
+func (m *MockHistoryRepository) UpdatePreferredAgent(contextId int64, agent string) error {
+	ctx := m.Contexts[contextId]
+	ctx.PreferredAgent = agent
+	m.Contexts[contextId] = ctx
+	return nil
+}
+
+func (m *MockHistoryRepository) UpdatePreferredSkills(contextId int64, skills string) error {
+	ctx := m.Contexts[contextId]
+	ctx.PreferredSkills = skills
+	m.Contexts[contextId] = ctx
+	return nil
+}
+
 func (m *MockHistoryRepository) ArchiveContext(contextId int64, archived bool) error { return nil }
 func (m *MockHistoryRepository) ArchiveHistory(historyId int64, archived bool) error { return nil }
