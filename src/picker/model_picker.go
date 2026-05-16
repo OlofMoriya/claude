@@ -31,7 +31,7 @@ func GetModelForQuery(
 	}
 	if modelToUse == "" {
 		if openai_auth.HasCodexOAuthCredential() {
-			modelToUse = "gpt"
+			modelToUse = "codex"
 		} else {
 			modelToUse = "claude"
 		}
