@@ -230,6 +230,18 @@ Creates todo items using the external `todo-tui` application. Supports:
 
 ---
 
+## Owl architecture - tools/calendar_overview_tool.go
+
+**Purpose**: Read-only calendar/task overview via icalBuddy
+
+Provides calendar and task visibility using local `icalBuddy` command execution. Supports event windows, active events, incomplete tasks, and calendar listing while blocking config/edit commands.
+
+**Tool Name**: `calendar_overview`
+
+**Groups**: manager, secretary
+
+---
+
 
 ## Owl architecture - tools/generate_image_tool.go
 
@@ -257,6 +269,18 @@ Makes HTTP requests to external APIs. Supports:
 **Tool Name**: `http_request`
 
 **Status**: Currently commented out in init() - not active by default
+
+---
+
+## Owl architecture - tools/fetch_url_content_tool.go
+
+**Purpose**: Website content extraction tool
+
+Fetches HTML pages over HTTP(S), extracts the main readable content, and returns markdown (or plain text) instead of raw full-page HTML. Enforces URL scheme validation, response size limits, and output truncation controls.
+
+**Tool Name**: `fetch_url_content`
+
+**Groups**: planner, developer, manager, secretary
 
 ---
 
