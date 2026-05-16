@@ -27,7 +27,7 @@ func TestGetModelForQuery_GptUsesChatCompletionWithoutCodexAuth(t *testing.T) {
 	}
 }
 
-func TestGetModelForQuery_DefaultsToGptWithCodexAuth(t *testing.T) {
+func TestGetModelForQuery_DefaultsToCodexWithCodexAuth(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 
@@ -41,8 +41,8 @@ func TestGetModelForQuery_DefaultsToGptWithCodexAuth(t *testing.T) {
 	}
 
 	_, modelName := GetModelForQuery("", nil, nil, nil, false, false, false, false)
-	if modelName != "gpt" {
-		t.Fatalf("expected default model gpt, got %q", modelName)
+	if modelName != "codex" {
+		t.Fatalf("expected default model codex, got %q", modelName)
 	}
 }
 

@@ -123,7 +123,7 @@ func main() {
 	godotenv.Load()
 	flag.Parse()
 	if !wasFlagProvided("model") && openai_auth.HasCodexOAuthCredential() {
-		llm_model = "gpt"
+		llm_model = "codex"
 	}
 	if authStatus {
 		handleAuthStatus()

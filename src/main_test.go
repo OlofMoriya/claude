@@ -219,6 +219,39 @@ func TestMainStreamFlagUsesStreamedQuery(t *testing.T) {
 	}
 }
 
+func TestMainDefaultsToCodexWhenOAuthPresentAndModelNotProvided(t *testing.T) {
+	defer setupTest(t, []string{"cmd", "-prompt", "hi"})()
+
+	home := os.Getenv("HOME")
+	authPath := filepath.Join(home, ".owl", "auth", "openai.json")
+	if err := os.MkdirAll(filepath.Dir(authPath), 0o700); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
+	content := []byte(`{"type":"oauth","access":"token","refresh":"refresh","expires":9999999999999}`)
+	if err := os.WriteFile(authPath, content, 0o600); err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	getContextFunc = func(repo data.HistoryRepository, systemPrompt *string) *data.Context {
+		return &data.Context{Id: 1, Name: "ctx"}
+	}
+
+	resolvedModel := ""
+	getModelForQueryFunc = func(model string, context *data.Context, handler commontypes.ResponseHandler, repository data.HistoryRepository, stream bool, thinking bool, streamThinking bool, outputThinking bool) (commontypes.Model, string) {
+		resolvedModel = model
+		return stubModel{}, "stub"
+	}
+
+	awaitedQueryFunc = func(prompt string, model commontypes.Model, historyRepository data.HistoryRepository, historyCount int, context *data.Context, modifiers *commontypes.PayloadModifiers, modelName string) {
+	}
+
+	main()
+
+	if resolvedModel != "codex" {
+		t.Fatalf("expected default requested model codex, got %q", resolvedModel)
+	}
+}
+
 func TestMainViewFlag(t *testing.T) {
 	defer setupTest(t, []string{"cmd", "-view", "-context_name", "ctx"})()
 	called := false
