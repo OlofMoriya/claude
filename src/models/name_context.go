@@ -9,6 +9,7 @@ import (
 	picker "owl/picker"
 	"owl/services"
 	"owl/tools"
+	"strings"
 )
 
 func Name_new_context(user_prompt string, repository data.HistoryRepository) string {
@@ -19,7 +20,7 @@ func Name_new_context(user_prompt string, repository data.HistoryRepository) str
 
 	model, _ := picker.GetModelForQuery("haiku", nil, &toolHandler, repository, false, false, false, false)
 
-	prompt := fmt.Sprintf("Create a short name for this prompt so that I can store it with a name in a database. Maximum 100 characters but try to keep it short. ONLY EVER answer with the name and nothing else!!!! here's the prompt to name the context for: %s", user_prompt)
+	prompt := fmt.Sprintf("Create a short context name for this prompt. Return ONLY the name, nothing else. Use at most 3 words, plain text only, no punctuation, no quotes. Prompt: %s", user_prompt)
 	services.AwaitedQuery(prompt, model, repository, 0, &data.Context{
 		Name:    "Create name for context",
 		Id:      9999,
@@ -27,9 +28,15 @@ func Name_new_context(user_prompt string, repository data.HistoryRepository) str
 	}, &commontypes.PayloadModifiers{}, "haiku")
 
 	response := <-toolHandler.ResponseChannel
+	response = normalizeContextName(response)
 
 	logger.Debug.Printf("naming reponse: %s", response)
 	logger.Screen(fmt.Sprintf("naming reponse: %s", response), color.RGB(150, 150, 150))
 
 	return response
+}
+
+func normalizeContextName(raw string) string {
+	parts := strings.Fields(raw)
+	return strings.Join(parts, " ")
 }
