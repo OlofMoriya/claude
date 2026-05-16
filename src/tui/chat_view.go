@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+	"os"
 	"owl/agents"
 	commontypes "owl/common_types"
 	"owl/data"
@@ -19,6 +20,8 @@ import (
 	picker "owl/picker"
 	"owl/services"
 	"owl/tools"
+	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -30,6 +33,7 @@ const (
 	chatNormalMode
 	chatModelSelectMode
 	chatQuestionMode
+	chatFileDisplayMode
 )
 
 type questionAnswerState struct {
@@ -46,6 +50,11 @@ type questionPromptState struct {
 	answers     []questionAnswerState
 	customInput textinput.Model
 	editingText bool
+}
+
+type fileDisplayState struct {
+	prompt   interaction.FileDisplayPrompt
+	viewport viewport.Model
 }
 
 type chatViewModel struct {
@@ -81,6 +90,9 @@ type chatViewModel struct {
 	contextUsage     commontypes.TokenUsage
 	lastUsage        *commontypes.TokenUsage
 	questionPrompt   *questionPromptState
+	fileDisplay      *fileDisplayState
+	selectedPDF      string
+	selectedSkills   []string
 }
 
 const (
@@ -124,6 +136,10 @@ type questionPromptMsg struct {
 	prompt interaction.QuestionPrompt
 }
 
+type fileDisplayPromptMsg struct {
+	prompt interaction.FileDisplayPrompt
+}
+
 type authCommandResultMsg struct {
 	text string
 	err  error
@@ -156,20 +172,36 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 	availableAgents := agents.List()
 	selectedAgentIdx := 0
 	selectedModelIdx := 0
+	preferredAgent := strings.TrimSpace(shared.selectedCtx.PreferredAgent)
+	if preferredAgent == "" {
+		preferredAgent = "planner"
+	}
 	for idx, agent := range availableAgents {
-		if agent.Name == "planner" {
+		if agent.Name == preferredAgent {
 			selectedAgentIdx = idx
 			break
 		}
 	}
-	if openai_auth.HasCodexOAuthCredential() {
+	preferredModel := strings.TrimSpace(shared.selectedCtx.PreferredModel)
+	if preferredModel != "" {
 		for idx, model := range availableModels {
-			if model == "gpt" {
+			if model == preferredModel {
 				selectedModelIdx = idx
 				break
 			}
 		}
 	}
+	if openai_auth.HasCodexOAuthCredential() {
+		if preferredModel == "" {
+			for idx, model := range availableModels {
+				if model == "codex" {
+					selectedModelIdx = idx
+					break
+				}
+			}
+		}
+	}
+	selectedSkills := parseCSV(shared.selectedCtx.PreferredSkills)
 
 	m := &chatViewModel{
 		shared:           shared,
@@ -187,6 +219,7 @@ func newChatViewModel(shared *sharedState) *chatViewModel {
 		historyCount:     shared.config.HistoryCount,
 		statusMessage:    "",
 		showUsagePanel:   shared.width >= usagePanelMinWidth,
+		selectedSkills:   selectedSkills,
 	}
 	m.applyLayout()
 	return m
@@ -201,6 +234,7 @@ func (m *chatViewModel) Init() tea.Cmd {
 		m.listenForStatus(),
 		m.listenForHistoryPersisted(),
 		m.listenForQuestionPrompts(),
+		m.listenForFileDisplayPrompts(),
 	)
 }
 
@@ -246,6 +280,21 @@ func (m *chatViewModel) listenForQuestionPrompts() tea.Cmd {
 		}
 
 		return questionPromptMsg{prompt: prompt}
+	}
+}
+
+func (m *chatViewModel) listenForFileDisplayPrompts() tea.Cmd {
+	return func() tea.Msg {
+		if interaction.FileDisplayPromptChan == nil {
+			return nil
+		}
+
+		prompt, ok := <-interaction.FileDisplayPromptChan
+		if !ok {
+			return nil
+		}
+
+		return fileDisplayPromptMsg{prompt: prompt}
 	}
 }
 
@@ -296,7 +345,11 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 		go func() {
 			selectedAgent := m.currentAgent()
 			contextForRequest := *m.shared.selectedCtx
+			skillsPrompt := loadSkillsPromptByNames(m.selectedSkills)
 			contextForRequest.SystemPrompt = composeAgentSystemPrompt(contextForRequest.SystemPrompt, selectedAgent)
+			if strings.TrimSpace(skillsPrompt) != "" {
+				contextForRequest.SystemPrompt = composePromptSections(contextForRequest.SystemPrompt, skillsPrompt)
+			}
 
 			services.StreamedQuery(
 				prompt,
@@ -305,7 +358,7 @@ func (m *chatViewModel) sendMessage(prompt string) tea.Cmd {
 				m.historyCount,
 				&contextForRequest,
 				&commontypes.PayloadModifiers{
-					Pdf:              "",
+					Pdf:              m.selectedPDF,
 					Web:              false,
 					Image:            false,
 					ToolGroupFilters: tools.ToolGroupsToStrings(selectedAgent.ToolGroups),
@@ -425,9 +478,18 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mode = chatQuestionMode
 		return m, m.listenForQuestionPrompts()
 
+	case fileDisplayPromptMsg:
+		state := newFileDisplayState(msg.prompt, m.contentWidth(), m.height)
+		m.fileDisplay = &state
+		m.mode = chatFileDisplayMode
+		return m, m.listenForFileDisplayPrompts()
+
 	case tea.KeyMsg:
 		if m.mode == chatQuestionMode {
 			return m, m.handleQuestionModeKey(msg)
+		}
+		if m.mode == chatFileDisplayMode {
+			return m, m.handleFileDisplayModeKey(msg)
 		}
 
 		if m.sending {
@@ -556,6 +618,11 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.selectedModelIdx = m.modelCursor
 				m.mode = chatInputMode
+				if m.shared.selectedCtx != nil {
+					model := m.availableModels[m.selectedModelIdx]
+					_ = m.shared.config.Repository.UpdatePreferredModel(m.shared.selectedCtx.Id, model)
+					m.shared.selectedCtx.PreferredModel = model
+				}
 				return m, nil
 			}
 			return m, nil
@@ -564,10 +631,12 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "tab":
 			m.selectNextAgent()
+			m.persistAgentPreference()
 			return m, nil
 
 		case "shift+tab":
 			m.selectPreviousAgent()
+			m.persistAgentPreference()
 			return m, nil
 
 		case "ctrl+n":
@@ -690,6 +759,10 @@ func (m *chatViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.applyLayout()
 		m.updateViewportContent()
+		if m.fileDisplay != nil {
+			m.fileDisplay.viewport.Width = m.contentWidth()
+			m.fileDisplay.viewport.Height = max(5, m.height-8)
+		}
 	}
 
 	if shouldUpdateViewport && !customViewportHandled {
@@ -712,6 +785,14 @@ func (m *chatViewModel) handleSlashCommand(raw string) tea.Cmd {
 		return func() tea.Msg {
 			return authCommandResultMsg{err: fmt.Errorf("empty command")}
 		}
+	}
+
+	if parts[0] == "/pdf" {
+		return m.handlePDFSlashCommand(parts)
+	}
+
+	if parts[0] == "/skills" {
+		return m.handleSkillsSlashCommand(parts)
 	}
 
 	if parts[0] != "/auth" {
@@ -748,6 +829,98 @@ func (m *chatViewModel) handleSlashCommand(raw string) tea.Cmd {
 	}
 }
 
+func (m *chatViewModel) handlePDFSlashCommand(parts []string) tea.Cmd {
+	if len(parts) < 2 {
+		return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("usage: /pdf <set|clear|show> [path]")} }
+	}
+	action := strings.ToLower(parts[1])
+
+	switch action {
+	case "show":
+		value := "(none)"
+		if strings.TrimSpace(m.selectedPDF) != "" {
+			value = m.selectedPDF
+		}
+		return func() tea.Msg { return authCommandResultMsg{text: fmt.Sprintf("pdf: %s", value)} }
+	case "clear":
+		m.selectedPDF = ""
+		return func() tea.Msg { return authCommandResultMsg{text: "pdf cleared"} }
+	case "set":
+		if len(parts) < 3 {
+			return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("usage: /pdf set <path>")} }
+		}
+		path := strings.TrimSpace(strings.Join(parts[2:], " "))
+		if !strings.HasSuffix(strings.ToLower(path), ".pdf") {
+			return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("pdf path must end with .pdf")} }
+		}
+		if _, err := os.Stat(path); err != nil {
+			return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("pdf not found: %s", path)} }
+		}
+		m.selectedPDF = path
+		return func() tea.Msg { return authCommandResultMsg{text: fmt.Sprintf("pdf set: %s", path)} }
+	default:
+		return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("usage: /pdf <set|clear|show> [path]")} }
+	}
+}
+
+func (m *chatViewModel) handleSkillsSlashCommand(parts []string) tea.Cmd {
+	if len(parts) < 2 {
+		return func() tea.Msg {
+			return authCommandResultMsg{err: fmt.Errorf("usage: /skills <show|list|set|clear> [skill1,skill2]")}
+		}
+	}
+	action := strings.ToLower(parts[1])
+
+	switch action {
+	case "show":
+		if len(m.selectedSkills) == 0 {
+			return func() tea.Msg { return authCommandResultMsg{text: "skills: (none)"} }
+		}
+		return func() tea.Msg {
+			return authCommandResultMsg{text: fmt.Sprintf("skills: %s", strings.Join(m.selectedSkills, ", "))}
+		}
+	case "list":
+		skills, err := availableSkillNames()
+		if err != nil {
+			return func() tea.Msg { return authCommandResultMsg{err: err} }
+		}
+		if len(skills) == 0 {
+			return func() tea.Msg { return authCommandResultMsg{text: "available skills: (none)"} }
+		}
+		return func() tea.Msg {
+			return authCommandResultMsg{text: fmt.Sprintf("available skills: %s", strings.Join(skills, ", "))}
+		}
+	case "clear":
+		m.selectedSkills = nil
+		m.persistSkillsPreference()
+		return func() tea.Msg { return authCommandResultMsg{text: "skills cleared"} }
+	case "set":
+		if len(parts) < 3 {
+			return func() tea.Msg { return authCommandResultMsg{err: fmt.Errorf("usage: /skills set <skill1,skill2>")} }
+		}
+		raw := strings.Join(parts[2:], " ")
+		names := parseCSV(raw)
+		missing := missingSkills(names)
+		if len(missing) > 0 {
+			return func() tea.Msg {
+				return authCommandResultMsg{err: fmt.Errorf("unknown skills: %s", strings.Join(missing, ", "))}
+			}
+		}
+		m.selectedSkills = names
+		m.persistSkillsPreference()
+		if len(names) == 0 {
+			return func() tea.Msg { return authCommandResultMsg{text: "skills cleared"} }
+		}
+		return func() tea.Msg {
+			return authCommandResultMsg{text: fmt.Sprintf("skills set: %s", strings.Join(names, ", "))}
+		}
+	default:
+		return func() tea.Msg {
+			return authCommandResultMsg{err: fmt.Errorf("usage: /skills <show|list|set|clear> [skill1,skill2]")}
+		}
+	}
+}
+
 func newQuestionPromptState(prompt interaction.QuestionPrompt) questionPromptState {
 	title := strings.TrimSpace(prompt.Request.Title)
 	if title == "" {
@@ -773,6 +946,13 @@ func newQuestionPromptState(prompt interaction.QuestionPrompt) questionPromptSta
 		customInput: ti,
 		editingText: false,
 	}
+}
+
+func newFileDisplayState(prompt interaction.FileDisplayPrompt, width int, height int) fileDisplayState {
+	vp := viewport.New(max(20, width), max(5, height-8))
+	vp.YPosition = 0
+	vp.SetContent(prompt.Content)
+	return fileDisplayState{prompt: prompt, viewport: vp}
 }
 
 func (m *chatViewModel) handleQuestionModeKey(msg tea.KeyMsg) tea.Cmd {
@@ -886,6 +1066,39 @@ func (m *chatViewModel) handleQuestionModeKey(msg tea.KeyMsg) tea.Cmd {
 	return nil
 }
 
+func (m *chatViewModel) handleFileDisplayModeKey(msg tea.KeyMsg) tea.Cmd {
+	if m.fileDisplay == nil {
+		m.mode = chatInputMode
+		return nil
+	}
+
+	switch msg.String() {
+	case "q", "esc":
+		m.fileDisplay.prompt.ResponseChan <- interaction.FileDisplayResult{}
+		m.fileDisplay = nil
+		m.mode = chatInputMode
+		return nil
+	case "j", "down":
+		m.fileDisplay.viewport.LineDown(1)
+	case "k", "up":
+		m.fileDisplay.viewport.LineUp(1)
+	case "d", "ctrl+d":
+		m.fileDisplay.viewport.HalfViewDown()
+	case "u", "ctrl+u":
+		m.fileDisplay.viewport.HalfViewUp()
+	case "pgdown", "ctrl+f":
+		m.fileDisplay.viewport.PageDown()
+	case "pgup", "ctrl+b":
+		m.fileDisplay.viewport.PageUp()
+	case "g", "home":
+		m.fileDisplay.viewport.GotoTop()
+	case "G", "end":
+		m.fileDisplay.viewport.GotoBottom()
+	}
+
+	return nil
+}
+
 func buildQuestionBatchResponse(state *questionPromptState) (*commontypes.QuestionBatchResponse, error) {
 	answers := make([]commontypes.QuestionAnswer, 0, len(state.prompt.Request.Questions))
 
@@ -956,6 +1169,10 @@ func (m *chatViewModel) View() string {
 		return m.renderQuestionPrompt()
 	}
 
+	if m.mode == chatFileDisplayMode {
+		return m.renderFileDisplayPrompt()
+	}
+
 	status := ""
 	if m.sending {
 		status = sendingStyle.Render(" Sending...")
@@ -974,13 +1191,17 @@ func (m *chatViewModel) View() string {
 	}
 
 	currentModel := displayModelName(m.availableModels[m.selectedModelIdx])
-	modelInfo := dimStyle.Render(fmt.Sprintf(" [%s] [history: %d]", currentModel, m.historyCount))
+	pdfName := "none"
+	if strings.TrimSpace(m.selectedPDF) != "" {
+		pdfName = filepath.Base(m.selectedPDF)
+	}
+	modelInfo := dimStyle.Render(fmt.Sprintf(" [%s] [history: %d] [pdf: %s] [skills: %d]", currentModel, m.historyCount, pdfName, len(m.selectedSkills)))
 
 	helpText := ""
 	if m.mode == chatNormalMode {
 		helpText = "i: input • d/u: scroll • g/G: top/bottom • +/-: history • ctrl+g: model • ctrl+a: history • ctrl+t: usage • esc: back"
 	} else {
-		helpText = "tab/shift+tab: agent • ctrl+n: normal • ctrl+w: send • /auth openai status|login|logout • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
+		helpText = "tab/shift+tab: agent • ctrl+n: normal • ctrl+w: send • /auth openai ... • /pdf set|show|clear • /skills list|set|show|clear • ctrl+g: model • ctrl+u/d: scroll • ctrl+a: history • ctrl+t: usage • esc: back"
 	}
 
 	agent := m.currentAgent()
@@ -1133,6 +1354,38 @@ func (m *chatViewModel) renderQuestionPrompt() string {
 	b.WriteString(helpStyle.Render("j/k: option  tab/shift+tab: question  " + selectHint + "  i: custom  x: clear  ctrl+w: submit  esc: cancel"))
 
 	return b.String()
+}
+
+func (m *chatViewModel) renderFileDisplayPrompt() string {
+	if m.fileDisplay == nil {
+		return loadingStyle.Render("Loading file preview...")
+	}
+
+	fd := m.fileDisplay
+	title := fd.prompt.Title
+	if strings.TrimSpace(title) == "" {
+		title = "File Preview"
+	}
+
+	pathLine := fd.prompt.Path
+	if fd.prompt.StartLine > 0 || fd.prompt.EndLine > 0 {
+		start := fd.prompt.StartLine
+		end := fd.prompt.EndLine
+		if start <= 0 {
+			start = 1
+		}
+		if end <= 0 {
+			pathLine = fmt.Sprintf("%s (lines %d-end)", pathLine, start)
+		} else {
+			pathLine = fmt.Sprintf("%s (lines %d-%d)", pathLine, start, end)
+		}
+	}
+
+	header := headerStyle.Render(title)
+	sub := dimStyle.Render(pathLine)
+	help := helpStyle.Render("j/k or arrows: scroll • d/u: half-page • pgup/pgdn: page • g/G: top/bottom • q/esc: close")
+
+	return fmt.Sprintf("%s\n%s\n\n%s\n\n%s", header, sub, fd.viewport.View(), help)
 }
 
 func (m *chatViewModel) updateViewportContent() {
@@ -1372,6 +1625,133 @@ func (m *chatViewModel) applyLayout() {
 		textareaWidth = minTextareaWidth
 	}
 	m.textarea.SetWidth(textareaWidth)
+}
+
+func (m *chatViewModel) persistAgentPreference() {
+	if m.shared == nil || m.shared.selectedCtx == nil {
+		return
+	}
+	agent := m.currentAgent().Name
+	if err := m.shared.config.Repository.UpdatePreferredAgent(m.shared.selectedCtx.Id, agent); err != nil {
+		logger.Debug.Printf("failed to persist preferred agent: %v", err)
+		return
+	}
+	m.shared.selectedCtx.PreferredAgent = agent
+}
+
+func (m *chatViewModel) persistSkillsPreference() {
+	if m.shared == nil || m.shared.selectedCtx == nil {
+		return
+	}
+	joined := strings.Join(m.selectedSkills, ",")
+	if err := m.shared.config.Repository.UpdatePreferredSkills(m.shared.selectedCtx.Id, joined); err != nil {
+		logger.Debug.Printf("failed to persist preferred skills: %v", err)
+		return
+	}
+	m.shared.selectedCtx.PreferredSkills = joined
+}
+
+func parseCSV(raw string) []string {
+	parts := strings.Split(raw, ",")
+	seen := map[string]bool{}
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		name := strings.TrimSpace(part)
+		if name == "" || seen[name] {
+			continue
+		}
+		seen[name] = true
+		result = append(result, name)
+	}
+	return result
+}
+
+func composePromptSections(parts ...string) string {
+	filtered := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed == "" {
+			continue
+		}
+		filtered = append(filtered, trimmed)
+	}
+	return strings.Join(filtered, "\n\n")
+}
+
+func availableSkillNames() ([]string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve home directory: %w", err)
+	}
+	dir := filepath.Join(home, ".owl", "skills")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, fmt.Errorf("failed to read skills directory: %w", err)
+	}
+
+	result := []string{}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if strings.HasSuffix(strings.ToLower(name), ".md") {
+			result = append(result, strings.TrimSuffix(name, filepath.Ext(name)))
+		}
+	}
+	sort.Strings(result)
+	return result, nil
+}
+
+func missingSkills(selected []string) []string {
+	available, err := availableSkillNames()
+	if err != nil {
+		return selected
+	}
+	set := map[string]bool{}
+	for _, name := range available {
+		set[name] = true
+	}
+	missing := []string{}
+	for _, name := range selected {
+		if !set[name] {
+			missing = append(missing, name)
+		}
+	}
+	return missing
+}
+
+func loadSkillsPromptByNames(skillNames []string) string {
+	if len(skillNames) == 0 {
+		return ""
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		logger.Debug.Printf("skills load: could not resolve home directory: %v", err)
+		return ""
+	}
+	dir := filepath.Join(home, ".owl", "skills")
+	b := strings.Builder{}
+	for _, skill := range skillNames {
+		name := strings.TrimSpace(skill)
+		if name == "" {
+			continue
+		}
+		path := filepath.Join(dir, filepath.Base(name)+".md")
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			logger.Debug.Printf("skill load failure for %s: %v", path, readErr)
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString("\n\n")
+		}
+		b.WriteString(fmt.Sprintf("## Skill: %s\n%s", name, strings.TrimSpace(string(content))))
+	}
+	return b.String()
 }
 
 func renderMarkdown(content string, width int) string {

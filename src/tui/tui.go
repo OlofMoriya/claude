@@ -21,14 +21,17 @@ func Run(config TUIConfig) error {
 	logger.StatusChan = make(chan string, 50) // buffered channel
 	logger.HistoryPersistedChan = make(chan int64, 50)
 	interaction.QuestionPromptChan = make(chan interaction.QuestionPrompt, 10)
+	interaction.FileDisplayPromptChan = make(chan interaction.FileDisplayPrompt, 10)
 	defer func() {
 		// Clean up when TUI exits
 		close(logger.StatusChan)
 		close(logger.HistoryPersistedChan)
 		close(interaction.QuestionPromptChan)
+		close(interaction.FileDisplayPromptChan)
 		logger.StatusChan = nil
 		logger.HistoryPersistedChan = nil
 		interaction.QuestionPromptChan = nil
+		interaction.FileDisplayPromptChan = nil
 	}()
 
 	p := tea.NewProgram(
