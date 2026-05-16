@@ -106,9 +106,6 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 		data, _ := strings.CutPrefix(responseLine, "data: ")
 		data = strings.TrimSpace(data)
 		if data == "" || data == "[DONE]" {
-			if model.accumulatedAnswer != "" {
-				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
-			}
 			return
 		}
 
@@ -130,7 +127,9 @@ func (model *OpenAiResponseModel) HandleStreamedLine(line []byte) {
 			if text := extractEventText(event); text != "" && !strings.Contains(model.accumulatedAnswer, text) {
 				model.accumulatedAnswer += text
 			}
-			model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+			if eventType == "response.completed" {
+				model.ResponseHandler.FinalText(model.contextId, model.prompt, model.accumulatedAnswer, nil, model.modelName, nil)
+			}
 
 		case "response.error":
 			if msg, ok := event["message"].(string); ok && strings.TrimSpace(msg) != "" {
